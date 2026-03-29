@@ -4,7 +4,7 @@ import os
 
 app = Flask(__name__)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 HTML_PAGE = """
 <!DOCTYPE html>
@@ -18,7 +18,7 @@ HTML_PAGE = """
 <h1>VELTRIX AI</h1>
 
 <form method="POST">
-<textarea name="prompt" rows="5" cols="40" placeholder="اكتب سؤالك هنا..."></textarea><br><br>
+<textarea name="prompt" rows="5" cols="40"></textarea><br><br>
 <button type="submit">إرسال</button>
 </form>
 
@@ -33,22 +33,24 @@ HTML_PAGE = """
 
 @app.route("/", methods=["GET", "POST"])
 def home():
-    response = None
+    response = ""
 
     if request.method == "POST":
         user_input = request.form["prompt"]
 
-        completion = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "user", "content": user_input}
-            ]
-        )
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": user_input}]
+            )
 
-        response = completion.choices[0].message.content
+            response = completion.choices[0].message.content
+
+        except Exception as e:
+            response = str(e)
 
     return render_template_string(HTML_PAGE, response=response)
 
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
-    
