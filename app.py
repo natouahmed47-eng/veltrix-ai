@@ -1,6 +1,8 @@
-from flask import Flask, request, render_template_string
-from openai import OpenAI
+import openai
 import os
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
 
 app = Flask(__name__)
 
