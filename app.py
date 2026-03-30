@@ -1,11 +1,10 @@
-from flask import Flask, request, redirect, jsonify
+import requests
+from flask import request, redirect
+import osfrom flask import Flask, request, redirect, jsonify
 import os
 import requests
 
 app = Flask(__name__)
-
-SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")
-SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
 
 @app.route("/")
 def home():
@@ -14,18 +13,16 @@ def home():
 @app.route("/auth")
 def auth():
     shop = request.args.get("shop")
+
     if not shop:
         return "Missing shop", 400
 
+    api_key = os.environ.get("SHOPIFY_API_KEY")
     redirect_uri = "https://veltrix-ai-fx5c.onrender.com/auth/callback"
     scope = "read_products,write_products,read_orders,write_orders"
 
-    install_url = (
-        f"https://{shop}/admin/oauth/authorize"
-        f"?client_id={SHOPIFY_API_KEY}"
-        f"&scope={scope}"
-        f"&redirect_uri={redirect_uri}"
-    )
+    install_url = f"https://{shop}/admin/oauth/authorize?client_id={api_key}&scope={scope}&redirect_uri={redirect_uri}"
+
     return redirect(install_url)
 
 @app.route("/auth/callback")
@@ -33,23 +30,18 @@ def callback():
     shop = request.args.get("shop")
     code = request.args.get("code")
 
-    if not shop or not code:
-        return "Missing shop or code", 400
+    api_key = os.environ.get("SHOPIFY_API_KEY")
+    api_secret = os.environ.get("SHOPIFY_API_SECRET")
 
-    token_url = f"https://{shop}/admin/oauth/access_token"
-    payload = {
-        "client_id": SHOPIFY_API_KEY,
-        "client_secret": SHOPIFY_API_SECRET,
+    url = f"https://{shop}/admin/oauth/access_token"
+
+    response = requests.post(url, json={
+        "client_id": api_key,
+        "client_secret": api_secret,
         "code": code
-    }
+    })
 
-    response = requests.post(token_url, json=payload)
-    data = response.json()
+    return response.json()
 
-    access_token = data.get("access_token")
-    if not access_token:
-        return jsonify(data), 400
-
-    return f"Shopify connected successfully ✅ Token: {access_token[:12]}..."
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
