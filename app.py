@@ -330,7 +330,7 @@ def ai_update_product_description():
     if not client:
         return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True)
 
     shop = data.get("shop", DEFAULT_SHOP)
     product_id = data.get("product_id")
