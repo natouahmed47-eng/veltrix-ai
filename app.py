@@ -218,7 +218,7 @@ def create_product():
     if not token:
         return jsonify({"error": "Missing Shopify access token"}), 500
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True) or {}
 
     title = data.get("title", "New Product")
     body_html = data.get("body_html", "<strong>Created by Veltrix AI</strong>")
@@ -279,7 +279,7 @@ def ai_product_description():
     if not client:
         return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(force=True) or {}
 
     title = data.get("title")
     product_type = data.get("product_type", "")
@@ -325,15 +325,12 @@ def ai_product_description():
 # =========================
 # AI + Shopify: تحديث وصف منتج
 # =========================
-@app.route("/ai/product-description", methods=["POST"])
-def ai_product_description():
-    data = request.get_json(force=True)
+@app.route("/ai/update-product-description", methods=["POST"])
+def ai_update_product_description():
+    if not client:
+        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-    title = data.get("title")
-    if not title:
-        return jsonify({"error": "Missing title"}) 400
-
-    data = request.get_json(force=True)
+    data = request.get_json(force=True) or {}
 
     shop = data.get("shop", DEFAULT_SHOP)
     product_id = data.get("product_id")
