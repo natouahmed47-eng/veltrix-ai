@@ -325,10 +325,13 @@ def ai_product_description():
 # =========================
 # AI + Shopify: تحديث وصف منتج
 # =========================
-@app.route("/ai/update-product-description", methods=["POST"])
-def ai_update_product_description():
-    if not client:
-        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
+@app.route("/ai/product-description", methods=["POST"])
+def ai_product_description():
+    data = request.get_json(force=True)
+
+    title = data.get("title")
+    if not title:
+        return jsonify({"error": "Missing title"}), 400
 
     data = request.get_json(force=True)
 
