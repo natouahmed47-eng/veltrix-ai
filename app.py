@@ -331,7 +331,7 @@ def ai_product_description():
 
     title = data.get("title")
     if not title:
-        return jsonify({"error": "Missing title"}), 400
+        return jsonify({"error": "Missing title"}) 400
 
     data = request.get_json(force=True)
 
