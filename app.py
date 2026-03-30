@@ -2,13 +2,14 @@ import os
 import json
 import requests
 from flask import Flask, request, redirect, jsonify
+from openai import OpenAI
 
 app = Flask(__name__)
 
 # =========================
 # الإعدادات
 # =========================
-DEFAULT_SHOP = "shopcg1ypm-rd.myshopify.com"
+DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
 TOKEN_STORE_FILE = "shopify_tokens.json"
 
 
@@ -62,6 +63,9 @@ def get_active_token(shop: str):
 
 SHOPIFY_API_KEY = get_secret("SHOPIFY_API_KEY")
 SHOPIFY_API_SECRET = get_secret("SHOPIFY_API_SECRET")
+OPENAI_API_KEY = get_secret("OPENAI_API_KEY")
+
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 
 # =========================
@@ -81,11 +85,12 @@ def health():
         "status": "ok",
         "shopify_api_key_exists": bool(SHOPIFY_API_KEY),
         "shopify_api_secret_exists": bool(SHOPIFY_API_SECRET),
+        "openai_api_key_exists": bool(OPENAI_API_KEY),
     })
 
 
 # =========================
-# بدء التثبيت
+# بدء تثبيت التطبيق
 # =========================
 @app.route("/auth")
 def auth():
@@ -111,7 +116,7 @@ def auth():
 
 
 # =========================
-# الرجوع من Shopify بعد التثبيت
+# callback بعد التثبيت
 # =========================
 @app.route("/auth/callback")
 def callback():
@@ -264,6 +269,139 @@ def show_token():
         "shop": shop,
         "access_token": token
     })
+
+
+# =========================
+# AI: توليد وصف منتج
+# =========================
+@app.route("/ai/product-description", methods=["POST"])
+def ai_product_description():
+    if not client:
+        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
+
+    data = request.get_json(silent=True) or {}
+
+    title = data.get("title")
+    product_type = data.get("product_type", "")
+    audience = data.get("audience", "")
+    tone = data.get("tone", "professional")
+    language = data.get("language", "ar")
+
+    if not title:
+        return jsonify({"error": "Missing title"}), 400
+
+    prompt = f"""
+اكتب وصف منتج احترافي عالي التحويل لمتجر Shopify.
+
+اسم المنتج: {title}
+نوع المنتج: {product_type}
+الجمهور المستهدف: {audience}
+النبرة: {tone}
+اللغة: {language}
+
+المطلوب:
+- عنوان تسويقي قصير
+- وصف احترافي مقنع
+- 5 مزايا رئيسية
+- دعوة واضحة للشراء
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    content = response.choices[0].message.content
+
+    return jsonify({
+        "title": title,
+        "result": content
+    })
+
+
+# =========================
+# AI + Shopify: تحديث وصف منتج
+# =========================
+@app.route("/ai/update-product-description", methods=["POST"])
+def ai_update_product_description():
+    if not client:
+        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
+
+    data = request.get_json(silent=True) or {}
+
+    shop = data.get("shop", DEFAULT_SHOP)
+    product_id = data.get("product_id")
+    title = data.get("title")
+    product_type = data.get("product_type", "")
+    audience = data.get("audience", "")
+    tone = data.get("tone", "professional")
+    language = data.get("language", "ar")
+
+    if not product_id or not title:
+        return jsonify({"error": "Missing product_id or title"}), 400
+
+    token = get_active_token(shop)
+    if not token:
+        return jsonify({"error": "Missing Shopify access token"}), 500
+
+    prompt = f"""
+اكتب وصف منتج احترافي عالي التحويل لمتجر Shopify.
+
+اسم المنتج: {title}
+نوع المنتج: {product_type}
+الجمهور المستهدف: {audience}
+النبرة: {tone}
+اللغة: {language}
+
+المطلوب:
+- عنوان تسويقي قصير
+- وصف احترافي مقنع
+- 5 مزايا رئيسية
+- دعوة واضحة للشراء
+"""
+
+    ai_response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+
+    generated_description = ai_response.choices[0].message.content
+
+    url = f"https://{shop}/admin/api/2025-10/products/{product_id}.json"
+    headers = {
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "product": {
+            "id": int(product_id),
+            "body_html": generated_description
+        }
+    }
+
+    response = requests.put(url, headers=headers, json=payload, timeout=30)
+
+    try:
+        result = response.json()
+    except Exception:
+        return jsonify({
+            "error": "Invalid response from Shopify",
+            "status_code": response.status_code,
+            "text": response.text
+        }), 500
+
+    return jsonify({
+        "message": "Product description updated successfully ✅",
+        "generated_description": generated_description,
+        "shopify_result": result
+    }), response.status_code
 
 
 # =========================
