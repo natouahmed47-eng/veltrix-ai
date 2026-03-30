@@ -6,27 +6,10 @@ from flask import Flask, request, redirect, jsonify
 app = Flask(__name__)
 
 # =========================
-# إعدادات عامة
+# الإعدادات
 # =========================
-@app.route("/products")
-def get_products():
-    token = get_secret("SHOPIFY_ACCESS_TOKEN")
-
-    if not token:
-        return jsonify({"error": "Missing Shopify access token"}), 500
-
-    shop = "shopcg1ypm-rd.myshopify.com"
-
-    url = f"https://{shop}/admin/api/2024-10/products.json"
-
-    headers = {
-        "X-Shopify-Access-Token": token,
-        "Content-Type": "application/json"
-    }
-
-    response = requests.get(url, headers=headers)
-
-    return jsonify(response.json()), response.status_code
+DEFAULT_SHOP = "shopcg1ypm-rd.myshopify.com"
+TOKEN_STORE_FILE = "shopify_tokens.json"
 
 
 # =========================
@@ -71,12 +54,9 @@ def get_shop_token(shop: str):
 
 
 def get_active_token(shop: str):
-    # الأولوية: التوكن المحفوظ من callback
     token = get_shop_token(shop)
     if token:
         return token
-
-    # بديل: توكن يدوي من Render Secret Files أو Environment
     return get_secret("SHOPIFY_ACCESS_TOKEN")
 
 
@@ -181,7 +161,6 @@ def callback():
             "shopify_response": data
         }), 400
 
-    # حفظ التوكن لهذا المتجر
     save_shop_token(shop, access_token)
 
     return jsonify({
@@ -271,7 +250,7 @@ def create_product():
 
 
 # =========================
-# عرض التوكن المحفوظ للمتجر
+# عرض التوكن المحفوظ
 # =========================
 @app.route("/token", methods=["GET"])
 def show_token():
