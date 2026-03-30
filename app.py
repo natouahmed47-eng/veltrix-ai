@@ -51,3 +51,5 @@ def callback():
         return jsonify(data), 400
 
     return f"Shopify connected successfully ✅ Token: {access_token[:12]}..."
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
