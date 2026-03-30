@@ -8,8 +8,25 @@ app = Flask(__name__)
 # =========================
 # إعدادات عامة
 # =========================
-DEFAULT_SHOP = "a-n-t-965.myshopify.com"
-TOKEN_STORE_FILE = "shopify_tokens.json"
+@app.route("/products")
+def get_products():
+    token = get_secret("SHOPIFY_ACCESS_TOKEN")
+
+    if not token:
+        return jsonify({"error": "Missing Shopify access token"}), 500
+
+    shop = "shopcg1ypm-rd.myshopify.com"
+
+    url = f"https://{shop}/admin/api/2024-10/products.json"
+
+    headers = {
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json"
+    }
+
+    response = requests.get(url, headers=headers)
+
+    return jsonify(response.json()), response.status_code
 
 
 # =========================
