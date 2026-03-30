@@ -4,94 +4,53 @@ from flask import Flask, request, redirect, jsonify
 
 app = Flask(__name__)
 
-
-def read_secret_file(filename: str):
-    path = f"/etc/secrets/{filename}"
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read().strip()
-    return None
-
-
-def get_secret(name: str):
-    return os.environ.get(name) or read_secret_file(name)
-
-
-SHOPIFY_API_KEY = get_secret("SHOPIFY_API_KEY")
-SHOPIFY_API_SECRET = get_secret("SHOPIFY_API_SECRET")
+SHOP = "a-n-t-965.myshopify.com"
+ACCESS_TOKEN = "YOUR_ACCESS_TOKEN_HERE"
 
 
 @app.route("/")
 def home():
-    return "Veltrix AI Shopify App 🚀"
+    return "Veltrix AI Shopify Products API 🚀"
 
 
-@app.route("/auth")
-def auth():
-    shop = request.args.get("shop")
+@app.route("/products", methods=["GET"])
+def get_products():
+    url = f"https://{SHOP}/admin/api/2024-01/products.json"
+    headers = {
+        "X-Shopify-Access-Token": ACCESS_TOKEN,
+        "Content-Type": "application/json",
+    }
 
-    if not shop:
-        return "Missing shop parameter", 400
-
-    if not SHOPIFY_API_KEY:
-        return "SHOPIFY_API_KEY missing", 500
-
-    scope = "read_products,write_products,read_orders,write_orders,read_customers"
-    redirect_uri = "https://veltrix-ai-fx5c.onrender.com/auth/callback"
-
-    install_url = (
-        f"https://{shop}/admin/oauth/authorize"
-        f"?client_id={SHOPIFY_API_KEY}"
-        f"&scope={scope}"
-        f"&redirect_uri={redirect_uri}"
-    )
-
-    return redirect(install_url)
+    response = requests.get(url, headers=headers, timeout=30)
+    return jsonify(response.json()), response.status_code
 
 
-@app.route("/auth/callback")
-def callback():
-    shop = request.args.get("shop")
-    code = request.args.get("code")
+@app.route("/products/create", methods=["POST"])
+def create_product():
+    data = request.get_json(silent=True) or {}
 
-    if not shop or not code:
-        return "Missing shop or code", 400
+    title = data.get("title", "New Product")
+    body_html = data.get("body_html", "<strong>Created by Veltrix AI</strong>")
+    vendor = data.get("vendor", "Veltrix AI")
+    product_type = data.get("product_type", "General")
 
-    if not SHOPIFY_API_KEY or not SHOPIFY_API_SECRET:
-        return "Shopify API credentials missing", 500
+    payload = {
+        "product": {
+            "title": title,
+            "body_html": body_html,
+            "vendor": vendor,
+            "product_type": product_type,
+        }
+    }
 
-    token_url = f"https://{shop}/admin/oauth/access_token"
+    url = f"https://{SHOP}/admin/api/2024-01/products.json"
+    headers = {
+        "X-Shopify-Access-Token": ACCESS_TOKEN,
+        "Content-Type": "application/json",
+    }
 
-    response = requests.post(
-        token_url,
-        json={
-            "client_id": SHOPIFY_API_KEY,
-            "client_secret": SHOPIFY_API_SECRET,
-            "code": code,
-        },
-        timeout=30,
-    )
-
-    try:
-        data = response.json()
-    except Exception:
-        return jsonify({
-            "error": "Invalid response from Shopify",
-            "status_code": response.status_code,
-            "text": response.text
-        }), 500
-
-    if response.status_code != 200:
-        return jsonify({
-            "error": "Failed to get access token",
-            "status_code": response.status_code,
-            "shopify_response": data
-        }), 400
-
-    return jsonify({
-        "message": "App installed successfully ✅",
-        "data": data
-    })
+    response = requests.post(url, headers=headers, json=payload, timeout=30)
+    return jsonify(response.json()), response.status_code
 
 
 if __name__ == "__main__":
