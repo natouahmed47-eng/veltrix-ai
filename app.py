@@ -1,16 +1,26 @@
-from flask import Flask
+from flask import Flask, request, redirect
 import os
-from openai import OpenAI
+import requests
 
 app = Flask(__name__)
 
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY")
-)
+SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")
+SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
 
 @app.route("/")
 def home():
-    return "Veltrix AI is running 🚀"
+    return "Veltrix AI Shopify App 🚀"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+@app.route("/auth")
+def auth():
+    shop = request.args.get("shop")
+
+    redirect_uri = "https://veltrix-ai-fx5c.onrender.com/auth/callback"
+
+    install_url = f"https://{shop}/admin/oauth/authorize?client_id={SHOPIFY_API_KEY}&scope=read_products,write_products,read_orders&redirect_uri={redirect_uri}"
+
+    return redirect(install_url)
+
+@app.route("/auth/callback")
+def callback():
+    return "Shopify connected successfully ✅"
