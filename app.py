@@ -4,31 +4,44 @@ from flask import Flask, request, redirect, jsonify
 
 app = Flask(__name__)
 
-# الصفحة الرئيسية
+
+def read_secret_file(filename: str):
+    path = f"/etc/secrets/{filename}"
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return None
+
+
+def get_secret(name: str):
+    return os.environ.get(name) or read_secret_file(name)
+
+
+SHOPIFY_API_KEY = get_secret("SHOPIFY_API_KEY")
+SHOPIFY_API_SECRET = get_secret("SHOPIFY_API_SECRET")
+
+
 @app.route("/")
 def home():
     return "Veltrix AI Shopify App 🚀"
 
 
-# بدء التثبيت (OAuth)
 @app.route("/auth")
 def auth():
     shop = request.args.get("shop")
 
     if not shop:
-        return "Missing shop", 400
+        return "Missing shop parameter", 400
 
-    api_key = os.environ.get("SHOPIFY_API_KEY")
+    if not SHOPIFY_API_KEY:
+        return "SHOPIFY_API_KEY missing", 500
 
-    if not api_key:
-        return "Missing SHOPIFY_API_KEY", 500
-
-    scope = "read_products,write_products,read_orders"
+    scope = "read_products,write_products,read_orders,write_orders,read_customers"
     redirect_uri = "https://veltrix-ai-fx5c.onrender.com/auth/callback"
 
     install_url = (
         f"https://{shop}/admin/oauth/authorize"
-        f"?client_id={api_key}"
+        f"?client_id={SHOPIFY_API_KEY}"
         f"&scope={scope}"
         f"&redirect_uri={redirect_uri}"
     )
@@ -36,7 +49,6 @@ def auth():
     return redirect(install_url)
 
 
-# callback بعد التثبيت
 @app.route("/auth/callback")
 def callback():
     shop = request.args.get("shop")
@@ -45,25 +57,43 @@ def callback():
     if not shop or not code:
         return "Missing shop or code", 400
 
-    api_key = os.environ.get("SHOPIFY_API_KEY")
-    api_secret = os.environ.get("SHOPIFY_API_SECRET")
+    if not SHOPIFY_API_KEY or not SHOPIFY_API_SECRET:
+        return "Shopify API credentials missing", 500
 
-    if not api_key or not api_secret:
-        return "Missing API credentials", 500
+    token_url = f"https://{shop}/admin/oauth/access_token"
 
-    url = f"https://{shop}/admin/oauth/access_token"
+    response = requests.post(
+        token_url,
+        json={
+            "client_id": SHOPIFY_API_KEY,
+            "client_secret": SHOPIFY_API_SECRET,
+            "code": code,
+        },
+        timeout=30,
+    )
 
-    response = requests.post(url, json={
-        "client_id": api_key,
-        "client_secret": api_secret,
-        "code": code
+    try:
+        data = response.json()
+    except Exception:
+        return jsonify({
+            "error": "Invalid response from Shopify",
+            "status_code": response.status_code,
+            "text": response.text
+        }), 500
+
+    if response.status_code != 200:
+        return jsonify({
+            "error": "Failed to get access token",
+            "status_code": response.status_code,
+            "shopify_response": data
+        }), 400
+
+    return jsonify({
+        "message": "App installed successfully ✅",
+        "data": data
     })
 
-    data = response.json()
 
-    return jsonify(data)
-
-
-# تشغيل السيرفر
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
