@@ -1,9 +1,6 @@
-import requests
-from flask import request, redirect
-import osfrom flask import Flask, request, redirect, jsonify
 import os
-import 
-requests
+import requests
+from flask import Flask, request, redirect, jsonify
 
 app = Flask(__name__)
 
