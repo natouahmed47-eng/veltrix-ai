@@ -57,9 +57,6 @@ def get_shop_token(shop: str):
 
 
 def get_active_token(shop: str):
-    token = get_shop_token(shop)
-    if token:
-        return token
     return get_secret("SHOPIFY_ACCESS_TOKEN")
 
 
