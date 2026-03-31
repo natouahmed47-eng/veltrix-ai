@@ -11,7 +11,7 @@ CORS(app)
 # =========================
 # الإعدادات
 # =========================
-DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
+DEFAULT_SHOP = DEFAULT_SHOP = "a-n-t-9657.myshopify.com"
 TOKEN_STORE_FILE = "shopify_tokens.json"
 
 
