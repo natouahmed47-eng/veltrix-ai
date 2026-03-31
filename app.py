@@ -597,15 +597,45 @@ def dashboard():
                 document.getElementById("ai_result").textContent = JSON.stringify(data, null, 2);
             }
 
-            async function updateDescription() {
-                const payload = {
-                    shop: document.getElementById("shop").value,
-                    product_id: document.getElementById("product_id").value,
-                    title: document.getElementById("title").value,
-                    product_type: document.getElementById("product_type").value,
-                    audience: document.getElementById("audience").value,
-                    tone: document.getElementById("tone").value,
-                    language: document.getElementById("language").value
+        async function loadProducts() {
+    const shop = document.getElementById("shop").value;
+    const res = await fetch(`/products?shop=${encodeURIComponent(shop)}`);
+    const data = await res.json();
+
+    const container = document.getElementById("products_result");
+
+    if (!data.products || data.products.length === 0) {
+        container.innerHTML = "❌ لا توجد منتجات";
+        return;
+    }
+
+    let html = "";
+
+    data.products.forEach(product => {
+        const image = product.images && product.images.length > 0 
+            ? product.images[0].src 
+            : "";
+
+        html += `
+        <div style="background:#020617; padding:15px; margin-bottom:15px; border-radius:12px;">
+            ${image ? `<img src="${image}" style="width:100%; border-radius:10px;">` : ""}
+            <h3>${product.title}</h3>
+            <p>${product.body_html ? product.body_html.replace(/<[^>]+>/g, '') : "لا يوجد وصف"}</p>
+            <p style="color:#94a3b8;">ID: ${product.id}</p>
+        </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+                
+                
+                
+                
+                
+                    
+                    
+    
                 };
 
                 const res = await fetch("/ai/update-product-description", {
