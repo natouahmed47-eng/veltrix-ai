@@ -688,16 +688,56 @@ def dashboard():
                     const res = await fetch("/ai/update-product-description", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    });
+                        async function generateDescription() {
+    const resultBox = document.getElementById("ai_result");
+    resultBox.innerHTML = "جاري توليد الوصف...";
 
-                    const data = await res.json();
-                    resultBox.innerHTML = data.result
-    .replace(/\n/g, "<br>")
-    .replace(/### (.*?)/g, "<h3>$1</h3>")
-    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
-                } catch (error) {
-                    resultBox.textContent = "فشل تحديث المنتج: " + error.message;
+    const payload = {
+        title: document.getElementById("title").value,
+        product_type: document.getElementById("product_type").value,
+        audience: document.getElementById("audience").value,
+        tone: document.getElementById("tone").value,
+        language: document.getElementById("language").value
+    };
+
+    try {
+        const res = await fetch("/ai/product-description", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            resultBox.textContent = "خطأ: " + JSON.stringify(data, null, 2);
+            return;
+        }
+
+        if (!data.result) {
+            resultBox.textContent = "لم يرجع النص من الخادم.";
+            return;
+        }
+
+        resultBox.innerHTML = data.result
+            .replace(/\\n/g, "<br>")
+            .replace(/\n/g, "<br>")
+            .replace(/### (.*?)(<br>|$)/g, "<h3>$1</h3>")
+            .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
+
+    } catch (error) {
+        resultBox.textContent = "فشل توليد الوصف: " + error.message;
+    }
+}
+                    
+
+                    
+        
+    
+
+    
+                } 
+                    
                 }
             }
         </script>
