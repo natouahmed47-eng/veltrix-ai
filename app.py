@@ -670,9 +670,12 @@ def dashboard():
                 }
             }
 
-            async function updateDescription() {
-                const resultBox = document.getElementById("update_result");
-                resultBox.textContent = "جاري تحديث المنتج...";
+            async function generateDescription() {
+    alert("تم الضغط");
+
+    const resultBox = document.getElementById("ai_result");
+                
+                
 
                 const payload = {
                     shop: document.getElementById("shop").value,
