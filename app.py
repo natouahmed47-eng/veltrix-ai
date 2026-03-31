@@ -692,7 +692,10 @@ def dashboard():
                     });
 
                     const data = await res.json();
-                    resultBox.textContent = JSON.stringify(data, null, 2);
+                    resultBox.innerHTML = data.result
+    .replace(/\n/g, "<br>")
+    .replace(/### (.*?)/g, "<h3>$1</h3>")
+    .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>");
                 } catch (error) {
                     resultBox.textContent = "فشل تحديث المنتج: " + error.message;
                 }
