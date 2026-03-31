@@ -649,26 +649,62 @@ def dashboard():
             }
 
             async function generateDescription() {
-                const resultBox = document.getElementById("ai_result");
-                resultBox.textContent = "جاري توليد الوصف...";
+    const resultBox = document.getElementById("ai_result");
+    resultBox.textContent = "جاري توليد الوصف...";
 
-                const payload = {
-                    title: document.getElementById("title").value,
-                    product_type: document.getElementById("product_type").value,
-                    audience: document.getElementById("audience").value,
-                    tone: document.getElementById("tone").value,
-                    language: document.getElementById("language").value
+    const payload = {
+        title: document.getElementById("title").value,
+        product_type: document.getElementById("product_type").value,
+        audience: document.getElementById("audience").value,
+        tone: document.getElementById("tone").value,
+        language: document.getElementById("language").value
+    };
+
+    try {
+        const res = await fetch("/ai/product-description", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        console.log("API RESPONSE:", data);
+
+        if (!res.ok) {
+            resultBox.textContent = "خطأ: " + JSON.stringify(data, null, 2);
+            return;
+        }
+
+        if (!data.result) {
+            resultBox.textContent = "لم يرجع النص من الخادم.";
+            return;
+        }
+
+        resultBox.textContent = data.result;
+
+    } catch (error) {
+        resultBox.textContent = "فشل توليد الوصف: " + error.message;
+    }
+}
+            
+                
+
+                
+                    
+                    
+                    
+                    
+                    
                 };
 
-                try {
-                    const res = await fetch("/ai/product-description", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
+                
+                    
+                        
+                        
                     });
 
-                    const data = await res.json();
-                    resultBox.textContent = JSON.stringify(data, null, 2);
+                    
+                    
                 } catch (error) {
                     resultBox.textContent = "فشل توليد الوصف: " + error.message;
                 }
