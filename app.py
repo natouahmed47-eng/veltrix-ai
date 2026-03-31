@@ -202,8 +202,13 @@ def dashboard():
                         return;
                     }
 
-                    if (!data.result) {
-                        resultBox.textContent = "لم يرجع النص من الخادم.";
+                    if (resultBox.innerHTML = data.result
+    .replace(/\\n/g, "<br>")
+    .replace(/\n/g, "<br>")
+    .replace(/### (.*?)(<br>|$)/g, "<h3>$1</h3>")
+    .replace(/## (.*?)(<br>|$)/g, "<h2>$1</h2>")
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+                         = "لم يرجع النص من الخادم.";
                         return;
                     }
 
