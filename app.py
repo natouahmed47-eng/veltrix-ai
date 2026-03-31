@@ -188,8 +188,14 @@ def get_products():
 
     url = f"https://{shop}/admin/api/2025-10/products.json"
     headers = {
-        "X-Shopify-Access-Token": token,
-        "Content-Type": "application/json",
+    headers = {
+    "X-Shopify-Access-Token": access_token,
+    "Content-Type": "application/json"
+}
+
+url = f"https://{shop}/admin/api/2023-01/products.json"
+
+response = requests.get(url, headers=headers)
     }
 
     response = requests.get(url, headers=headers, timeout=30)
