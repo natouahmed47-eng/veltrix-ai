@@ -402,7 +402,158 @@ def ai_update_product_description():
         "shopify_result": result
     }), response.status_code
 
+@app.route("/dashboard", methods=["GET"])
+def dashboard():
+    html = """
+    <!DOCTYPE html>
+    <html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>VELTRIX AI Dashboard</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background: #0f172a;
+                color: white;
+                margin: 0;
+                padding: 20px;
+            }
+            .container {
+                max-width: 900px;
+                margin: auto;
+            }
+            .card {
+                background: #1e293b;
+                padding: 20px;
+                border-radius: 16px;
+                margin-bottom: 20px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            }
+            input, textarea, button, select {
+                width: 100%;
+                padding: 12px;
+                margin-top: 10px;
+                margin-bottom: 10px;
+                border-radius: 10px;
+                border: none;
+                font-size: 16px;
+            }
+            input, textarea, select {
+                background: #334155;
+                color: white;
+            }
+            button {
+                background: #22c55e;
+                color: white;
+                cursor: pointer;
+                font-weight: bold;
+            }
+            button:hover {
+                background: #16a34a;
+            }
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                background: #0f172a;
+                padding: 12px;
+                border-radius: 10px;
+                overflow-x: auto;
+            }
+            h1, h2 {
+                margin-top: 0;
+            }
+            .small {
+                color: #cbd5e1;
+                font-size: 14px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="card">
+                <h1>VELTRIX AI</h1>
+                <p class="small">لوحة تحكم لتوليد وتحديث أوصاف المنتجات بالذكاء الاصطناعي</p>
+            </div>
 
+            <div class="card">
+                <h2>1) جلب المنتجات</h2>
+                <input type="text" id="shop" value="cg1ypm-rd.myshopify.com" placeholder="اسم المتجر"/>
+                <button onclick="loadProducts()">جلب المنتجات</button>
+                <pre id="products_result">لم يتم تحميل المنتجات بعد.</pre>
+            </div>
+
+            <div class="card">
+                <h2>2) توليد وصف بالذكاء الاصطناعي</h2>
+                <input type="text" id="title" placeholder="اسم المنتج"/>
+                <input type="text" id="product_type" placeholder="نوع المنتج"/>
+                <input type="text" id="audience" placeholder="الجمهور المستهدف"/>
+                <input type="text" id="tone" value="احترافي" placeholder="النبرة"/>
+                <input type="text" id="language" value="ar" placeholder="اللغة"/>
+                <button onclick="generateDescription()">توليد الوصف</button>
+                <pre id="ai_result">لم يتم توليد وصف بعد.</pre>
+            </div>
+
+            <div class="card">
+                <h2>3) تحديث وصف المنتج في Shopify</h2>
+                <input type="text" id="product_id" placeholder="Product ID"/>
+                <button onclick="updateDescription()">تحديث المنتج</button>
+                <pre id="update_result">لم يتم تحديث أي منتج بعد.</pre>
+            </div>
+        </div>
+
+        <script>
+            async function loadProducts() {
+                const shop = document.getElementById("shop").value;
+                const res = await fetch(`/products?shop=${encodeURIComponent(shop)}`);
+                const data = await res.json();
+                document.getElementById("products_result").textContent = JSON.stringify(data, null, 2);
+            }
+
+            async function generateDescription() {
+                const payload = {
+                    title: document.getElementById("title").value,
+                    product_type: document.getElementById("product_type").value,
+                    audience: document.getElementById("audience").value,
+                    tone: document.getElementById("tone").value,
+                    language: document.getElementById("language").value
+                };
+
+                const res = await fetch("/ai/product-description", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                document.getElementById("ai_result").textContent = JSON.stringify(data, null, 2);
+            }
+
+            async function updateDescription() {
+                const payload = {
+                    shop: document.getElementById("shop").value,
+                    product_id: document.getElementById("product_id").value,
+                    title: document.getElementById("title").value,
+                    product_type: document.getElementById("product_type").value,
+                    audience: document.getElementById("audience").value,
+                    tone: document.getElementById("tone").value,
+                    language: document.getElementById("language").value
+                };
+
+                const res = await fetch("/ai/update-product-description", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await res.json();
+                document.getElementById("update_result").textContent = JSON.stringify(data, null, 2);
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return render_template_string(html)
 # =========================
 # تشغيل التطبيق
 # =========================
