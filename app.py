@@ -2,9 +2,11 @@ import os
 import json
 import requests
 from flask import Flask, request, redirect, jsonify
+from flask_cors import CORS
 from openai import OpenAI
 
 app = Flask(__name__)
+CORS(app)
 
 # =========================
 # الإعدادات
