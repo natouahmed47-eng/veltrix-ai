@@ -619,9 +619,9 @@ def dashboard():
                             ? product.images[0].src
                             : "";
 
-                        const cleanDescription = product.body_html
-                            ? product.body_html.replace(/<[^>]+>/g, "")
-                            : "لا يوجد وصف";
+                        const cleanDescription = product.body_html || "لا يوجد وصف";
+                            
+                            
 
                         const safeTitle = String(product.title || "").replace(/'/g, "\\\\'");
 
@@ -629,7 +629,7 @@ def dashboard():
                             <div class="product-card">
                                 ${image ? `<img src="${image}" alt="${product.title}">` : ""}
                                 <h3>${product.title || "بدون اسم"}</h3>
-                                <p>${cleanDescription}</p>
+                                <div>${cleanDescription}</div>
                                 <p class="muted">ID: ${product.id}</p>
                                 <button type="button" onclick="selectProduct('${product.id}', '${safeTitle}')">
                                     اختيار هذا المنتج
