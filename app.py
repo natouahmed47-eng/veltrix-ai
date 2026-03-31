@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from flask import Flask, request, redirect, jsonify
+from flask import Flask, request, redirect, jsonify, render_template_string
 from flask_cors import CORS
 from openai import OpenAI
 
@@ -13,6 +13,12 @@ CORS(app)
 # =========================
 DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
 TOKEN_STORE_FILE = "shopify_tokens.json"
+
+SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")
+SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 
 # =========================
@@ -45,7 +51,16 @@ def save_token_store(data: dict):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
+def normalize_token(token: str | None):
+    if not token:
+        return None
+    if "shpat_" in token:
+        token = "shpat_" + token.split("shpat_")[-1]
+    return token.replace('"', "").strip()
+
+
 def save_shop_token(shop: str, token: str):
+    token = normalize_token(token)
     data = load_token_store()
     data[shop] = token
     save_token_store(data)
@@ -53,18 +68,15 @@ def save_shop_token(shop: str, token: str):
 
 def get_shop_token(shop: str):
     data = load_token_store()
-    return data.get(shop)
+    token = data.get(shop)
+    return normalize_token(token)
 
 
 def get_active_token(shop: str):
-    return get_secret("SHOPIFY_ACCESS_TOKEN")
-
-
-SHOPIFY_API_KEY = get_secret("SHOPIFY_API_KEY")
-SHOPIFY_API_SECRET = get_secret("SHOPIFY_API_SECRET")
-OPENAI_API_KEY = get_secret("OPENAI_API_KEY")
-
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+    token = get_shop_token(shop)
+    if token:
+        return token
+    return normalize_token(get_secret("SHOPIFY_ACCESS_TOKEN"))
 
 
 # =========================
@@ -93,15 +105,15 @@ def health():
 # =========================
 @app.route("/auth")
 def auth():
-    shop = request.args.get("shop", DEFAULT_SHOP)
-
+    shop = request.args.get("shop")
     if not shop:
-        return "Missing shop", 400
+        return "Missing shop parameter", 400
 
     if not SHOPIFY_API_KEY:
         return "Missing SHOPIFY_API_KEY", 500
 
-    redirect_uri = "https://veltrix-ai-fx5c.onrender.com/auth/callback"
+    base_url = request.host_url.rstrip("/")
+    redirect_uri = f"{base_url}/auth/callback"
     scope = "read_products,write_products,read_orders,write_orders,read_customers"
 
     install_url = (
@@ -110,7 +122,6 @@ def auth():
         f"&scope={scope}"
         f"&redirect_uri={redirect_uri}"
     )
-
     return redirect(install_url)
 
 
@@ -156,7 +167,7 @@ def callback():
             "shopify_response": data
         }), 400
 
-    access_token = data.get("access_token")
+    access_token = normalize_token(data.get("access_token"))
     scope = data.get("scope")
 
     if not access_token:
@@ -176,6 +187,19 @@ def callback():
 
 
 # =========================
+# عرض التوكن
+# =========================
+@app.route("/api/auth/token", methods=["GET"])
+def get_token_info():
+    shop = request.args.get("shop", DEFAULT_SHOP)
+    token = get_active_token(shop)
+    return jsonify({
+        "shop": shop,
+        "access_token": token
+    })
+
+
+# =========================
 # جلب المنتجات
 # =========================
 @app.route("/products", methods=["GET"])
@@ -186,30 +210,30 @@ def get_products():
     if not token:
         return jsonify({"error": "Missing Shopify access token"}), 500
 
-    url = f"https://{shop}/admin/api/2025-10/products.json"
+    url = f"https://{shop}/admin/api/2024-01/products.json"
     headers = {
-    headers = {
-    "X-Shopify-Access-Token": access_token,
-    "Content-Type": "application/json"
-}
-
-url = f"https://{shop}/admin/api/2023-01/products.json"
-
-response = requests.get(url, headers=headers)
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json"
     }
 
-    response = requests.get(url, headers=headers, timeout=30)
-
     try:
+        response = requests.get(url, headers=headers, timeout=30)
         data = response.json()
     except Exception:
         return jsonify({
             "error": "Invalid response from Shopify",
-            "status_code": response.status_code,
-            "text": response.text
+            "status_code": response.status_code if "response" in locals() else None,
+            "text": response.text if "response" in locals() else None
         }), 500
 
-    return jsonify(data), response.status_code
+    if response.status_code != 200:
+        return jsonify({
+            "error": "Shopify API error",
+            "status_code": response.status_code,
+            "response": data
+        }), response.status_code
+
+    return jsonify(data), 200
 
 
 # =========================
@@ -223,7 +247,7 @@ def create_product():
     if not token:
         return jsonify({"error": "Missing Shopify access token"}), 500
 
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
 
     title = data.get("title", "New Product")
     body_html = data.get("body_html", "<strong>Created by Veltrix AI</strong>")
@@ -239,41 +263,30 @@ def create_product():
         }
     }
 
-    url = f"https://{shop}/admin/api/2025-10/products.json"
+    url = f"https://{shop}/admin/api/2024-01/products.json"
     headers = {
         "X-Shopify-Access-Token": token,
-        "Content-Type": "application/json",
+        "Content-Type": "application/json"
     }
 
-    response = requests.post(url, headers=headers, json=payload, timeout=30)
-
     try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
         result = response.json()
     except Exception:
         return jsonify({
             "error": "Invalid response from Shopify",
-            "status_code": response.status_code,
-            "text": response.text
+            "status_code": response.status_code if "response" in locals() else None,
+            "text": response.text if "response" in locals() else None
         }), 500
 
-    return jsonify(result), response.status_code
+    if response.status_code != 201:
+        return jsonify({
+            "error": "Failed to create product",
+            "status_code": response.status_code,
+            "shopify_response": result
+        }), response.status_code
 
-
-# =========================
-# عرض التوكن المحفوظ
-# =========================
-@app.route("/token", methods=["GET"])
-def show_token():
-    shop = request.args.get("shop", DEFAULT_SHOP)
-    token = get_active_token(shop)
-
-    if not token:
-        return jsonify({"error": "No token found for this shop"}), 404
-
-    return jsonify({
-        "shop": shop,
-        "access_token": token
-    })
+    return jsonify(result), 201
 
 
 # =========================
@@ -284,7 +297,7 @@ def ai_product_description():
     if not client:
         return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
 
     title = data.get("title")
     product_type = data.get("product_type", "")
@@ -311,15 +324,22 @@ def ai_product_description():
 - دعوة واضحة للشراء
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."},
-            {"role": "user", "content": prompt}
-        ]
-    )
-
-    content = response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        content = response.choices[0].message.content if response.choices else None
+        if not content:
+            return jsonify({"error": "Empty AI response"}), 500
+    except Exception as e:
+        return jsonify({
+            "error": "OpenAI request failed",
+            "details": str(e)
+        }), 500
 
     return jsonify({
         "title": title,
@@ -335,7 +355,7 @@ def ai_update_product_description():
     if not client:
         return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-    data = request.get_json(force=True) or {}
+    data = request.get_json(silent=True) or {}
 
     shop = data.get("shop", DEFAULT_SHOP)
     product_id = data.get("product_id")
@@ -345,16 +365,6 @@ def ai_update_product_description():
     tone = data.get("tone", "professional")
     language = data.get("language", "ar")
 
-@app.route("/api/auth/token", methods=["GET"])
-def get_token_info():
-    shop = request.args.get("shop", DEFAULT_SHOP)
-    token = get_active_token(shop)
-
-    return jsonify({
-        "shop": shop,
-        "access_token": token
-    })
-    
     if not product_id or not title:
         return jsonify({"error": "Missing product_id or title"}), 400
 
@@ -378,17 +388,22 @@ def get_token_info():
 - دعوة واضحة للشراء
 """
 
-    ai_response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."},
-            {"role": "user", "content": prompt}
-        ]
-    )
+    try:
+        ai_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        generated_description = ai_response.choices[0].message.content
+    except Exception as e:
+        return jsonify({
+            "error": "AI generation failed",
+            "details": str(e)
+        }), 500
 
-    generated_description = ai_response.choices[0].message.content
-
-    url = f"https://{shop}/admin/api/2025-10/products/{product_id}.json"
+    url = f"https://{shop}/admin/api/2024-01/products/{product_id}.json"
     headers = {
         "X-Shopify-Access-Token": token,
         "Content-Type": "application/json",
@@ -401,23 +416,33 @@ def get_token_info():
         }
     }
 
-    response = requests.put(url, headers=headers, json=payload, timeout=30)
-
     try:
+        response = requests.put(url, headers=headers, json=payload, timeout=30)
         result = response.json()
     except Exception:
         return jsonify({
             "error": "Invalid response from Shopify",
-            "status_code": response.status_code,
-            "text": response.text
+            "status_code": response.status_code if "response" in locals() else None,
+            "text": response.text if "response" in locals() else None
         }), 500
+
+    if response.status_code != 200:
+        return jsonify({
+            "error": "Failed to update product",
+            "status_code": response.status_code,
+            "shopify_result": result
+        }), response.status_code
 
     return jsonify({
         "message": "Product description updated successfully ✅",
         "generated_description": generated_description,
         "shopify_result": result
-    }), response.status_code
+    }), 200
 
+
+# =========================
+# Dashboard
+# =========================
 @app.route("/dashboard", methods=["GET"])
 def dashboard():
     html = """
@@ -570,6 +595,8 @@ def dashboard():
     </html>
     """
     return render_template_string(html)
+
+
 # =========================
 # تشغيل التطبيق
 # =========================
