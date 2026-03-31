@@ -292,10 +292,11 @@ def create_product():
 # =========================
 # AI: توليد وصف منتج
 # =========================
-@app.route("/ai/product-description", methods=["POST"])
-def ai_product_description():
-    if not client:
-        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
+@app.rout("/eimport markdown
+
+generated_description = markdown.markdown(
+    ai_response.choices[0].message.content
+
 
     data = request.get_json(silent=True) or {}
 
