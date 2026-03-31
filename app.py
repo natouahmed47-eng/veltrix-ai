@@ -588,9 +588,13 @@ def dashboard():
 
         <script>
             function selectProduct(id, title) {
-                document.getElementById("product_id").value = id;
-                document.getElementById("title").value = title;
-                alert("تم اختيار المنتج: " + title);
+    document.getElementById("product_id").value = id;
+    document.getElementById("title").value = title;
+    alert("تم اختيار المنتج: " + title);
+}
+                
+                
+                
             }
 
             async function loadProducts() {
