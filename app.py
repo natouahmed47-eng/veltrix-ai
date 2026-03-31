@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import markdown
 from flask import Flask, request, redirect, jsonify, render_template_string
 from flask_cors import CORS
 from openai import OpenAI
@@ -13,6 +14,7 @@ CORS(app)
 # =========================
 DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
 TOKEN_STORE_FILE = "shopify_tokens.json"
+SHOPIFY_API_VERSION = "2024-01"
 
 SHOPIFY_API_KEY = os.environ.get("SHOPIFY_API_KEY")
 SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
@@ -36,6 +38,21 @@ def get_secret(name: str):
     return os.environ.get(name) or read_secret_file(name)
 
 
+def normalize_token(token: str | None):
+    if not token:
+        return None
+    token = str(token).strip()
+
+    if "shpat_" in token:
+        token = "shpat_" + token.split("shpat_")[-1]
+
+    token = token.replace('"', "").replace("'", "").strip()
+    return token
+
+
+# =========================
+# إدارة التوكن
+# =========================
 def load_token_store():
     if os.path.exists(TOKEN_STORE_FILE):
         try:
@@ -51,14 +68,6 @@ def save_token_store(data: dict):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def normalize_token(token: str | None):
-    if not token:
-        return None
-    if "shpat_" in token:
-        token = "shpat_" + token.split("shpat_")[-1]
-    return token.replace('"', "").strip()
-
-
 def save_shop_token(shop: str, token: str):
     token = normalize_token(token)
     data = load_token_store()
@@ -68,8 +77,7 @@ def save_shop_token(shop: str, token: str):
 
 def get_shop_token(shop: str):
     data = load_token_store()
-    token = data.get(shop)
-    return normalize_token(token)
+    return normalize_token(data.get(shop))
 
 
 def get_active_token(shop: str):
@@ -210,7 +218,7 @@ def get_products():
     if not token:
         return jsonify({"error": "Missing Shopify access token"}), 500
 
-    url = f"https://{shop}/admin/api/2024-01/products.json"
+    url = f"https://{shop}/admin/api/{SHOPIFY_API_VERSION}/products.json"
     headers = {
         "X-Shopify-Access-Token": token,
         "Content-Type": "application/json"
@@ -263,7 +271,7 @@ def create_product():
         }
     }
 
-    url = f"https://{shop}/admin/api/2024-01/products.json"
+    url = f"https://{shop}/admin/api/{SHOPIFY_API_VERSION}/products.json"
     headers = {
         "X-Shopify-Access-Token": token,
         "Content-Type": "application/json"
@@ -292,11 +300,10 @@ def create_product():
 # =========================
 # AI: توليد وصف منتج
 # =========================
-@app.rout("/eimport markdown
-
-generated_description = markdown.markdown(
-    ai_response.choices[0].message.content
-
+@app.route("/ai/product-description", methods=["POST"])
+def ai_product_description():
+    if not client:
+        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
     data = request.get_json(silent=True) or {}
 
@@ -329,13 +336,22 @@ generated_description = markdown.markdown(
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
             ]
         )
+
         content = response.choices[0].message.content if response.choices else None
+
         if not content:
             return jsonify({"error": "Empty AI response"}), 500
+
     except Exception as e:
         return jsonify({
             "error": "OpenAI request failed",
@@ -393,18 +409,27 @@ def ai_update_product_description():
         ai_response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "أنت خبير كتابة وصف منتجات احترافي."},
-                {"role": "user", "content": prompt}
+                {
+                    "role": "system",
+                    "content": "أنت خبير كتابة وصف منتجات احترافي لمتاجر التجارة الإلكترونية."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
             ]
         )
-        generated_description = ai_response.choices[0].message.content
+
+        raw_description = ai_response.choices[0].message.content
+        generated_description = markdown.markdown(raw_description)
+
     except Exception as e:
         return jsonify({
             "error": "AI generation failed",
             "details": str(e)
         }), 500
 
-    url = f"https://{shop}/admin/api/2024-01/products/{product_id}.json"
+    url = f"https://{shop}/admin/api/{SHOPIFY_API_VERSION}/products/{product_id}.json"
     headers = {
         "X-Shopify-Access-Token": token,
         "Content-Type": "application/json",
@@ -480,6 +505,7 @@ def dashboard():
                 border-radius: 10px;
                 border: none;
                 font-size: 16px;
+                box-sizing: border-box;
             }
             input, textarea, select {
                 background: #334155;
