@@ -339,6 +339,16 @@ def ai_update_product_description():
     tone = data.get("tone", "professional")
     language = data.get("language", "ar")
 
+@app.route("/api/auth/token", methods=["GET"])
+def get_token_info():
+    shop = request.args.get("shop", DEFAULT_SHOP)
+    token = get_active_token(shop)
+
+    return jsonify({
+        "shop": shop,
+        "access_token": token
+    })
+    
     if not product_id or not title:
         return jsonify({"error": "Missing product_id or title"}), 400
 
