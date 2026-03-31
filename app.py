@@ -599,14 +599,69 @@ def dashboard():
 
         async function loadProducts() {
     const shop = document.getElementById("shop").value;
-    const res = await fetch(`/products?shop=${encodeURIComponent(shop)}`);
-    const data = await res.json();
-
     const container = document.getElementById("products_result");
 
-    if (!data.products || data.products.length === 0) {
-        container.innerHTML = "❌ لا توجد منتجات";
-        return;
+    container.innerHTML = "جاري تحميل المنتجات...";
+
+    try {
+        const res = await fetch(`/products?shop=${encodeURIComponent(shop)}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+            container.innerHTML = `<div style="color:#f87171;">خطأ: ${JSON.stringify(data, null, 2)}</div>`;
+            return;
+        }
+
+        if (!data.products || data.products.length === 0) {
+            container.innerHTML = "لا توجد منتجات.";
+            return;
+        }
+
+        let html = "";
+
+        data.products.forEach(product => {
+            const image = product.images && product.images.length > 0
+                ? product.images[0].src
+                : "";
+
+            const cleanDescription = product.body_html
+                ? product.body_html.replace(/<[^>]+>/g, "")
+                : "لا يوجد وصف";
+
+            html += `
+                <div style="background:#020617; padding:15px; margin-bottom:15px; border-radius:12px;">
+                    ${image ? `<img src="${image}" style="width:100%; border-radius:10px; margin-bottom:10px;">` : ""}
+                    <h3 style="margin:0 0 10px 0;">${product.title}</h3>
+                    <p style="color:#cbd5e1;">${cleanDescription}</p>
+                    <p style="color:#94a3b8;">ID: ${product.id}</p>
+                    <button onclick="selectProduct('${product.id}', '${String(product.title).replace(/'/g, "\\'")}')" style="background:#22c55e; color:white; border:none; padding:10px; border-radius:8px; width:100%; cursor:pointer;">
+                        اختيار هذا المنتج
+                    </button>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        container.innerHTML = `<div style="color:#f87171;">فشل تحميل المنتجات: ${error.message}</div>`;
+    }
+}
+
+function selectProduct(id, title) {
+    document.getElementById("product_id").value = id;
+    document.getElementById("title").value = title;
+    window.scrollTo({ top: document.body.scrollHeight / 2, behavior: "smooth" });
+}
+    
+    
+    
+
+    
+
+    
+        
+        
     }
 
     let html = "";
