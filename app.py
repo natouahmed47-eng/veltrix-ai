@@ -76,21 +76,16 @@ def ai_product_description():
 أهم المزايا: {key_features}
 """
         else:
-            system_prompt = """
-You are a premium e-commerce copywriter.
-Write elegant, persuasive, clean product descriptions for a modern online store.
-Do not use markdown symbols like ### or **.
-"""
-            user_prompt = f"""
-Write a professional product description for:
+            البنية المطلوبة:
+- ابدأ مباشرة بعنوان جذاب قصير.
+- بعده فقرة افتتاحية قوية ومقنعة.
+- ثم قسم للمزايا الرئيسية في 5 نقاط واضحة.
+- ثم خاتمة بيع راقية تشجع على الشراء.
 
-Product name: {title}
-Brand: {brand}
-Product type: {product_type}
-Target audience: {audience}
-Tone: {tone}
-Key features: {key_features}
-"""
+مهم:
+- لا تكتب أسماء الأقسام التوضيحية مثل:
+  "عنوان تسويقي"، "فقرة افتتاحية"، "عنوان فرعي".
+- اكتب النص النهائي مباشرة كما سيظهر للعميل داخل المتجر.
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
