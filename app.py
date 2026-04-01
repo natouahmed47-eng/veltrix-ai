@@ -94,46 +94,36 @@ def ai_product_description():
 الناتج يجب أن يكون عربيًا طبيعيًا، نظيفًا، وسهل القراءة.
 """
     
-@app.route("/products", methods=["GET"])
+import requests
+
+@app.route("/products")
 def get_products():
+    shop = request.args.get("shop")
+
+    if not shop:
+        return jsonify({"error": "shop مطلوب"})
+
+    url = f"https://{shop}/admin/api/2023-10/products.json"
+
+    headers = {
+        "X-Shopify-Access-Token": "PUT_YOUR_TOKEN_HERE"
+    }
+
     try:
-        shop = request.args.get("shop")
+        res = requests.get(url, headers=headers)
+        data = res.json()
 
-        if not shop:
-            return jsonify({"error": "Shop is required"}), 400
-
-        import os
-        import requests
-
-        access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
-
-        if not access_token:
-            return jsonify({"error": "TOKEN NOT FOUND"}), 500
-
-        url = f"https://{shop}/admin/api/2024-01/products.json"
-
-        headers = {
-            "X-Shopify-Access-Token": access_token,
-            "Content-Type": "application/json"
-        }
-
-        response = requests.get(url, headers=headers)
-
-        try:
-            data = response.json()
-        except:
+        if res.status_code != 200:
             return jsonify({
-                "error": "Invalid JSON from Shopify",
-                "text": response.text
-            }), 500
+                "error": "Shopify error",
+                "details": data
+            }), res.status_code
 
-        return jsonify(data), response.status_code
+        return jsonify(data)
 
     except Exception as e:
-        return jsonify({
-            "error": "SERVER CRASH",
-            "details": str(e)
-        }), 500
+        return jsonify({"error": str(e)})
+    
 
 
 @app.route("/dashboard")
