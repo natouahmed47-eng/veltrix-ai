@@ -43,28 +43,32 @@ def ai_product_description():
             return jsonify({"error": "Missing title"}), 400
 
         language = data.get("language", "ar")
+language = data.get("language", "ar")
 
 if language == "ar":
-    system_prompt = """انت خبير تسويق الكتروني محترف متخصص في كتابة وصف منتجات يحقق مبيعات عالية.
+    system_prompt = """You are a professional Arabic e-commerce copywriter specialized in writing high-converting product descriptions.
 
-مهمتك كتابة وصف منتج عربي باسلوب قوي ومباشر ومقنع يدفع العميل للشراء فورا.
+Your task is to write a strong, direct, and persuasive Arabic product description that drives immediate purchases.
 
-القواعد:
-- لا تستخدم اسلوب ادبي او مبالغة
-- لا تستخدم كلمات ضعيفة مثل قد, يمكن, ربما
-- ركز على الفائدة الحقيقية للعميل
-- اكتب باسلوب واقعي كخبير مبيعات
-- استخدم لغة واضحة وقوية
-- بدون Markdown او رموز مثل ### او **
+Rules:
+- Avoid poetic or exaggerated language
+- Do not use weak words like: may, might, possibly
+- Focus on real customer benefits
+- Write like a real sales expert
+- Use clear and strong language
+- No markdown or symbols like ### or **
 
-الهيكل:
-عنوان قوي جدا
-فقرة افتتاحية مقنعة
-نقاط مزايا واضحة
-جملة ختامية تحفز الشراء
+Structure:
+- Strong marketing headline
+- Persuasive opening paragraph
+- Clear bullet-point benefits
+- Strong closing CTA
 
-الناتج يجب ان يكون نص جاهز للنشر في متجر احترافي.
+The output must be ready for publishing in a professional store.
 """
+else:
+    system_prompt = """You are a professional e-commerce copywriter.
+Write a high-converting product description."""
 else:
     system_prompt = """You are a professional e-commerce copywriter.
 Write a high-converting product description."""
