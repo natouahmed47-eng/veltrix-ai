@@ -93,10 +93,11 @@ def ai_product_description():
 
 الناتج يجب أن يكون عربيًا طبيعيًا، نظيفًا، وسهل القراءة.
 """
-    @app.route("/products", methods=["GET"])
-
+    
+@app.route("/products", methods=["GET"])
+def get_products():
     shop = request.args.get("shop", DEFAULT_SHOP)
-    def get_products():
+
     access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
     if not access_token:
         return jsonify({"error": "SHOPIFY_ACCESS_TOKEN not found in environment"}), 500
@@ -118,45 +119,6 @@ def ai_product_description():
         }), 500
 
     return jsonify(data), response.status_code
-        
-        user_prompt = f"""
-Write a professional product description for:
-
-Product name: {title}
-Brand: {brand}
-Product type: {product_type}
-Target audience: {audience}
-Tone: {tone}
-Key features: {key_features}
-
-The result must be premium, persuasive, elegant, and ready to use in an online store.
-"""
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.8,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
-        )
-
-        content = response.choices[0].message.content if response.choices else None
-
-        if not content:
-            return jsonify({"error": "Empty AI response"}), 500
-
-        return jsonify({
-            "title": title,
-            "result": content
-        })
-
-    except Exception as e:
-        return jsonify({
-            "error": "OpenAI request failed",
-            "details": str(e)
-        }), 500
 
 
 @app.route("/dashboard")
