@@ -95,37 +95,16 @@ def ai_product_description():
 """
 
 
-import requests
 
-@app.route("/products", methods=["GET"])
-def get_products():
-    shop = request.args.get("shop")
 
-    if not shop:
-        return jsonify({"error": "Shop is required"}), 400
+    
+        
 
-    ACCESS_TOKEN = "PUT_YOUR_SHOPIFY_TOKEN_HERE"
+    
 
-    url = f"https://{shop}/admin/api/2023-10/products.json"
 
-    headers = {
-        "X-Shopify-Access-Token": ACCESS_TOKEN,
-        "Content-Type": "application/json"
-    }
 
-    try:
-        response = requests.get(url, headers=headers)
-
-        if response.status_code != 200:
-            return jsonify({
-                "error": "Shopify API error",
-                "details": response.text
-            }), response.status_code
-
-        return jsonify(response.json())
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    
 
     
 
