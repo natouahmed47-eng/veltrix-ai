@@ -97,7 +97,31 @@ def ai_product_description():
 
 
 
-    
+    @app.route("/products", methods=["GET"])
+def get_products():
+    shop = request.args.get("shop", DEFAULT_SHOP)
+
+    access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+    if not access_token:
+        return jsonify({"error": "SHOPIFY_ACCESS_TOKEN not found in environment"}), 500
+
+    url = f"https://{shop}/admin/api/2024-01/products.json"
+
+    headers = {
+        "X-Shopify-Access-Token": access_token,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        data = response.json()
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to connect to Shopify",
+            "details": str(e)
+        }), 500
+
+    return jsonify(data), response.status_code
         
 
     
