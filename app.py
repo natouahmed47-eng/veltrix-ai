@@ -2,7 +2,7 @@ import os
 import json
 import re
 import requests
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from openai import OpenAI
 
@@ -11,21 +11,12 @@ CORS(app)
 
 DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
 
-# OpenAI
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
-
-# =========================
-# GET SHOPIFY TOKEN (SAFE)
-# =========================
 def get_shopify_token():
-    # 1) from ENV
     env_token = os.getenv("SHOPIFY_ACCESS_TOKEN")
     if env_token:
         return env_token.strip()
 
-    # 2) from Render Secret Files
     possible_paths = [
         "/etc/secrets/shopify.json",
         "/etc/secrets/SHOPIFY_ACCESS_TOKEN",
@@ -41,14 +32,12 @@ def get_shopify_token():
                 if not content:
                     continue
 
-                # JSON file
                 if content.startswith("{"):
                     data = json.loads(content)
                     token = data.get("access_token")
                     if token:
                         return token.strip()
                 else:
-                    # plain text token
                     return content.strip()
             except Exception:
                 pass
@@ -56,20 +45,19 @@ def get_shopify_token():
     return None
 
 
-# =========================
-# HOME
-# =========================
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+SHOPIFY_TOKEN = get_shopify_token()
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+
 @app.route("/")
 def home():
     return """
     <h1>VELTRIX AI</h1>
-    <p>System is running.</p>
+    <p>System is running successfully.</p>
     """
 
 
-# =========================
-# HEALTH CHECK
-# =========================
 @app.route("/health")
 def health():
     return jsonify({
@@ -79,9 +67,6 @@ def health():
     })
 
 
-# =========================
-# FETCH PRODUCTS
-# =========================
 @app.route("/products", methods=["GET"])
 def get_products():
     shop = request.args.get("shop", DEFAULT_SHOP).strip()
@@ -94,7 +79,6 @@ def get_products():
         return jsonify({"error": "Missing Shopify token"}), 500
 
     url = f"https://{shop}/admin/api/2024-01/products.json"
-
     headers = {
         "X-Shopify-Access-Token": token,
         "Content-Type": "application/json"
@@ -102,7 +86,8 @@ def get_products():
 
     try:
         response = requests.get(url, headers=headers, timeout=30)
-        return jsonify(response.json()), response.status_code
+        data = response.json()
+        return jsonify(data), response.status_code
     except Exception as e:
         return jsonify({
             "error": "Failed to fetch products",
@@ -110,50 +95,52 @@ def get_products():
         }), 500
 
 
-# =========================
-# AI DESCRIPTION (CLEAN)
-# =========================
 @app.route("/ai/product-description", methods=["POST"])
 def generate_description():
     if not client:
         return jsonify({"error": "OpenAI not configured"}), 500
 
-    data = request.json
+    data = request.get_json(silent=True) or {}
 
-    product_name = data.get("product_name", "")
-    brand = data.get("brand", "")
-    category = data.get("category", "")
-    audience = data.get("audience", "")
-    tone = data.get("tone", "professional")
-    features = data.get("features", "")
+    product_name = (data.get("product_name") or "").strip()
+    brand = (data.get("brand") or "").strip()
+    category = (data.get("category") or "").strip()
+    audience = (data.get("audience") or "").strip()
+    tone = (data.get("tone") or "professional").strip()
+    features = (data.get("features") or "").strip()
 
-    system_prompt = """You are a high-converting e-commerce copywriter.
+    if not product_name:
+        return jsonify({"error": "Missing product_name"}), 400
 
-Write product descriptions that drive immediate purchase decisions.
+    system_prompt = """You are a professional e-commerce copywriter.
+
+Write a high-converting product description in clear, strong, direct English.
 
 Rules:
-- No markdown symbols (#, *, **)
+- No fluff
 - No poetic language
-- No exaggeration
-- No weak words
-- Be direct, realistic, persuasive
+- No weak words like maybe, might, possibly
+- Focus on real benefits
+- Be persuasive and realistic
+- No markdown symbols like # or *
 
 Structure:
-Strong headline
-Short convincing paragraph
-Clear benefits
-Strong closing line
+- Strong product headline
+- Short convincing paragraph
+- Clear practical benefits
+- Strong closing call to action
 
-Output must be clean plain text only.
+Output must be plain clean text only.
 """
 
-    user_prompt = f"""
-Product: {product_name}
+    user_prompt = f"""Product name: {product_name}
 Brand: {brand}
 Category: {category}
-Audience: {audience}
+Target audience: {audience}
 Tone: {tone}
 Key features: {features}
+
+Write the final result in English only.
 """
 
     try:
@@ -166,15 +153,13 @@ Key features: {features}
             temperature=0.7
         )
 
-        text = response.choices[0].message.content.strip()
-
-        # REMOVE MARKDOWN SYMBOLS
-        clean_text = re.sub(r"[#*]", "", text)
+        raw_text = response.choices[0].message.content.strip()
+        clean_text = re.sub(r"[#*]", "", raw_text)
 
         return jsonify({
             "success": True,
             "description": clean_text
-        })
+        }), 200
 
     except Exception as e:
         return jsonify({
@@ -183,10 +168,6 @@ Key features: {features}
         }), 500
 
 
-# =========================
-# RUN
-# =========================
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-                
-
+    port = int(os.getenv("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
