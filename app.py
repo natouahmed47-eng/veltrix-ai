@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 from openai import OpenAI
 
-app = Flask(__name__)
+app = Flask(__name__)    
 CORS(app)
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
