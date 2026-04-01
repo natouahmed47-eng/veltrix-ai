@@ -25,21 +25,95 @@ def health():
 
 @app.route("/ai/product-description", methods=["POST"])
 def ai_product_description():
-    if not client:
-        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
+    try:
+        if not client:
+            return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-    data = request.get_json(silent=True) or {}
+        data = request.get_json(silent=True) or {}
 
-    title = (data.get("title") or "").strip()
-    product_type = (data.get("product_type") or "").strip()
-    audience = (data.get("audience") or "").strip()
-    tone = (data.get("tone") or "احترافي").strip()
-    language = (data.get("language") or "ar").strip()
-    brand = (data.get("brand") or "").strip()
-    key_features = (data.get("key_features") or "").strip()
+        title = (data.get("title") or "").strip()
+        product_type = (data.get("product_type") or "").strip()
+        audience = (data.get("audience") or "").strip()
+        tone = (data.get("tone") or "احترافي").strip()
+        language = (data.get("language") or "ar").strip()
+        brand = (data.get("brand") or "").strip()
+        key_features = (data.get("key_features") or "").strip()
 
-    if not title:
-        return jsonify({"error": "Missing title"}), 400
+        if not title:
+            return jsonify({"error": "Missing title"}), 400
+
+        if language == "ar":
+            system_prompt = """
+أنت كاتب وصف منتجات فاخر ومحترف متخصص في التجارة الإلكترونية العربية.
+
+اكتب وصفًا عربيًا أنيقًا ومقنعًا وجاهزًا للنشر في متجر احترافي.
+
+تعليمات مهمة:
+- لا تستخدم Markdown أو رموز مثل ### أو **.
+- لا تكرر الفكرة بصيغ مختلفة.
+- لا تكتب بلغة آلية أو جامدة.
+- اجعل الأسلوب راقيًا، واضحًا، ومغريًا للشراء.
+- ركّز على القيمة والفائدة والشعور الذي سيأخذه العميل من المنتج.
+- اجعل النص مناسبًا لمتجر فاخر وحديث.
+
+البنية المطلوبة:
+1) عنوان تسويقي فاخر وقصير.
+2) فقرة افتتاحية قوية ومقنعة.
+3) عنوان فرعي: المزايا الرئيسية
+4) خمس مزايا واضحة ومختصرة.
+5) خاتمة بيع راقية تشجع على الشراء.
+
+الناتج يجب أن يكون عربيًا طبيعيًا، نظيفًا، وسهل القراءة.
+"""
+            user_prompt = f"""
+اكتب وصفًا احترافيًا لهذا المنتج:
+
+اسم المنتج: {title}
+العلامة التجارية: {brand}
+نوع المنتج: {product_type}
+الجمهور المستهدف: {audience}
+النبرة المطلوبة: {tone}
+أهم المزايا: {key_features}
+"""
+        else:
+            system_prompt = """
+You are a premium e-commerce copywriter.
+Write elegant, persuasive, clean product descriptions for a modern online store.
+Do not use markdown symbols like ### or **.
+"""
+            user_prompt = f"""
+Write a professional product description for:
+
+Product name: {title}
+Brand: {brand}
+Product type: {product_type}
+Target audience: {audience}
+Tone: {tone}
+Key features: {key_features}
+"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+
+        content = response.choices[0].message.content if response.choices else None
+
+        if not content:
+            return jsonify({"error": "Empty AI response"}), 500
+
+        return jsonify({
+            "result": content
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "AI failed",
+            "details": str(e)
+        }), 500
 
     if language == "ar":
         system_prompt = """
