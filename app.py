@@ -1,12 +1,17 @@
 import os
+import requests
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
 from openai import OpenAI
 
-app = Flask(__name__)    
+app = Flask(__name__)
 CORS(app)
 
+DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+SHOPIFY_ACCESS_TOKEN = os.environ.get("SHOPIFY_ACCESS_TOKEN")
+
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 
@@ -19,41 +24,66 @@ def home():
 def health():
     return jsonify({
         "status": "ok",
-        "openai_api_key_exists": bool(OPENAI_API_KEY)
+        "openai_api_key_exists": bool(OPENAI_API_KEY),
+        "shopify_access_token_exists": bool(SHOPIFY_ACCESS_TOKEN)
     })
+
+
+@app.route("/products", methods=["GET"])
+def get_products():
+    shop = request.args.get("shop", DEFAULT_SHOP).strip()
+
+    if not shop:
+        return jsonify({"error": "Missing shop"}), 400
+
+    if not SHOPIFY_ACCESS_TOKEN:
+        return jsonify({"error": "Missing SHOPIFY_ACCESS_TOKEN"}), 500
+
+    url = f"https://{shop}/admin/api/2024-01/products.json"
+    headers = {
+        "X-Shopify-Access-Token": SHOPIFY_ACCESS_TOKEN,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.get(url, headers=headers, timeout=30)
+        data = response.json()
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to fetch products",
+            "details": str(e)
+        }), 500
+
+    return jsonify(data), response.status_code
 
 
 @app.route("/ai/product-description", methods=["POST"])
 def ai_product_description():
-    try:
-        if not client:
-            return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
+    if not client:
+        return jsonify({"error": "Missing OPENAI_API_KEY"}), 500
 
-        data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True) or {}
 
-        title = (data.get("title") or "").strip()
-        product_type = (data.get("product_type") or "").strip()
-        audience = (data.get("audience") or "").strip()
-        tone = (data.get("tone") or "احترافي").strip()
-        language = (data.get("language") or "ar").strip()
-        brand = (data.get("brand") or "").strip()
-        key_features = (data.get("key_features") or "").strip()
+    title = (data.get("title") or "").strip()
+    brand = (data.get("brand") or "").strip()
+    product_type = (data.get("product_type") or "").strip()
+    audience = (data.get("audience") or "").strip()
+    tone = (data.get("tone") or "professional").strip()
+    key_features = (data.get("key_features") or "").strip()
 
-        if not title:
-            return jsonify({"error": "Missing title"}), 400
+    if not title:
+        return jsonify({"error": "Missing title"}), 400
 
-        language = data.get("language", "en")
+    system_prompt = """You are a professional e-commerce copywriter specialized in writing high-converting product descriptions.
 
-system_prompt = """You are a professional e-commerce copywriter specialized in writing high-converting product descriptions.
-
-Your task is to write a strong, clear, realistic, and persuasive product description in English.
+Write in clear, persuasive, realistic English.
 
 Rules:
 - Do not use poetic or exaggerated language
 - Do not use weak words like: maybe, might, possibly
 - Focus on real customer benefits
 - Write like a real sales expert
-- Use clear, direct, and professional language
+- Use clear and direct language
 - Do not use Markdown or symbols like ### or **
 
 Structure:
@@ -65,7 +95,7 @@ Structure:
 The output must be ready to publish in a professional online store.
 """
 
-user_prompt = f"""Write a professional English product description for the following product.
+    user_prompt = f"""Write a professional English product description for the following product.
 
 Product name: {title}
 Brand: {brand}
@@ -77,11 +107,12 @@ Key features: {key_features}
 Write the final result in English only.
 """
 
+    try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
+                {"role": "user", "content": user_prompt}
             ]
         )
 
@@ -90,76 +121,20 @@ Write the final result in English only.
         if not content:
             return jsonify({"error": "Empty AI response"}), 500
 
-        return jsonify({
-            "result": content
-        }), 200
+        return jsonify({"result": content}), 200
 
     except Exception as e:
         return jsonify({
-            "error": "AI failed",
+            "error": "AI request failed",
             "details": str(e)
         }), 500
 
 
-    if language == "ar":
-    system_prompt = """You are a professional Arabic e-commerce copywriter specialized in writing high-converting product descriptions.
-
-Write the output in Arabic with a strong, direct, and persuasive tone.
-
-Rules:
-- No weak words
-- No exaggeration
-- Focus on real benefits
-- Clear and professional tone
-- No markdown
-
-Structure:
-Strong headline
-Persuasive paragraph
-Clear benefits
-Closing call to action
-"""
-else:
-    system_prompt = """You are a professional e-commerce copywriter."""
-
-    
-import requests
-
-@app.route("/products")
-def get_products():
-    shop = request.args.get("shop")
-
-    if not shop:
-        return jsonify({"error": "shop مطلوب"})
-
-    url = f"https://{shop}/admin/api/2023-10/products.json"
-
-    headers = {
-        "X-Shopify-Access-Token": "PUT_YOUR_TOKEN_HERE"
-    }
-
-    try:
-        res = requests.get(url, headers=headers)
-        data = res.json()
-
-        if res.status_code != 200:
-            return jsonify({
-                "error": "Shopify error",
-                "details": data
-            }), res.status_code
-
-        return jsonify(data)
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
-    
-
-
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET"])
 def dashboard():
     html = """
     <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
+    <html lang="en" dir="ltr">
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -172,12 +147,10 @@ def dashboard():
                 margin: 0;
                 padding: 24px;
             }
-
             .container {
                 max-width: 900px;
                 margin: 0 auto;
             }
-
             .hero {
                 background: linear-gradient(135deg, #172554, #1e293b);
                 border-radius: 22px;
@@ -185,42 +158,37 @@ def dashboard():
                 margin-bottom: 22px;
                 box-shadow: 0 8px 30px rgba(0,0,0,0.25);
             }
-
             .hero h1 {
                 margin: 0 0 10px 0;
                 font-size: 42px;
                 color: #ffffff;
             }
-
             .hero p {
                 margin: 0;
                 color: #cbd5e1;
                 font-size: 17px;
-                line-height: 1.9;
+                line-height: 1.8;
             }
-
             .card {
                 background: #162033;
                 border-radius: 22px;
                 padding: 24px;
+                margin-bottom: 20px;
                 box-shadow: 0 8px 30px rgba(0,0,0,0.2);
             }
-
             h2 {
                 margin-top: 0;
                 margin-bottom: 18px;
-                font-size: 34px;
+                font-size: 30px;
                 color: #ffffff;
             }
-
             .field-label {
                 display: block;
                 margin-bottom: 8px;
                 color: #cbd5e1;
                 font-size: 15px;
             }
-
-            input, textarea, select, button {
+            input, textarea, button {
                 width: 100%;
                 box-sizing: border-box;
                 border: none;
@@ -229,19 +197,16 @@ def dashboard():
                 margin-bottom: 14px;
                 font-size: 16px;
             }
-
-            input, textarea, select {
+            input, textarea {
                 background: #334155;
                 color: #ffffff;
                 outline: none;
             }
-
             textarea {
                 min-height: 110px;
                 resize: vertical;
-                line-height: 1.8;
+                line-height: 1.7;
             }
-
             button {
                 background: #22c55e;
                 color: white;
@@ -249,55 +214,54 @@ def dashboard():
                 cursor: pointer;
                 font-size: 18px;
             }
-
             button:hover {
                 background: #16a34a;
             }
-
-            .result-wrap {
-                margin-top: 10px;
-                background: transparent;
-                border-radius: 0;
-                padding: 0;
-            }
-
-            .result-content {
-                background: transparent;
-                color: #e5e7eb;
-                line-height: 2;
-                font-size: 18px;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-            }
-
-            .result-content h3 {
-                color: #ffffff;
-                margin: 18px 0 10px 0;
-                font-size: 24px;
-            }
-
-            .result-content strong {
-                color: #22c55e;
-            }
-
             .status {
                 color: #94a3b8;
                 margin-bottom: 12px;
             }
-
+            .result-content {
+                background: transparent;
+                color: #e5e7eb;
+                line-height: 1.9;
+                font-size: 18px;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+            .products-box {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                background: #0f172a;
+                padding: 12px;
+                border-radius: 10px;
+                overflow-x: auto;
+                min-height: 60px;
+            }
+            .product-card {
+                background: #020617;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 12px;
+            }
+            .product-card img {
+                width: 100%;
+                border-radius: 10px;
+                margin-bottom: 10px;
+            }
+            .muted {
+                color: #94a3b8;
+            }
             @media (max-width: 640px) {
                 body {
                     padding: 16px;
                 }
-
                 .hero h1 {
                     font-size: 32px;
                 }
-
                 h2 {
-                    font-size: 28px;
+                    font-size: 26px;
                 }
-
                 .result-content {
                     font-size: 17px;
                 }
@@ -308,39 +272,42 @@ def dashboard():
         <div class="container">
             <div class="hero">
                 <h1>VELTRIX AI</h1>
-                <p>مولد أوصاف منتجات احترافي، مصمم لكتابة نصوص راقية ومقنعة وجاهزة للاستخدام داخل المتجر.</p>
+                <p>Professional AI product description generator and Shopify product fetcher.</p>
             </div>
 
             <div class="card">
-                <h2>توليد وصف احترافي</h2>
+                <h2>Fetch Products</h2>
+                <label class="field-label">Shop Domain</label>
+                <input type="text" id="shop" value="cg1ypm-rd.myshopify.com" />
+                <button type="button" onclick="loadProducts()">Fetch Products</button>
+                <div id="products_result" class="products-box">No products loaded yet.</div>
+            </div>
 
-                <label class="field-label">اسم المنتج</label>
-                <input type="text" id="title" placeholder="مثال: ماكينة حلاقة رجالية احترافية" />
+            <div class="card">
+                <h2>Generate Product Description</h2>
 
-                <label class="field-label">العلامة التجارية</label>
-                <input type="text" id="brand" placeholder="مثال: Hansom" />
+                <label class="field-label">Product Name</label>
+                <input type="text" id="title" placeholder="Example: Premium Perfume" />
 
-                <label class="field-label">نوع المنتج</label>
-                <input type="text" id="product_type" placeholder="مثال: أدوات العناية الشخصية" />
+                <label class="field-label">Brand</label>
+                <input type="text" id="brand" placeholder="Example: Dior" />
 
-                <label class="field-label">الجمهور المستهدف</label>
-                <input type="text" id="audience" placeholder="مثال: الرجال من 20 إلى 50 سنة" />
+                <label class="field-label">Product Type</label>
+                <input type="text" id="product_type" placeholder="Example: Fragrance" />
 
-                <label class="field-label">النبرة</label>
-                <input type="text" id="tone" value="احترافي" placeholder="مثال: احترافي / فاخر / مقنع" />
+                <label class="field-label">Target Audience</label>
+                <input type="text" id="audience" placeholder="Example: Men and women" />
 
-                <label class="field-label">اللغة</label>
-                <input type="text" id="language" value="ar" placeholder="ar أو en" />
+                <label class="field-label">Tone</label>
+                <input type="text" id="tone" value="professional" placeholder="Example: professional" />
 
-                <label class="field-label">أهم المزايا</label>
-                <textarea id="key_features" placeholder="مثال: بطارية تدوم طويلاً، شفرات دقيقة، تصميم مريح، مقاومة للتهيج، سهلة الحمل"></textarea>
+                <label class="field-label">Key Features</label>
+                <textarea id="key_features" placeholder="Example: Long-lasting, elegant bottle, premium scent, gift-ready"></textarea>
 
-                <button type="button" onclick="generateDescription()">توليد الوصف</button>
+                <button type="button" onclick="generateDescription()">Generate Description</button>
 
-                <div class="result-wrap">
-                    <div id="ai_status" class="status">لم يتم توليد وصف بعد.</div>
-                    <div id="ai_result" class="result-content"></div>
-                </div>
+                <div id="ai_status" class="status">No description generated yet.</div>
+                <div id="ai_result" class="result-content"></div>
             </div>
         </div>
 
@@ -355,12 +322,9 @@ def dashboard():
                     const trimmed = line.trim();
 
                     if (
-                        trimmed.includes("العنوان التسويقي") ||
-                        trimmed.includes("الوصف الاحترافي") ||
-                        trimmed.includes("المزايا الرئيسية") ||
-                        trimmed.includes("دعوة") ||
-                        trimmed.includes("Key Benefits") ||
-                        trimmed.includes("Marketing Headline")
+                        trimmed.toLowerCase().includes("headline") ||
+                        trimmed.toLowerCase().includes("key benefits") ||
+                        trimmed.toLowerCase().includes("call to action")
                     ) {
                         html += `<h3>${trimmed}</h3>`;
                     } else if (/^[-•\\d]/.test(trimmed)) {
@@ -373,11 +337,57 @@ def dashboard():
                 return html;
             }
 
+            async function loadProducts() {
+                const shop = document.getElementById("shop").value;
+                const box = document.getElementById("products_result");
+                box.textContent = "Loading products...";
+
+                try {
+                    const res = await fetch("/products?shop=" + encodeURIComponent(shop));
+                    const data = await res.json();
+
+                    if (!res.ok) {
+                        box.textContent = "Error: " + JSON.stringify(data, null, 2);
+                        return;
+                    }
+
+                    if (!data.products || data.products.length === 0) {
+                        box.textContent = "No products found.";
+                        return;
+                    }
+
+                    let html = "";
+
+                    data.products.forEach(product => {
+                        const image = product.images && product.images.length > 0
+                            ? product.images[0].src
+                            : "";
+
+                        const cleanDescription = product.body_html
+                            ? product.body_html.replace(/<[^>]+>/g, "")
+                            : "No description";
+
+                        html += `
+                            <div class="product-card">
+                                ${image ? `<img src="${image}" alt="${product.title}">` : ""}
+                                <h3>${product.title || "Untitled"}</h3>
+                                <p>${cleanDescription}</p>
+                                <p class="muted">ID: ${product.id}</p>
+                            </div>
+                        `;
+                    });
+
+                    box.innerHTML = html;
+                } catch (error) {
+                    box.textContent = "Failed to load products: " + error.message;
+                }
+            }
+
             async function generateDescription() {
                 const statusBox = document.getElementById("ai_status");
                 const resultBox = document.getElementById("ai_result");
 
-                statusBox.textContent = "جاري توليد الوصف...";
+                statusBox.textContent = "Generating description...";
                 resultBox.innerHTML = "";
 
                 const payload = {
@@ -386,7 +396,6 @@ def dashboard():
                     product_type: document.getElementById("product_type").value,
                     audience: document.getElementById("audience").value,
                     tone: document.getElementById("tone").value,
-                    language: document.getElementById("language").value,
                     key_features: document.getElementById("key_features").value
                 };
 
@@ -400,21 +409,20 @@ def dashboard():
                     const data = await res.json();
 
                     if (!res.ok) {
-                        statusBox.textContent = "حدث خطأ أثناء التوليد.";
+                        statusBox.textContent = "Failed to generate description.";
                         resultBox.textContent = JSON.stringify(data, null, 2);
                         return;
                     }
 
                     if (!data.result) {
-                        statusBox.textContent = "لم يرجع النص من الخادم.";
+                        statusBox.textContent = "No result returned from server.";
                         return;
                     }
 
-                    statusBox.textContent = "تم توليد الوصف بنجاح.";
+                    statusBox.textContent = "Description generated successfully.";
                     resultBox.innerHTML = formatResult(data.result);
-
                 } catch (error) {
-                    statusBox.textContent = "فشل توليد الوصف.";
+                    statusBox.textContent = "Request failed.";
                     resultBox.textContent = error.message;
                 }
             }
@@ -428,4 +436,5 @@ def dashboard():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+                
 
