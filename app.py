@@ -94,9 +94,9 @@ def ai_product_description():
 الناتج يجب أن يكون عربيًا طبيعيًا، نظيفًا، وسهل القراءة.
 """
     @app.route("/products", methods=["GET"])
-def get_products():
-    shop = request.args.get("shop", DEFAULT_SHOP)
 
+    shop = request.args.get("shop", DEFAULT_SHOP)
+    def get_products():
     access_token = os.environ.get("SHOPIFY_ACCESS_TOKEN")
     if not access_token:
         return jsonify({"error": "SHOPIFY_ACCESS_TOKEN not found in environment"}), 500
