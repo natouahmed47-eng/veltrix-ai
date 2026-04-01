@@ -42,68 +42,40 @@ def ai_product_description():
         if not title:
             return jsonify({"error": "Missing title"}), 400
 
-        language = data.get("language", "ar")
-language = data.get("language", "ar")
+        language = data.get("language", "en")
 
-if language == "ar":
-    system_prompt = """You are a professional Arabic e-commerce copywriter specialized in writing high-converting product descriptions.
+system_prompt = """You are a professional e-commerce copywriter specialized in writing high-converting product descriptions.
 
-Your task is to write a strong, direct, and persuasive Arabic product description that drives immediate purchases.
+Your task is to write a strong, clear, realistic, and persuasive product description in English.
 
 Rules:
-- Avoid poetic or exaggerated language
-- Do not use weak words like: may, might, possibly
+- Do not use poetic or exaggerated language
+- Do not use weak words like: maybe, might, possibly
 - Focus on real customer benefits
 - Write like a real sales expert
-- Use clear and strong language
-- No markdown or symbols like ### or **
+- Use clear, direct, and professional language
+- Do not use Markdown or symbols like ### or **
 
 Structure:
 - Strong marketing headline
 - Persuasive opening paragraph
-- Clear bullet-point benefits
-- Strong closing CTA
+- Clear product benefits
+- Strong closing call to action
 
-The output must be ready for publishing in a professional store.
+The output must be ready to publish in a professional online store.
 """
-else:
-    system_prompt = """You are a professional e-commerce copywriter.
-Write a high-converting product description."""
-else:
-    system_prompt = """You are a professional e-commerce copywriter.
-Write a high-converting product description."""
-    
-            user_prompt = f"""
-اكتب وصفًا احترافيًا لهذا المنتج:
 
-اسم المنتج: {title}
-العلامة التجارية: {brand}
-نوع المنتج: {product_type}
-الجمهور المستهدف: {audience}
-النبرة المطلوبة: {tone}
-أهم المزايا: {key_features}
+user_prompt = f"""Write a professional English product description for the following product.
+
+Product name: {title}
+Brand: {brand}
+Product type: {product_type}
+Target audience: {audience}
+Tone: {tone}
+Key features: {key_features}
+
+Write the final result in English only.
 """
-        else:
-            system_prompt = """
-system_prompt = """أنت.خبير.تسويق.إلكتروني.محترف متخصص.في.كتابة.وصف.منتجات.يحقق مبيعات.عالية.
-
-مهمتك.كتابة.وصف.منتج.عربي.بأسلوب قوي،مباشر،ومقنع.يدفع.العميل.للشراء.فورًا
-
-القواعد:
-- لا تستخدم أسلوب أدبي أو مبالغة
-- لا تستخدم كلمات ضعيفة مثل: قد، يمكن، ربما
-- ركز على الفائدة الحقيقية للعميل
-- اكتب بأسلوب واقعي كخبير مبيعات
-- استخدم لغة واضحة وقوية
-- بدون Markdown أو رموز مثل ### أو **
-
-الهيكل:
-عنوان قوي جدًا
-فقرة افتتاحية مقنعة
-نقاط مزايا واضحة
-جملة ختامية تحفّز الشراء
-
-الناتج يجب أن يكون نص جاهز للنشر في متجراحترافي."""
 
         response = client.chat.completions.create(
             model="gpt-4o-mini",
