@@ -93,9 +93,6 @@ def ai_product_description():
 
 الناتج يجب أن يكون عربيًا طبيعيًا، نظيفًا، وسهل القراءة.
 """
-
-
-
     @app.route("/products", methods=["GET"])
 def get_products():
     shop = request.args.get("shop", DEFAULT_SHOP)
@@ -122,9 +119,6 @@ def get_products():
 
     return jsonify(data), response.status_code
         
-
-
-
         user_prompt = f"""
 Write a professional product description for:
 
