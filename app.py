@@ -11,9 +11,6 @@ CORS(app)
 
 DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-
 
 def get_shopify_token():
     env_token = os.getenv("SHOPIFY_ACCESS_TOKEN")
@@ -46,6 +43,10 @@ def get_shopify_token():
                 pass
 
     return None
+
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 
 def build_description_with_ai(product):
