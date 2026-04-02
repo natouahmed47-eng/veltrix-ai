@@ -9,7 +9,7 @@ from openai import OpenAI
 app = Flask(__name__)
 CORS(app)
 
-DEFAULT_SHOP = "a-n-t-9657.myshopify.com
+DEFAULT_SHOP = "a-n-t-9657.myshopify.com"
 
 
 def get_shopify_token():
