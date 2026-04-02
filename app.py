@@ -359,7 +359,7 @@ Write the final result in English only.
         }), 500
 
 
-@app.route("/optimize-all-products", methods=["POST"])
+@app.route("/optimize-all-products", methods=["GET", "POST"])
 def optimize_all_products():
     if not client:
         return jsonify({"error": "OpenAI not configured"}), 500
