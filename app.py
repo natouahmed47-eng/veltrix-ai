@@ -27,8 +27,15 @@ def save_shop_token(shop: str, access_token: str) -> None:
         "shop": shop,
         "access_token": access_token
     }
-    with open(TOKEN_FILE, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False)
+    import os
+import json
+
+def load_token():
+    if not os.path.exists(TOKEN_FILE):
+        return None
+
+    with open(TOKEN_FILE, "r") as f:
+        return json.load(f)
 
 
 def load_shop_token() -> Tuple[Optional[str], Optional[str]]:
