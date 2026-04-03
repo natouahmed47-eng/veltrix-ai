@@ -49,7 +49,6 @@ new_title = ai_result["title"]
 new_description = ai_result["description"]
     if not client:
         raise RuntimeError("OpenAI is not configured")
-
     title = (product.get("title") or "").strip()
     body_html = (product.get("body_html") or "").strip()
     vendor = (product.get("vendor") or "").strip()
