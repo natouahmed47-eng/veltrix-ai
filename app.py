@@ -135,7 +135,75 @@ def sanitize_plain_text(text: str) -> str:
 def build_description_with_ai(product: dict) -> str:
     if not client:
         raise RuntimeError("OpenAI is not configured")
+def build_title_and_description_with_ai(product: dict) -> dict:
+    if not client:
+        raise RuntimeError("OpenAI is not configured")
 
+    title = (product.get("title") or "").strip()
+    body_html = (product.get("body_html") or "").strip()
+    vendor = (product.get("vendor") or "").strip()
+    product_type = (product.get("product_type") or "").strip()
+    tags = (product.get("tags") or "").strip()
+
+    system_prompt = """You are a professional e-commerce copywriter.
+
+Your task:
+Rewrite the product title and product description for higher conversion.
+
+Rules:
+- Write in Arabic only
+- Make the title stronger, clearer, and more marketable
+- Keep the title realistic, not spammy
+- Make the description persuasive and clean
+- No markdown symbols
+- No hashtags
+- No emojis
+- Return valid JSON only
+
+Required JSON format:
+{
+  "title": "new product title here",
+  "description": "new product description here"
+}
+"""
+
+    user_prompt = f"""Current title: {title}
+Brand: {vendor}
+Category: {product_type}
+Tags: {tags}
+Current description: {body_html}
+
+Rewrite both the title and the description in Arabic.
+Return JSON only.
+"""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.7,
+    )
+
+    content = response.choices[0].message.content if response.choices else ""
+    if not content:
+        raise RuntimeError("Empty AI response")
+
+    import json
+
+    data = json.loads(content)
+
+    new_title = (data.get("title") or "").strip()
+    new_description = (data.get("description") or "").strip()
+
+    if not new_title or not new_description:
+        raise RuntimeError("AI response missing title or description")
+
+    return {
+        "title": new_title,
+        "description": new_description.replace("\n", "<br>")
+    }
     title = (product.get("title") or "").strip()
     body_html = (product.get("body_html") or "").strip()
     vendor = (product.get("vendor") or "").strip()
