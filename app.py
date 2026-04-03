@@ -45,9 +45,8 @@ class ShopifyStore(db.Model):
     )
 
 
-def get_store(shop):   
+def get_store(shop):
 return ShopifyStore.query.filter_by(shop=shop).first()
-
 def ai_result = build_title_and_description_with_ai(product)
 new_title = ai_result["title"]
 new_description = ai_result["description"]
