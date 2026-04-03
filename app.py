@@ -100,8 +100,7 @@ def build_title_and_description_with_ai(product: dict) -> dict:
         raise RuntimeError(f"Error generating title and description: {str(e)}")
 
 
-@app.route("/optimize-all-products", methods=["GET", "POST"])
-def optimize_all_products():
+
     """
     Optimize first 5 products with AI-generated titles and descriptions.
     
