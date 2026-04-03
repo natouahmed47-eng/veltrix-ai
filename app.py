@@ -1,3 +1,10 @@
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route("/optimize-all-products")
+def optimize_all_products():
+    ...
 import json
 
 
