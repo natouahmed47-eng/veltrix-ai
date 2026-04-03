@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 DEFAULT_SHOP = "cg1ypm-rd.myshopify.com"
-TOKEN_FILE = "shopify_token.json"
+TOKEN_FILE = "/var/data/shopify_token.json"
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 SHOPIFY_API_KEY = os.getenv("SHOPIFY_API_KEY")
