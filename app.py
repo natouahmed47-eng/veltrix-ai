@@ -389,7 +389,7 @@ def run_migration():
             "message": "Migration completed successfully",
             "changes": changes
         })
-    import traceback  # لازم يكون فوق خارج أي try
+    import traceback 
 
 for product in products[:5]:
     try:
