@@ -169,11 +169,10 @@ Return JSON only.
     return {
         "title": ai_result.get("title", title),
         "description": ai_result.get("description", "").replace("\n", "<br>"),
-        "meta_description": ai_result.get("meta_description", ""),
+     "meta_description": ai_result.get("meta_description", ""),
         "keywords": ai_result.get("keywords", "")
     }
-
-        response = client.chat.completions.create(
+   response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
         {"role": "system", "content": system_prompt},
