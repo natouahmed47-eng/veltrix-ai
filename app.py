@@ -389,42 +389,49 @@ def run_migration():
             "message": "Migration completed successfully",
             "changes": changes
         })
-    import traceback
+    import traceback  # لازم يكون فوق خارج أي try
 
-except Exception as e:
-    print("ERROR:", str(e))
-    print(traceback.format_exc())
+for product in products[:5]:
+    try:
+        ai_result = build_title_and_description_with_ai(product)
+        new_title = ai_result["title"]
+        new_description = ai_result["description"]
 
-    results.append({
-        "product_id": product.get("id"),
-        "old_title": product.get("title"),
-        "success": False,
-        "error": str(e),
-    })
-   
-    if not shop:
-        latest_store = get_latest_store()
-        if not latest_store:
-            return jsonify({"error": "No saved Shopify token"}), 500
-        shop = latest_store.shop
+        update_response = requests.put(
+            f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
+            headers={
+                "X-Shopify-Access-Token": store.access_token,
+                "Content-Type": "application/json",
+            },
+            json={
+                "product": {
+                    "id": product["id"],
+                    "title": new_title,
+                    "body_html": new_description,
+                }
+            },
+            timeout=30,
+        )
 
-    if not shop.endswith(".myshopify.com"):
-        shop = f"{shop}.myshopify.com"
+        results.append({
+            "product_id": product["id"],
+            "old_title": product.get("title"),
+            "new_title": new_title,
+            "success": update_response.status_code == 200,
+            "status_code": update_response.status_code,
+            "new_description_preview": new_description[:200]
+        })
 
-    store = get_store(shop)
-    if not store:
-        return jsonify({"error": "No saved Shopify token"}), 500
+    except Exception as e:
+        print("ERROR:", str(e))
+        print(traceback.format_exc())
 
-    lang = requested_lang or (store.default_language or "en")
-
-    products_response = requests.get(
-        f"https://{shop}/admin/api/2024-01/products.json",
-        headers={
-            "X-Shopify-Access-Token": store.access_token,
-            "Content-Type": "application/json",
-        },
-        timeout=30,
-    )
+        results.append({
+            "product_id": product.get("id"),
+            "old_title": product.get("title"),
+            "success": False,
+            "error": str(e),
+        })
 
     products_data = products_response.json()
     products = products_data.get("products", [])
@@ -448,31 +455,7 @@ except Exception as e:
                 json={
                     "product": {
                         "id": product["id"],
-                        "title": new_title,
-                        "body_html": new_description,
-                    }
-                },
-                timeout=30,
-            )
-
-            results.append({
-                "product_id": product["id"],
-                "old_title": product.get("title"),
-                "new_title": new_title,
-                "success": update_response.status_code == 200,
-                "status_code": update_response.status_code,
-                "language_used": lang,
-                "new_description_preview": new_description[:200],
-                "meta_description_preview": new_meta_description[:160],
-                "keywords": new_keywords,
-            })
-
-        except Exception as e:
-            results.append({
-                "product_id": product.get("id"),
-                "old_title": product.get("title"),
-                "success": False,
-                "error": str(e),
+                        "title": 
             })
 
     return jsonify({
