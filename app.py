@@ -146,7 +146,7 @@ def build_title_and_description_with_ai(product: dict) -> dict:
   "description": "وصف مقنع",
   "meta_description": "وصف قصير للبحث",
   "keywords": "كلمات مفتاحية"
-)
+}
         ],
         temperature=0.7,
     )
