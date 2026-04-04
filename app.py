@@ -93,35 +93,69 @@ def build_title_and_description_with_ai(product: dict) -> dict:
     product_type = (product.get("product_type") or "").strip()
     tags = (product.get("tags") or "").strip()
 
-    system_prompt = """أنت كاتب نصوص متخصص في التجارة الإلكترونية.
+    system_prompt = """أنت خبير تسويق إلكتروني و SEO لمتاجر Shopify.
 
-اكتب عنوانًا ووصفًا احترافيًا وجذابًا للمنتج باللغة العربية فقط.
+مهمتك:
+إنشاء محتوى احترافي عالي التحويل.
+
+أرجع النتيجة بصيغة JSON فقط:
+
+{
+  "title": "عنوان جذاب وقابل للبيع",
+  "description": "وصف تسويقي احترافي",
+  "meta_description": "وصف قصير لمحركات البحث",
+  "keywords": "كلمات مفتاحية مفصولة بفواصل"
+}
 
 القواعد:
-- اللغة العربية فقط
-- عنوان واضح وقوي وغير مبالغ
-- وصف مقنع ومناسب للمتاجر
-- بدون هاشتاغات
-- بدون إيموجي
-- بدون رموز markdown
-- أرجع النتيجة بصيغة JSON فقط
-
-الشكل المطلوب:
-{
-  "title": "عنوان المنتج الجديد",
-  "description": "وصف المنتج الجديد"
-}
+- عربي فقط
+- لا تستخدم رموز markdown
+- لا تستخدم إيموجي
+- ركز على الفوائد + الإقناع + SEO
 """
 
-    user_prompt = f"""اسم المنتج الحالي: {title}
+    user_prompt = f"""
+اسم المنتج: {title}
 الماركة: {vendor}
 الفئة: {product_type}
 التاجات: {tags}
 الوصف الحالي: {body_html}
 
-أعد كتابة عنوان المنتج ووصفه باللغة العربية فقط.
-أرجع JSON فقط.
+أنشئ محتوى احترافي عالي التحويل.
 """
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.7,
+    )
+
+    raw_text = response.choices[0].message.content if response.choices else ""
+
+    import json
+    try:
+        start = raw_text.find("{")
+        end = raw_text.rfind("}")
+        cleaned = raw_text[start:end+1]
+
+        ai_result = json.loads(cleaned)
+    except:
+        ai_result = {
+            "title": title,
+            "description": raw_text,
+            "meta_description": "",
+            "keywords": ""
+        }
+
+    return {
+        "title": ai_result.get("title", title),
+        "description": ai_result.get("description", "").replace("\n", "<br>"),
+        "meta_description": ai_result.get("meta_description", ""),
+        "keywords": ai_result.get("keywords", "")
+    }
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -328,19 +362,34 @@ def optimize_all_products():
             new_description = ai_result["description"]
 
             update_response = requests.put(
-                f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
-                headers={
-                    "X-Shopify-Access-Token": store.access_token,
-                    "Content-Type": "application/json",
+    f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
+    headers={
+        "X-Shopify-Access-Token": store.access_token,
+        "Content-Type": "application/json",
+    },
+    json={
+        "product": {
+            "id": product["id"],
+            "title": new_title,
+            "body_html": new_description,
+            "metafields": [
+                {
+                    "namespace": "seo",
+                    "key": "description",
+                    "value": ai_result.get("meta_description"),
+                    "type": "single_line_text_field"
                 },
-                json={
-                    "product": {
-                        "id": product["id"],
-                        "title": new_title,
-                        "body_html": new_description,
-                    }
-                },
-                timeout=30,
+                {
+                    "namespace": "seo",
+                    "key": "keywords",
+                    "value": ai_result.get("keywords"),
+                    "type": "single_line_text_field"
+                }
+            ]
+        }
+    },
+    timeout=30,
+            )
             )
 
             results.append({
