@@ -393,7 +393,7 @@ def run_migration():
 
 for product in products[:5]:
     try:
-        ai_result = build_title_and_description_with_ai(product)
+        ai_result = build_title_and_description_with_ai(product, lang=lang)
         new_title = ai_result["title"]
         new_description = ai_result["description"]
 
