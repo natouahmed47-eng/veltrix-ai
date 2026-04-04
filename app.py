@@ -363,7 +363,36 @@ def optimize_all_products():
 
     shop = (request.args.get("shop") or "").strip()
     requested_lang = (request.args.get("lang") or "").strip().lower()
+@app.route("/run-migration", methods=["GET"])
+def run_migration():
+    try:
+        with db.engine.connect() as connection:
+            inspector_query = text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'shopify_stores'
+            """)
+            result = connection.execute(inspector_query)
+            columns = [row[0] for row in result.fetchall()]
 
+            changes = []
+
+            if "default_language" not in columns:
+                connection.execute(
+                    text("ALTER TABLE shopify_stores ADD COLUMN default_language VARCHAR(10) DEFAULT 'en'")
+                )
+                connection.commit()
+                changes.append("Added default_language column")
+
+        return jsonify({
+            "message": "Migration completed successfully",
+            "changes": changes
+        })
+    except Exception as e:
+        return jsonify({
+            "error": str(e)
+        }), 500
+   
     if not shop:
         latest_store = get_latest_store()
         if not latest_store:
