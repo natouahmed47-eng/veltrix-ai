@@ -513,8 +513,8 @@ def settings_page():
     const resultsBox = document.getElementById("results");
     const lang = document.getElementById("language").value;
 
-    message.innerHTML = "Optimizing products...";
-    resultsBox.innerHTML = "";
+    message.innerHTML = "Optimizing products...";{
+    resultsBox.innerHTML = "";{
 
     try {
         const response = await fetch(
