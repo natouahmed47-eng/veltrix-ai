@@ -141,14 +141,12 @@ def build_title_and_description_with_ai(product: dict) -> dict:
 - لا تستخدم إيموجي
 - لا تكتب شرحًا خارج JSON
 
-أرجع JSON فقط بهذا الشكل:
-{
-  {{
+أرجع JSON فقط بهذا الشكل: 
   "title": "عنوان جذاب",
   "description": "وصف مقنع",
   "meta_description": "وصف قصير للبحث",
   "keywords": "كلمات مفتاحية"
-}}
+
         ],
         temperature=0.7,
     )
