@@ -83,7 +83,7 @@ def save_shop_token(shop: str, access_token: str, scope: str | None = None):
     return store
 
 
-def build_title_and_description_with_ai(product: dict) -> dict:
+def build_title_and_description_with_ai(product: dict, lang: str = "ar") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
 
@@ -93,62 +93,85 @@ def build_title_and_description_with_ai(product: dict) -> dict:
     product_type = (product.get("product_type") or "").strip()
     tags = (product.get("tags") or "").strip()
 
-    system_prompt = """أنت خبير تسويق عالمي في التجارة الإلكترونية وكتابة الإعلانات.
+    language_map = {
+        "ar": "Arabic",
+        "en": "English",
+        "fr": "French",
+        "es": "Spanish",
+        "de": "German",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "tr": "Turkish"
+    }
 
-مهمتك:
-كتابة عنوان ووصف يبيع المنتج وليس مجرد وصف.
+    language_name = language_map.get(lang, "English")
 
-القواعد:
-- عربي فقط
-- استخدم أسلوب الإقناع (fear of missing out)
-- ركز على الفوائد وليس المواصفات
-- اجعل العميل يشعر أنه يحتاج المنتج الآن
-- لا تستخدم كلمات ضعيفة
-- لا تستخدم markdown أو إيموجي
+    system_prompt = f"""You are an expert e-commerce copywriter and SEO specialist.
 
-النتيجة بصيغة JSON فقط:
+Your task is to generate high-converting product content.
 
-{
-  "title": "عنوان قوي يجذب الانتباه",
-  "description": "وصف مقنع + فوائد + إغلاق بيعي قوي",
-  "meta_description": "وصف قصير لمحركات البحث",
-  "keywords": "كلمات مفتاحية"
-}
+Return JSON only in this format:
+{{
+  "title": "optimized product title",
+  "description": "optimized product description",
+  "meta_description": "short SEO description",
+  "keywords": "comma-separated SEO keywords"
+}}
+
+Rules:
+- Write in {language_name} only
+- Do not use markdown
+- Do not use emojis
+- Make the title persuasive and clean
+- Make the description conversion-focused
+- Make the SEO fields relevant
+"""
+
+    user_prompt = f"""Current product title: {title}
+Brand: {vendor}
+Category: {product_type}
+Tags: {tags}
+Current description: {body_html}
+
+Please generate:
+- a stronger title
+- a persuasive description
+- an SEO meta description
+- SEO keywords
+
+Write everything in {language_name}.
+Return JSON only.
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
-        user_prompt = f"""
-اسم المنتج: {title}
-الماركة: {vendor}
-الفئة: {product_type}
-التاجات: {tags}
-الوصف الحالي: {body_html}
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.7,
+    )
 
-المطلوب:
-- حدد من هو العميل المناسب لهذا المنتج
-- اشرح ما المشكلة التي يحلها المنتج
-- اكتب عنوانًا قويًا يجذب الانتباه
-- اكتب وصفًا مقنعًا يركز على الفوائد
-- اكتب Meta Description قصير مناسب لمحركات البحث
-- اكتب Keywords واضحة ومفيدة للـ SEO
+    raw_text = response.choices[0].message.content if response.choices else ""
 
-الشروط:
-- اللغة العربية فقط
-- لا تستخدم markdown
-- لا تستخدم إيموجي
-- لا تكتب شرحًا خارج JSON
+    import json
 
-أرجع JSON فقط بهذا الشكل:
-{{
-  "title": "عنوان جذاب",
-  "description": "وصف مقنع",
-  "meta_description": "وصف قصير للبحث",
-  "keywords": "كلمات مفتاحية"
-}}
-"""
+    try:
+        ai_result = json.loads(raw_text)
+    except Exception:
+        ai_result = {
+            "title": title,
+            "description": sanitize_plain_text(raw_text).replace("\n", "<br>"),
+            "meta_description": "",
+            "keywords": ""
+        }
+
+    return {
+        "title": ai_result.get("title", title),
+        "description": ai_result.get("description", "").replace("\n", "<br>"),
+        "meta_description": ai_result.get("meta_description", ""),
+        "keywords": ai_result.get("keywords", "")
+    }
 
         response = client.chat.completions.create(
     model="gpt-4o-mini",
