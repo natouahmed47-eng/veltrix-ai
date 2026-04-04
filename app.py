@@ -147,37 +147,24 @@ def build_title_and_description_with_ai(product: dict) -> dict:
   "description": "وصف مقنع",
   "meta_description": "وصف قصير للبحث",
   "keywords": "كلمات مفتاحية"
-}}
-"""
-    raw_text = response.choices[0].message.content if response.choices else ""        ],,
-        temperature=0.7,
-    )
+import json
 
-    raw_text = response.choices[0].message.content if response.choices else ""
-
-
-    استيراد jsontry:
-        start = raw_text.find("{"
-        end = raw_text.end = raw_text.rfind("}")("}"        تم تنظيفه = النص_الخام[البداية:النهاية+1]
-        نتيجة الذكاء الاصطناعي = [start:end+1]
-{
-
-        ai_result = json.loads(cleaned)
-    except:
-        ai_result = 
-            "العنوان" : 
-العنوان،
-            : raw_text,
-            "meta_description": "",
-            "keywords": ""
-        }
-
-    يعود {return 
-        "العنوان" : ai_result.get("العنوان", العنوان)،("title", title),
-        "description": ai_result.get("description", "").replace("\n", "<br>"),
-        "meta_description": ai_result.get("meta_description", ""),
-        "keywords": ai_result.get("keywords", "")
+try:
+    ai_result = json.loads(raw_text)
+except Exception:
+    ai_result = {
+        "title": title,
+        "description": sanitize_plain_text(raw_text).replace("\n", "<br>"),
+        "meta_description": "",
+        "keywords": ""
     }
+
+return {
+    "title": ai_result.get("title", title),
+    "description": ai_result.get("description", "").replace("\n", "<br>"),
+    "meta_description": ai_result.get("meta_description", ""),
+    "keywords": ai_result.get("keywords", "")
+}
 
         model="gpt-4o-mini",    response = client.chat.completions.create(.completions.create(
         model="gpt-4o-mini"        الرسائل=[
