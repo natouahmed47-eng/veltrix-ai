@@ -120,7 +120,7 @@ def build_title_and_description_with_ai(product: dict) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
-        user_prompt = f"""user_prompt = f"""
+        user_prompt = f"""
 اسم المنتج: {title}
 الماركة: {vendor}
 الفئة: {product_type}
