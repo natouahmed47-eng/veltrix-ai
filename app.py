@@ -147,24 +147,8 @@ def build_title_and_description_with_ai(product: dict) -> dict:
   "description": "وصف مقنع",
   "meta_description": "وصف قصير للبحث",
   "keywords": "كلمات مفتاحية"
-import json
-
-try:
-    ai_result = json.loads(raw_text)
-except Exception:
-    ai_result = {
-        "title": title,
-        "description": sanitize_plain_text(raw_text).replace("\n", "<br>"),
-        "meta_description": "",
-        "keywords": ""
-    }
-
-return {
-    "title": ai_result.get("title", title),
-    "description": ai_result.get("description", "").replace("\n", "<br>"),
-    "meta_description": ai_result.get("meta_description", ""),
-    "keywords": ai_result.get("keywords", "")
-}
+}}
+"""
 
         model="gpt-4o-mini",    response = client.chat.completions.create(.completions.create(
         model="gpt-4o-mini"        الرسائل=[
