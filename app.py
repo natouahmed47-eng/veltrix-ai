@@ -93,35 +93,27 @@ def build_title_and_description_with_ai(product: dict) -> dict:
     product_type = (product.get("product_type") or "").strip()
     tags = (product.get("tags") or "").strip()
 
-    system_prompt = """أنت خبير تسويق إلكتروني و SEO لمتاجر Shopify.
+    system_prompt = """أنت خبير تسويق عالمي في التجارة الإلكترونية وكتابة الإعلانات.
 
 مهمتك:
-إنشاء محتوى احترافي عالي التحويل.
-
-أرجع النتيجة بصيغة JSON فقط:
-
-{
-  "title": "عنوان جذاب وقابل للبيع",
-  "description": "وصف تسويقي احترافي",
-  "meta_description": "وصف قصير لمحركات البحث",
-  "keywords": "كلمات مفتاحية مفصولة بفواصل"
-}
+كتابة عنوان ووصف يبيع المنتج وليس مجرد وصف.
 
 القواعد:
 - عربي فقط
-- لا تستخدم رموز markdown
-- لا تستخدم إيموجي
-- ركز على الفوائد + الإقناع + SEO
-"""
+- استخدم أسلوب الإقناع (fear of missing out)
+- ركز على الفوائد وليس المواصفات
+- اجعل العميل يشعر أنه يحتاج المنتج الآن
+- لا تستخدم كلمات ضعيفة
+- لا تستخدم markdown أو إيموجي
 
-    user_prompt = f"""
-اسم المنتج: {title}
-الماركة: {vendor}
-الفئة: {product_type}
-التاجات: {tags}
-الوصف الحالي: {body_html}
+النتيجة بصيغة JSON فقط:
 
-أنشئ محتوى احترافي عالي التحويل.
+{
+  "title": "عنوان قوي يجذب الانتباه",
+  "description": "وصف مقنع + فوائد + إغلاق بيعي قوي",
+  "meta_description": "وصف قصير لمحركات البحث",
+  "keywords": "كلمات مفتاحية"
+}
 """
 
     response = client.chat.completions.create(
