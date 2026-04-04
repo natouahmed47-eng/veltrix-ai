@@ -150,14 +150,14 @@ def build_title_and_description_with_ai(product: dict) -> dict:
 }}
 """
 
-        model="gpt-4o-mini",    response = client.chat.completions.create(.completions.create(
-        model="gpt-4o-mini"        الرسائل=[
-        messages=[
-            { "role" : "system", "content": system_prompt , }"content": system_prompt,
-            { "role" : "user", "content": user_prompt , }"content": user_prompt        ],
- ,    raw_text = response.choices[0].message.content if response.choices else "",
-        temperature=0.7,
-    )
+        response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ],
+    temperature=0.7,
+        )
 
     raw_text = response.choices[0].message.content if response.choices else ""
         رفع خطأ وقت التشغيل ("استجابة الذكاء الاصطناعي فارغة")    إذا لم يكن raw_text: not raw_text:
