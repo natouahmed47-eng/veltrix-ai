@@ -5,7 +5,7 @@ import traceback
 from datetime import datetime
 from urllib.parse import urlencode
 
-from flask import Flask, jsonify, redirect, request
+from flask import Flask, jsonify, redirect, request, Response
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI
@@ -356,6 +356,168 @@ def set_store_language():
         "shop": shop,
         "default_language": lang,
     })
+
+@app.route("/settings", methods=["GET"])
+def settings_page():
+    shop = (request.args.get("shop") or "").strip()
+
+    if not shop:
+        return jsonify({"error": "Missing shop"}), 400
+
+    if not shop.endswith(".myshopify.com"):
+        shop = f"{shop}.myshopify.com"
+
+    store = get_store(shop)
+    if not store:
+        return jsonify({"error": "Store not found"}), 404
+
+    current_lang = store.default_language or "en"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Veltrix AI Settings</title>
+        <style>
+            body {{
+                font-family: Arial, sans-serif;
+                background: #f6f7fb;
+                margin: 0;
+                padding: 24px;
+                color: #111827;
+            }}
+            .container {{
+                max-width: 700px;
+                margin: 0 auto;
+                background: white;
+                padding: 24px;
+                border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            }}
+            h1 {{
+                margin-top: 0;
+                font-size: 28px;
+            }}
+            .muted {{
+                color: #6b7280;
+                margin-bottom: 24px;
+            }}
+            label {{
+                display: block;
+                margin-bottom: 8px;
+                font-weight: bold;
+            }}
+            select, button {{
+                width: 100%;
+                padding: 14px;
+                border-radius: 10px;
+                border: 1px solid #d1d5db;
+                font-size: 16px;
+                margin-bottom: 16px;
+            }}
+            button {{
+                background: #111827;
+                color: white;
+                border: none;
+                cursor: pointer;
+            }}
+            button:hover {{
+                background: #1f2937;
+            }}
+            .secondary {{
+                background: #2563eb;
+            }}
+            .secondary:hover {{
+                background: #1d4ed8;
+            }}
+            .card {{
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 16px;
+                margin-top: 20px;
+                background: #fafafa;
+            }}
+            .success {{
+                color: green;
+                margin-top: 12px;
+            }}
+            .error {{
+                color: red;
+                margin-top: 12px;
+            }}
+            code {{
+                background: #f3f4f6;
+                padding: 2px 6px;
+                border-radius: 6px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Veltrix AI Language Settings</h1>
+            <div class="muted">Store: <strong>{shop}</strong></div>
+
+            <div class="card">
+                <label for="language">Choose your default content language</label>
+                <select id="language">
+                    <option value="en" {"selected" if current_lang == "en" else ""}>English</option>
+                    <option value="fr" {"selected" if current_lang == "fr" else ""}>French</option>
+                    <option value="es" {"selected" if current_lang == "es" else ""}>Spanish</option>
+                    <option value="ar" {"selected" if current_lang == "ar" else ""}>Arabic</option>
+                    <option value="de" {"selected" if current_lang == "de" else ""}>German</option>
+                    <option value="it" {"selected" if current_lang == "it" else ""}>Italian</option>
+                    <option value="pt" {"selected" if current_lang == "pt" else ""}>Portuguese</option>
+                    <option value="tr" {"selected" if current_lang == "tr" else ""}>Turkish</option>
+                </select>
+
+                <button onclick="saveLanguage()">Save Language</button>
+                <button class="secondary" onclick="optimizeProducts()">Optimize Products</button>
+
+                <div id="message"></div>
+            </div>
+
+            <div class="card">
+                <strong>How it works:</strong>
+                <p>1. Select the language you want.</p>
+                <p>2. Click <code>Save Language</code>.</p>
+                <p>3. Click <code>Optimize Products</code>.</p>
+            </div>
+        </div>
+
+        <script>
+            const shop = "{shop}";
+
+            async function saveLanguage() {{
+                const lang = document.getElementById("language").value;
+                const message = document.getElementById("message");
+                message.innerHTML = "Saving...";
+
+                try {{
+                    const response = await fetch(`/set-store-language?shop=${{encodeURIComponent(shop)}}&lang=${{encodeURIComponent(lang)}}`);
+                    const data = await response.json();
+
+                    if (response.ok) {{
+                        message.innerHTML = `<div class="success">Language saved successfully: ${{data.default_language}}</div>`;
+                    }} else {{
+                        message.innerHTML = `<div class="error">${{data.error || "Failed to save language"}}</div>`;
+                    }}
+                }} catch (error) {{
+                    message.innerHTML = `<div class="error">${{error.message}}</div>`;
+                }}
+            }}
+
+            function optimizeProducts() {{
+                window.location.href = `/optimize-all-products?shop=${{encodeURIComponent(shop)}}`;
+            }}
+        </script>
+    </body>
+    </html>
+    """
+
+    return Response(html, mimetype="text/html")
+
 
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])
