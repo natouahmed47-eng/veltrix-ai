@@ -1,14 +1,15 @@
-import os  
+import os
 import json
 import requests
+import traceback
 from datetime import datetime
 from urllib.parse import urlencode
-from sqlalchemy import text
 
 from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI
+from sqlalchemy import text
 
 app = Flask(__name__)
 CORS(app)
@@ -364,6 +365,90 @@ def optimize_all_products():
 
     shop = (request.args.get("shop") or "").strip()
     requested_lang = (request.args.get("lang") or "").strip().lower()
+
+    if not shop:
+        latest_store = get_latest_store()
+        if not latest_store:
+            return jsonify({"error": "No saved Shopify token"}), 500
+        shop = latest_store.shop
+
+    if not shop.endswith(".myshopify.com"):
+        shop = f"{shop}.myshopify.com"
+
+    store = get_store(shop)
+    if not store:
+        return jsonify({"error": "No saved Shopify token"}), 500
+
+    lang = requested_lang or (store.default_language or "en")
+
+    products_response = requests.get(
+        f"https://{shop}/admin/api/2024-01/products.json",
+        headers={
+            "X-Shopify-Access-Token": store.access_token,
+            "Content-Type": "application/json",
+        },
+        timeout=30,
+    )
+
+    products_data = products_response.json()
+    products = products_data.get("products", [])
+
+    results = []
+
+    for product in products[:5]:
+        try:
+            ai_result = build_title_and_description_with_ai(product, lang=lang)
+            new_title = ai_result["title"]
+            new_description = ai_result["description"]
+            new_meta_description = ai_result["meta_description"]
+            new_keywords = ai_result["keywords"]
+
+            update_response = requests.put(
+                f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
+                headers={
+                    "X-Shopify-Access-Token": store.access_token,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "product": {
+                        "id": product["id"],
+                        "title": new_title,
+                        "body_html": new_description,
+                    }
+                },
+                timeout=30,
+            )
+
+            results.append({
+                "product_id": product["id"],
+                "old_title": product.get("title"),
+                "new_title": new_title,
+                "success": update_response.status_code == 200,
+                "status_code": update_response.status_code,
+                "language_used": lang,
+                "new_description_preview": new_description[:200],
+                "meta_description_preview": new_meta_description[:160],
+                "keywords": new_keywords,
+            })
+
+        except Exception as e:
+            print("ERROR:", str(e))
+            print(traceback.format_exc())
+            results.append({
+                "product_id": product.get("id"),
+                "old_title": product.get("title"),
+                "success": False,
+                "error": str(e),
+            })
+
+    return jsonify({
+        "shop": shop,
+        "language_used": lang,
+        "total_processed": len(results),
+        "results": results,
+    })
+
+
 @app.route("/run-migration", methods=["GET"])
 def run_migration():
     try:
@@ -389,86 +474,10 @@ def run_migration():
             "message": "Migration completed successfully",
             "changes": changes
         })
-    import os
-import json
-import requests
-import traceback
-from datetime import datetime
-from urllib.parse import urlencode
-
-for product in products[:5]:
-    try:
-        ai_result = build_title_and_description_with_ai(product, lang=lang)
-        new_title = ai_result["title"]
-        new_description = ai_result["description"]
-
-        update_response = requests.put(
-            f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
-            headers={
-                "X-Shopify-Access-Token": store.access_token,
-                "Content-Type": "application/json",
-            },
-            json={
-                "product": {
-                    "id": product["id"],
-                    "title": new_title,
-                    "body_html": new_description,
-                }
-            },
-            timeout=30,
-        )
-
-        results.append({
-            "product_id": product["id"],
-            "old_title": product.get("title"),
-            "new_title": new_title,
-            "success": update_response.status_code == 200,
-            "status_code": update_response.status_code,
-            "new_description_preview": new_description[:200]
-        })
-
     except Exception as e:
-        print("ERROR:", str(e))
-        print(traceback.format_exc())
-
-        results.append({
-            "product_id": product.get("id"),
-            "old_title": product.get("title"),
-            "success": False,
-            "error": str(e),
-        })
-
-    products_data = products_response.json()
-    products = products_data.get("products", [])
-
-    results = []
-
-    for product in products[:5]:
-        try:
-            ai_result = build_title_and_description_with_ai(product, lang=lang)
-            new_title = ai_result["title"]
-            new_description = ai_result["description"]
-            new_meta_description = ai_result["meta_description"]
-            new_keywords = ai_result["keywords"]
-
-            update_response = requests.put(
-                f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
-                headers={
-                    "X-Shopify-Access-Token": store.access_token,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "product": {
-                        "id": product["id"],
-                        "title": 
-            }
-
-    return jsonify({
-        "shop": shop,
-        "language_used": lang,
-        "total_processed": len(results),
-        "results": results,
-    }
+        return jsonify({
+            "error": str(e)
+        }), 500
 
 
 @app.errorhandler(500)
