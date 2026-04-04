@@ -389,10 +389,18 @@ def run_migration():
             "message": "Migration completed successfully",
             "changes": changes
         })
-    except Exception as e:
-        return jsonify({
-            "error": str(e)
-        }), 500
+    import traceback
+
+except Exception as e:
+    print("ERROR:", str(e))
+    print(traceback.format_exc())
+
+    results.append({
+        "product_id": product.get("id"),
+        "old_title": product.get("title"),
+        "success": False,
+        "error": str(e),
+    })
    
     if not shop:
         latest_store = get_latest_store()
