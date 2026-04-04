@@ -120,7 +120,34 @@ def build_title_and_description_with_ai(product: dict) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
+            user_prompt = f"""
+اسم المنتج: {title}
+الماركة: {vendor}
+الفئة: {product_type}
+التاجات: {tags}
+الوصف الحالي: {body_html}
+
+المطلوب:
+
+1. تخيل أنك تبيع هذا المنتج في متجر ناجح
+2. من هو العميل؟ (شاب، رجل، امرأة…)
+3. ما المشكلة التي يحلها المنتج؟
+4. لماذا يشتري الآن وليس لاحقًا؟
+
+اكتب:
+- عنوان يجعل العميل يتوقف
+- وصف يجعل العميل يقتنع فورًا
+- ركز على الفوائد وليس المواصفات
+- استخدم أسلوب بيع مباشر (conversion focused)
+
+اجعل النص:
+- واضح
+- قوي
+- عملي
+- مقنع
+
+أرجع JSON فقط.
+"""
         ],
         temperature=0.7,
     )
