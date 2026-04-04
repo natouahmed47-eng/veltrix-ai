@@ -456,14 +456,14 @@ for product in products[:5]:
                     "product": {
                         "id": product["id"],
                         "title": 
-            })
+            }
 
     return jsonify({
         "shop": shop,
         "language_used": lang,
         "total_processed": len(results),
         "results": results,
-    })
+    }
 
 
 @app.errorhandler(500)
