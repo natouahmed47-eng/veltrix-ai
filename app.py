@@ -553,7 +553,7 @@ def settings_page():
                     ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
                 </div>
             `;
-        });
+        }
 
         html += `</div>`;
         resultsBox.innerHTML = html;
