@@ -390,7 +390,7 @@ def optimize_all_products():
     },
     timeout=30,
             )
-            )
+            
 
             results.append({
                 "product_id": product["id"],
