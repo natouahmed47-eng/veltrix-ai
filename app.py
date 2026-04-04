@@ -3,6 +3,7 @@ import json
 import requests
 from datetime import datetime
 from urllib.parse import urlencode
+from sqlalchemy import text
 
 from flask import Flask, jsonify, redirect, request
 from flask_cors import CORS
