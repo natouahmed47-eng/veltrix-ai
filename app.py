@@ -121,32 +121,32 @@ def build_title_and_description_with_ai(product: dict) -> dict:
         messages=[
             {"role": "system", "content": system_prompt},
         user_prompt = f"""
-اسم المنتج: {title}
-الماركة: {vendor}
-الفئة: {product_type}
-التاجات: {tags}
-الوصف الحالي: {body_html}
+Product Name: {title}
+Brand: {vendor}
+Category: {product_type}
+Tags: {tags}
+Current Description: {body_html}
 
-المطلوب:
-- حدد من هو العميل المناسب لهذا المنتج
-- اشرح ما المشكلة التي يحلها المنتج
-- اكتب عنوانًا قويًا يجذب الانتباه
-- اكتب وصفًا مقنعًا يركز على الفوائد
-- اكتب Meta Description قصير مناسب لمحركات البحث
-- اكتب Keywords واضحة ومفيدة للـ SEO
+Task:
+- Identify the target customer for this product
+- Explain what problem this product solves
+- Write a strong, attention-grabbing title
+- Write a persuasive description focused on benefits
+- Write a short SEO-friendly meta description
+- Provide clear and useful SEO keywords
 
-الشروط:
-- اللغة العربية فقط
-- لا تستخدم markdown
-- لا تستخدم إيموجي
-- لا تكتب شرحًا خارج JSON
+Rules:
+- English language only
+- No markdown symbols
+- No emojis
+- Do not add explanations outside JSON
 
-أرجع JSON فقط بهذا الشكل:
+Return ONLY JSON in this format:
 {
-  "title": "عنوان جذاب",
-  "description": "وصف مقنع",
-  "meta_description": "وصف قصير للبحث",
-  "keywords": "كلمات مفتاحية"
+  "title": "High-converting title",
+  "description": "Persuasive product description",
+  "meta_description": "Short SEO description",
+  "keywords": "SEO keywords"
 }
 """
         ],
