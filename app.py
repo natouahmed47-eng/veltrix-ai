@@ -214,7 +214,6 @@ def build_title_and_description_with_ai(product: dict) -> dict:
             "details": str(e)
         }), 500
       
-        
-       
+      
         if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
