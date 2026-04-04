@@ -141,52 +141,56 @@ def build_title_and_description_with_ai(product: dict) -> dict:
 - لا تستخدم إيموجي
 - لا تكتب شرحًا خارج JSON
 
-أرجع JSON فقط بهذا الشكل: 
+أرجع JSON فقط بهذا الشكل:
+{{
   "title": "عنوان جذاب",
   "description": "وصف مقنع",
   "meta_description": "وصف قصير للبحث",
   "keywords": "كلمات مفتاحية"
-}
-        ],
+}}
+"""
+    raw_text = response.choices[0].message.content if response.choices else ""        ],,
         temperature=0.7,
     )
 
     raw_text = response.choices[0].message.content if response.choices else ""
 
-    import json
-    try:
-        start = raw_text.find("{")
-        end = raw_text.rfind("}")
-        cleaned = raw_text[start:end+1]
+
+    استيراد jsontry:
+        start = raw_text.find("{"
+        end = raw_text.end = raw_text.rfind("}")("}"        تم تنظيفه = النص_الخام[البداية:النهاية+1]
+        نتيجة الذكاء الاصطناعي = [start:end+1]
+{
 
         ai_result = json.loads(cleaned)
     except:
-        ai_result = {
-            "title": title,
-            "description": raw_text,
+        ai_result = 
+            "العنوان" : 
+العنوان،
+            : raw_text,
             "meta_description": "",
             "keywords": ""
         }
 
-    return {
-        "title": ai_result.get("title", title),
+    يعود {return 
+        "العنوان" : ai_result.get("العنوان", العنوان)،("title", title),
         "description": ai_result.get("description", "").replace("\n", "<br>"),
         "meta_description": ai_result.get("meta_description", ""),
         "keywords": ai_result.get("keywords", "")
     }
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o-mini",    response = client.chat.completions.create(.completions.create(
+        model="gpt-4o-mini"        الرسائل=[
         messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+            { "role" : "system", "content": system_prompt , }"content": system_prompt,
+            { "role" : "user", "content": user_prompt , }"content": user_prompt        ],
+ ,    raw_text = response.choices[0].message.content if response.choices else "",
         temperature=0.7,
     )
 
     raw_text = response.choices[0].message.content if response.choices else ""
-    if not raw_text:
-        raise RuntimeError("Empty AI response")
+        رفع خطأ وقت التشغيل ("استجابة الذكاء الاصطناعي فارغة")    إذا لم يكن raw_text: not raw_text:
+        raise RuntimeError("Empty AI response"    تم تنظيف النص الخام باستخدام الأمر `raw_text.strip()`
 
     cleaned = raw_text.strip()
 
