@@ -475,8 +475,8 @@ def settings_page():
                 <button onclick="saveLanguage()">Save Language</button>
                 <button class="secondary" onclick="optimizeProducts()">Optimize Products</button>
 
-                <div id="message"></div>
-            </div>
+<div id="message"></div>
+<div id="results" style="margin-top:20px;"></div>
 
             <div class="card">
                 <strong>How it works:</strong>
@@ -508,13 +508,60 @@ def settings_page():
                 }}
             }}
 
-            function optimizeProducts() {{
-                window.location.href = `/optimize-all-products?shop=${{encodeURIComponent(shop)}}`;
-            }}
-        </script>
-    </body>
-    </html>
-    """
+            async function optimizeProducts() {
+    const message = document.getElementById("message");
+    const resultsBox = document.getElementById("results");
+    const lang = document.getElementById("language").value;
+
+    message.innerHTML = "Optimizing products...";
+    resultsBox.innerHTML = "";
+
+    try {
+        const response = await fetch(
+            `/optimize-all-products?shop=${encodeURIComponent(shop)}&lang=${encodeURIComponent(lang)}`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            message.innerHTML = `<div class="error">${data.error || "Optimization failed"}</div>`;
+            return;
+        }
+
+        message.innerHTML = `<div class="success">Optimization completed successfully. Language used: ${data.language_used}</div>`;
+
+        if (!data.results || !data.results.length) {
+            resultsBox.innerHTML = `<div class="card"><p>No products were processed.</p></div>`;
+            return;
+        }
+
+        let html = `<div class="card"><h3>Optimization Results</h3>`;
+
+        data.results.forEach((item, index) => {
+            html += `
+                <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
+                    <div><strong>#${index + 1}</strong></div>
+                    <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
+                    <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
+                    <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
+                    <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
+                    <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
+                    <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
+                    <div><strong>Description Preview:</strong><br>${item.new_description_preview ?? ""}</div>
+                    <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
+                    <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
+                    ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
+                </div>
+            `;
+        });
+
+        html += `</div>`;
+        resultsBox.innerHTML = html;
+
+    } catch (error) {
+        message.innerHTML = `<div class="error">${error.message}</div>`;
+    }
+}
 
     return Response(html, mimetype="text/html")
 
