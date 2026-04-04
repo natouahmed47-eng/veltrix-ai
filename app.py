@@ -389,7 +389,12 @@ def run_migration():
             "message": "Migration completed successfully",
             "changes": changes
         })
-    import traceback 
+    import os
+import json
+import requests
+import traceback
+from datetime import datetime
+from urllib.parse import urlencode
 
 for product in products[:5]:
     try:
