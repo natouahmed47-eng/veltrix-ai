@@ -1,5 +1,5 @@
-import os         
-import json 
+import os
+import json
 import requests
 from datetime import datetime
 from urllib.parse import urlencode
@@ -12,14 +12,14 @@ from openai import OpenAI
 app = Flask(__name__)
 CORS(app)
 
-app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-this-secret")
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "change-this-secret-key")
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is missing from environment variables")
+    raise RuntimeError("DATABASE_URL is missing")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -42,6 +42,7 @@ class ShopifyStore(db.Model):
     shop = db.Column(db.String(255), unique=True, nullable=False, index=True)
     access_token = db.Column(db.Text, nullable=False)
     scope = db.Column(db.Text, nullable=True)
+    default_language = db.Column(db.String(10), default="en")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(
         db.DateTime,
@@ -64,18 +65,26 @@ def get_latest_store():
     return ShopifyStore.query.order_by(ShopifyStore.updated_at.desc()).first()
 
 
-def save_shop_token(shop: str, access_token: str, scope: str | None = None):
+def save_shop_token(
+    shop: str,
+    access_token: str,
+    scope: str | None = None,
+    default_language: str = "en",
+):
     store = get_store(shop)
 
     if store:
         store.access_token = access_token
         store.scope = scope
+        if not store.default_language:
+            store.default_language = default_language
         store.updated_at = datetime.utcnow()
     else:
         store = ShopifyStore(
             shop=shop,
             access_token=access_token,
             scope=scope,
+            default_language=default_language,
         )
         db.session.add(store)
 
@@ -83,7 +92,7 @@ def save_shop_token(shop: str, access_token: str, scope: str | None = None):
     return store
 
 
-def build_title_and_description_with_ai(product: dict, lang: str = "ar") -> dict:
+def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
 
@@ -101,16 +110,15 @@ def build_title_and_description_with_ai(product: dict, lang: str = "ar") -> dict
         "de": "German",
         "it": "Italian",
         "pt": "Portuguese",
-        "tr": "Turkish"
+        "tr": "Turkish",
     }
-
     language_name = language_map.get(lang, "English")
 
     system_prompt = f"""You are an expert e-commerce copywriter and SEO specialist.
 
-Your task is to generate high-converting product content.
+Your task is to generate high-converting product content for Shopify stores.
 
-Return JSON only in this format:
+Return JSON only in this exact format:
 {{
   "title": "optimized product title",
   "description": "optimized product description",
@@ -122,9 +130,10 @@ Rules:
 - Write in {language_name} only
 - Do not use markdown
 - Do not use emojis
-- Make the title persuasive and clean
+- Make the title strong, clear, and persuasive
 - Make the description conversion-focused
-- Make the SEO fields relevant
+- Make the meta description concise and SEO-friendly
+- Make the keywords relevant to the product
 """
 
     user_prompt = f"""Current product title: {title}
@@ -133,11 +142,13 @@ Category: {product_type}
 Tags: {tags}
 Current description: {body_html}
 
-Please generate:
-- a stronger title
-- a persuasive description
-- an SEO meta description
-- SEO keywords
+Please do all of the following:
+- identify the likely target customer
+- identify the problem this product solves
+- create a stronger title
+- create a persuasive description focused on benefits
+- create a short SEO meta description
+- create SEO keywords
 
 Write everything in {language_name}.
 Return JSON only.
@@ -153,37 +164,8 @@ Return JSON only.
     )
 
     raw_text = response.choices[0].message.content if response.choices else ""
-
-    import json
-
-    try:
-        ai_result = json.loads(raw_text)
-    except Exception:
-        ai_result = {
-            "title": title,
-            "description": sanitize_plain_text(raw_text).replace("\n", "<br>"),
-            "meta_description": "",
-            "keywords": ""
-        }
-
-    return {
-        "title": ai_result.get("title", title),
-        "description": ai_result.get("description", "").replace("\n", "<br>"),
-     "meta_description": ai_result.get("meta_description", ""),
-        "keywords": ai_result.get("keywords", "")
-    }
-   response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": user_prompt},
-    ],
-    temperature=0.7,
-        )
-
-    raw_text = response.choices[0].message.content if response.choices else ""
-        رفع خطأ وقت التشغيل ("استجابة الذكاء الاصطناعي فارغة")    إذا لم يكن raw_text: not raw_text:
-        raise RuntimeError("Empty AI response"    تم تنظيف النص الخام باستخدام الأمر `raw_text.strip()`
+    if not raw_text:
+        raise RuntimeError("Empty AI response")
 
     cleaned = raw_text.strip()
 
@@ -205,21 +187,27 @@ Return JSON only.
 
     try:
         ai_result = json.loads(cleaned)
-    except json.JSONDecodeError:
+    except Exception:
         ai_result = {
             "title": title,
-            "description": sanitize_plain_text(raw_text)
+            "description": sanitize_plain_text(raw_text),
+            "meta_description": "",
+            "keywords": "",
         }
 
     new_title = (ai_result.get("title") or title).strip()
     new_description = (ai_result.get("description") or "").strip()
+    new_meta_description = (ai_result.get("meta_description") or "").strip()
+    new_keywords = (ai_result.get("keywords") or "").strip()
 
     if not new_description:
         new_description = sanitize_plain_text(raw_text)
 
     return {
         "title": new_title,
-        "description": new_description.replace("\n", "<br>")
+        "description": new_description.replace("\n", "<br>"),
+        "meta_description": new_meta_description,
+        "keywords": new_keywords,
     }
 
 
@@ -235,11 +223,11 @@ def health():
     return jsonify({
         "status": "ok",
         "openai_ready": bool(OPENAI_API_KEY),
+        "saved_shop": latest_store.shop if latest_store else None,
         "shopify_api_key_ready": bool(SHOPIFY_API_KEY),
         "shopify_api_secret_ready": bool(SHOPIFY_API_SECRET),
         "shopify_redirect_ready": bool(SHOPIFY_REDIRECT_URI),
         "shopify_token_ready": latest_store is not None,
-        "saved_shop": latest_store.shop if latest_store else None,
     })
 
 
@@ -298,14 +286,14 @@ def callback():
     if not access_token:
         return jsonify({
             "error": "No access token returned",
-            "shopify_response": data
+            "shopify_response": data,
         }), 500
 
-    save_shop_token(shop, access_token, SHOPIFY_SCOPES)
+    save_shop_token(shop, access_token, SHOPIFY_SCOPES, default_language="en")
 
     return jsonify({
         "message": "App installed successfully",
-        "shop": shop
+        "shop": shop,
     })
 
 
@@ -336,12 +324,45 @@ def get_products():
     return jsonify(response.json()), response.status_code
 
 
+@app.route("/set-store-language", methods=["GET", "POST"])
+def set_store_language():
+    shop = (request.args.get("shop") or "").strip()
+    lang = (request.args.get("lang") or "").strip().lower()
+
+    if not shop:
+        return jsonify({"error": "Missing shop"}), 400
+
+    if not shop.endswith(".myshopify.com"):
+        shop = f"{shop}.myshopify.com"
+
+    allowed_languages = {"ar", "en", "fr", "es", "de", "it", "pt", "tr"}
+    if lang not in allowed_languages:
+        return jsonify({
+            "error": "Unsupported language",
+            "allowed_languages": sorted(list(allowed_languages)),
+        }), 400
+
+    store = get_store(shop)
+    if not store:
+        return jsonify({"error": "Store not found"}), 404
+
+    store.default_language = lang
+    db.session.commit()
+
+    return jsonify({
+        "message": "Store language updated successfully",
+        "shop": shop,
+        "default_language": lang,
+    })
+
+
 @app.route("/optimize-all-products", methods=["GET", "POST"])
 def optimize_all_products():
     if not client:
         return jsonify({"error": "OpenAI not configured"}), 500
 
     shop = (request.args.get("shop") or "").strip()
+    requested_lang = (request.args.get("lang") or "").strip().lower()
 
     if not shop:
         latest_store = get_latest_store()
@@ -355,6 +376,8 @@ def optimize_all_products():
     store = get_store(shop)
     if not store:
         return jsonify({"error": "No saved Shopify token"}), 500
+
+    lang = requested_lang or (store.default_language or "en")
 
     products_response = requests.get(
         f"https://{shop}/admin/api/2024-01/products.json",
@@ -372,40 +395,27 @@ def optimize_all_products():
 
     for product in products[:5]:
         try:
-            ai_result = build_title_and_description_with_ai(product)
+            ai_result = build_title_and_description_with_ai(product, lang=lang)
             new_title = ai_result["title"]
             new_description = ai_result["description"]
+            new_meta_description = ai_result["meta_description"]
+            new_keywords = ai_result["keywords"]
 
             update_response = requests.put(
-    f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
-    headers={
-        "X-Shopify-Access-Token": store.access_token,
-        "Content-Type": "application/json",
-    },
-    json={
-        "product": {
-            "id": product["id"],
-            "title": new_title,
-            "body_html": new_description,
-            "metafields": [
-                {
-                    "namespace": "seo",
-                    "key": "description",
-                    "value": ai_result.get("meta_description"),
-                    "type": "single_line_text_field"
+                f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
+                headers={
+                    "X-Shopify-Access-Token": store.access_token,
+                    "Content-Type": "application/json",
                 },
-                {
-                    "namespace": "seo",
-                    "key": "keywords",
-                    "value": ai_result.get("keywords"),
-                    "type": "single_line_text_field"
-                }
-            ]
-        }
-    },
-    timeout=30,
+                json={
+                    "product": {
+                        "id": product["id"],
+                        "title": new_title,
+                        "body_html": new_description,
+                    }
+                },
+                timeout=30,
             )
-            
 
             results.append({
                 "product_id": product["id"],
@@ -413,7 +423,10 @@ def optimize_all_products():
                 "new_title": new_title,
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
-                "new_description_preview": new_description[:200]
+                "language_used": lang,
+                "new_description_preview": new_description[:200],
+                "meta_description_preview": new_meta_description[:160],
+                "keywords": new_keywords,
             })
 
         except Exception as e:
@@ -426,6 +439,7 @@ def optimize_all_products():
 
     return jsonify({
         "shop": shop,
+        "language_used": lang,
         "total_processed": len(results),
         "results": results,
     })
