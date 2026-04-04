@@ -563,7 +563,7 @@ def settings_page():
     }
 }
 
-    return Response(html, mimetype="text/html")
+    
 
 
 
