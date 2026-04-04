@@ -120,7 +120,7 @@ def build_title_and_description_with_ai(product: dict) -> dict:
         model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system_prompt},
-        user_prompt = f"""
+        user_prompt = f"""user_prompt = f"""
 اسم المنتج: {title}
 الماركة: {vendor}
 الفئة: {product_type}
@@ -142,12 +142,12 @@ def build_title_and_description_with_ai(product: dict) -> dict:
 - لا تكتب شرحًا خارج JSON
 
 أرجع JSON فقط بهذا الشكل:
-{
+{{
   "title": "عنوان جذاب",
   "description": "وصف مقنع",
   "meta_description": "وصف قصير للبحث",
   "keywords": "كلمات مفتاحية"
-}
+}}
 """
 
         response = client.chat.completions.create(
