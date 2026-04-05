@@ -508,60 +508,83 @@ def settings_page():
                 }}
             }}
 
-            async function optimizeProducts() {
-    const message = document.getElementById("message");
-    const resultsBox = document.getElementById("results");
-    const lang = document.getElementById("language").value;
+            <script>
+    const shop = {{ shop|tojson }};
 
-    message.innerHTML = "Optimizing products...";
-    resultsBox.innerHTML = "";
+    async function saveLanguage() {
+        const lang = document.getElementById("language").value;
+        const message = document.getElementById("message");
+        message.innerHTML = "Saving...";
 
-    try {
-        const response = await fetch(
-            `/optimize-all-products?shop=${encodeURIComponent(shop)}&lang=${encodeURIComponent(lang)}`
-        );
+        try {
+            const response = await fetch(`/set-store-language?shop=${encodeURIComponent(shop)}&lang=${encodeURIComponent(lang)}`);
+            const data = await response.json();
 
-        const data = await response.json();
-
-        if (!response.ok) {
-            message.innerHTML = `<div class="error">${data.error || "Optimization failed"}</div>`;
-            return;
+            if (response.ok) {
+                message.innerHTML = `<div class="success">Language saved successfully: ${data.default_language}</div>`;
+            } else {
+                message.innerHTML = `<div class="error">${data.error || "Failed to save language"}</div>`;
+            }
+        } catch (error) {
+            message.innerHTML = `<div class="error">${error.message}</div>`;
         }
-
-        message.innerHTML = `<div class="success">Optimization completed successfully. Language used: ${data.language_used}</div>`;
-
-        if (!data.results || !data.results.length) {
-            resultsBox.innerHTML = `<div class="card"><p>No products were processed.</p></div>`;
-            return;
-        }
-
-        let html = `<div class="card"><h3>Optimization Results</h3>`;
-
-        data.results.forEach((item, index) => {
-            html += `
-                <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
-                    <div><strong>#${index + 1}</strong></div>
-                    <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
-                    <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
-                    <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
-                    <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
-                    <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
-                    <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
-                    <div><strong>Description Preview:</strong><br>${item.new_description_preview ?? ""}</div>
-                    <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
-                    <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
-                    ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
-                </div>
-            `;
-        });
-
-        html += `</div>`;
-        resultsBox.innerHTML = html;
-
-    } catch (error) {
-        message.innerHTML = `<div class="error">${error.message}</div>`;
     }
-}
+
+    async function optimizeProducts() {
+        const message = document.getElementById("message");
+        const resultsBox = document.getElementById("results");
+        const lang = document.getElementById("language").value;
+
+        message.innerHTML = "Optimizing products...";
+        resultsBox.innerHTML = "";
+
+        try {
+            const response = await fetch(
+                `/optimize-all-products?shop=${encodeURIComponent(shop)}&lang=${encodeURIComponent(lang)}`
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                message.innerHTML = `<div class="error">${data.error || "Optimization failed"}</div>`;
+                return;
+            }
+
+            message.innerHTML = `<div class="success">Optimization completed successfully. Language used: ${data.language_used}</div>`;
+
+            if (!data.results || !data.results.length) {
+                resultsBox.innerHTML = `<div class="card"><p>No products were processed.</p></div>`;
+                return;
+            }
+
+            let html = `<div class="card"><h3>Optimization Results</h3>`;
+
+            data.results.forEach((item, index) => {
+                html += `
+                    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
+                        <div><strong>#${index + 1}</strong></div>
+                        <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
+                        <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
+                        <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
+                        <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
+                        <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
+                        <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
+                        <div><strong>Description Preview:</strong><br>${item.new_description_preview ?? ""}</div>
+                        <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
+                        <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
+                        ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+            resultsBox.innerHTML = html;
+
+        } catch (error) {
+            message.innerHTML = `<div class="error">${error.message}</div>`;
+        }
+    }
+</script>
     
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])
