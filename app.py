@@ -512,9 +512,9 @@ def settings_page():
     const message = document.getElementById("message");
     const resultsBox = document.getElementById("results");
     const lang = document.getElementById("language").value;
-}
-    message.innerHTML = "Optimizing products...";{
-    resultsBox.innerHTML = "";{
+
+    message.innerHTML = "Optimizing products...";
+    resultsBox.innerHTML = "";
 
     try {
         const response = await fetch(
@@ -553,7 +553,7 @@ def settings_page():
                     ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
                 </div>
             `;
-        }
+        });
 
         html += `</div>`;
         resultsBox.innerHTML = html;
@@ -561,6 +561,7 @@ def settings_page():
     } catch (error) {
         message.innerHTML = `<div class="error">${error.message}</div>`;
     }
+}
     
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])
