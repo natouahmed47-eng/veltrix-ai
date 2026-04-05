@@ -140,12 +140,15 @@ Return ONLY a valid JSON object with:
 - keywords
 
 RULES:
-- Title: short, catchy, SEO optimized
-- Description: clean HTML suitable for Shopify
-- Meta description: max 155 characters
-- Keywords: comma-separated, high search intent
-- Focus on benefits, not just features
-- Use persuasive e-commerce language
+- Write like a high-converting e-commerce brand
+- Focus on benefits, transformation, and results
+- Use persuasive and emotional language
+- Make the customer feel the product is a MUST-HAVE
+- Use short paragraphs and bullet points
+- Include strong hooks and selling angles
+- Avoid generic descriptions
+- Description must be HTML with <ul><li> benefits
+- Make it sound premium and irresistible
 - Do not use markdown
 - Do not use emojis
 
