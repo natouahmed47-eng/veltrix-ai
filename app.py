@@ -164,55 +164,51 @@ Description: {body_html}
 """
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-        temperature=0.7,
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": prompt},
+    ],
+    temperature=0.7,
     )
 
-    raw_text = response.choices[0].message.content if response.choices else ""
-    if not raw_text:
-        raise RuntimeError("Empty AI response")
+    تم تنظيف النص الخام باستخدام دالة strip ( ) .
 
-    cleaned = raw_text.strip()
+    إذا تم تنظيفها. تبدأ بـ ( "```json" ) :
+        تم تنظيفه = تم تنظيفه [ 7 : ]
+    elif cleaned. startswith ( "```" ) :
+        تم تنظيفه = تم تنظيفه [ 3 : ]
 
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    elif cleaned.startswith("```"):
-        cleaned = cleaned[3:]
+    إذا تم تنظيفها. تنتهي بـ ( "```" ) :
+        تم تنظيفه = تم تنظيفه [ :- 3 ]
 
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
+    تم التنظيف = تم التنظيف. تجريد ( )
 
-    cleaned = cleaned.strip()
+    start = cleaned.find ( "{ " )
+    end = cleaned.rfind ( " }" )
 
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
+    إذا كانت البداية لا تساوي -1  والنهاية لا تساوي -1  والنهاية أكبر من البداية:
+        تم التنظيف = تم التنظيف [ البداية: النهاية + 1 ]
 
-    if start != -1 and end != -1 and end > start:
-        cleaned = cleaned[start:end + 1]
-
-    try:
-        ai_result = json.loads(cleaned)
-    except Exception:
-        ai_result = {
-            "title": title,
-            "description": sanitize_plain_text(raw_text),
-            "meta_description": "",
-            "keywords": "",
+    يحاول :
+        ai_result = json.loads ( cleaned )
+    باستثناء الاستثناء:
+        نتيجة الذكاء الاصطناعي = {
+            "العنوان": العنوان،"title": title,
+            "الوصف" : sanitize_plain_text ( raw_text ) ,
+            "meta_description" : "" ,
+            "الكلمات المفتاحية" : "" ,
         }
 
-    new_title = (ai_result.get("title") or title).strip()
-    new_description = (ai_result.get("description") or "").strip()
-    new_meta_description = (ai_result.get("meta_description") or "").strip()
+    new_title = ( ai_result. get ( "title" )  or title ) . strip ( )
+    new_description = ( ai_result. get ( "description" )  or  "" ) . strip ( )
+    new_meta_description = ( ai_result. get ( "meta_description" )  or  "" ) . strip ( )
     new_keywords = (ai_result.get("keywords") or "").strip()
 
-    if not new_description:
-        new_description = sanitize_plain_text(raw_text)
 
-    return {
+
+
+
         "title": new_title,
         "description": new_description.replace("\n", "<br>"),
         "meta_description": new_meta_description,
