@@ -114,37 +114,55 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
         "en": "English",
         "fr": "French",
         "es": "Spanish",
-        "de": "German",
-        "it": "Italian",
-        "pt": "Portuguese",
-        "tr": "Turkish",
     }
     language_name = language_map.get(lang, "English")
 
     prompt = f"""
-You are a world-class Shopify SEO expert and conversion copywriter.
+You are a world-class elite e-commerce copywriter and Shopify SEO expert.
 
 IMPORTANT:
 You MUST write EVERYTHING in {language_name}.
 DO NOT use any other language.
 DO NOT mix languages.
-If you do, the result is INVALID.
 
-Rewrite this product with HIGH-CONVERSION and SEO optimization.
+Your goal is to create HIGH-CONVERSION content that SELLS.
 
-STRICT FORMAT:
-Return ONLY a valid JSON object with:
-- title
-- description
-- meta_description
-- keywords
+STRICT OUTPUT:
+Return ONLY valid JSON:
+{{
+  "title": "...",
+  "description": "...",
+  "meta_description": "...",
+  "keywords": "..."
+}}
 
-- Description MUST be structured HTML
-- Start with a strong hook paragraph
-- Then include a <ul> with at least 5 persuasive benefit bullet points
-- Each bullet must highlight a clear benefit (not feature)
-- Make it highly converting and sales-focused
-"""
+COPYWRITING RULES:
+- NEVER repeat the original title
+- Create a NEW powerful title
+- Use emotional triggers (confidence, power, attraction, ease)
+- Focus on transformation (before vs after)
+- Make it irresistible and premium
+- Write like a luxury brand
+
+DESCRIPTION STRUCTURE:
+1. Strong hook paragraph
+2. Benefits section (HTML list)
+3. Emotional selling tone
+
+HTML FORMAT:
+<p>Hook</p>
+<ul>
+<li>Benefit 1</li>
+<li>Benefit 2</li>
+<li>Benefit 3</li>
+<li>Benefit 4</li>
+<li>Benefit 5</li>
+</ul>
+
+SEO RULES:
+- Meta description under 155 characters
+- Keywords must be high-intent
+- Title must be click-optimized
 
 PRODUCT:
 Title: {title}
@@ -154,46 +172,63 @@ Tags: {tags}
 Description: {description}
 """
 
-response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": "You are a professional Shopify SEO copywriter."},
-        {"role": "user", "content": prompt},
-    ],
-    temperature=0.4,
-)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are an elite conversion copywriter."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.5,
+    )
 
     raw_text = response.choices[0].message.content if response.choices else ""
-    if not raw_text:
-        raise RuntimeError("Empty AI response")
 
     cleaned = raw_text.strip()
+    cleaned = cleaned.replace("\u200b", "")
 
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    elif cleaned.startswith("```"):
-        cleaned = cleaned[3:]
-
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
-
-    cleaned = cleaned.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
 
     start = cleaned.find("{")
     end = cleaned.rfind("}")
 
-    if start != -1 and end != -1 and end > start:
+    if start != -1 and end != -1:
         cleaned = cleaned[start:end + 1]
 
     try:
         ai_result = json.loads(cleaned)
-    except Exception:
+    except:
         ai_result = {
             "title": title,
-            "description": sanitize_plain_text(raw_text),
+            "description": description,
             "meta_description": "",
-            "keywords": "",
+            "keywords": ""
         }
+
+    new_title = ai_result.get("title", title)
+    new_description = ai_result.get("description", description)
+    meta = ai_result.get("meta_description", "")
+    keywords = ai_result.get("keywords", "")
+
+    # 🔥 ضمان HTML قوي
+    if "<ul>" not in new_description:
+        new_description = f"""
+<p>Upgrade your experience with unmatched performance and confidence.</p>
+<ul>
+<li>Enjoy powerful and precise results every time</li>
+<li>Designed for comfort and ease of use</li>
+<li>Save time with efficient performance</li>
+<li>Perfect for everyday use</li>
+<li>Boost confidence with a flawless finish</li>
+</ul>
+"""
+
+    return {
+        "title": new_title,
+        "description": new_description,
+        "meta_description": meta,
+        "keywords": keywords,
+    }
 
     new_title = (ai_result.get("title") or title).strip()
     new_description = (ai_result.get("description") or "").strip()
