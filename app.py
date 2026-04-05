@@ -138,22 +138,29 @@ Rules:
 - Make the keywords highly relevant to the product
 """
 
-    user_prompt = f"""Current product title: {title}
-Brand: {vendor}
-Category: {product_type}
-Tags: {tags}
-Current description: {body_html}
+    prompt = f"""
+You are a world-class Shopify SEO expert and conversion copywriter.
 
-Please do all of the following:
-- identify the likely target customer
-- identify the problem this product solves
-- create a stronger title
-- create a persuasive description focused on benefits
-- create a short SEO meta description
-- create SEO keywords
+Rewrite this product in {language_name} with HIGH-CONVERSION and SEO optimization.
 
-Write everything in {language_name}.
-Return JSON only.
+STRICT FORMAT:
+Return ONLY a valid JSON object with:
+- title (short, catchy, SEO optimized)
+- description (HTML, persuasive, structured with bullet points)
+- meta_description (max 155 characters, SEO optimized)
+- keywords (comma-separated, high search intent)
+
+RULES:
+- Use power words
+- Focus on benefits, not just features
+- Add emotional triggers
+- Make it conversion-focused (sales, not just info)
+- Use clean HTML (no markdown)
+- Make it natural for e-commerce
+
+PRODUCT:
+Title: {title}
+Description: {body_html}
 """
 
     response = client.chat.completions.create(
