@@ -159,14 +159,14 @@ Tags: {tags}
 Description: {description}
 """
 
-response =     client.chat.completes.create (​​​
-        model= "gpt-4o-mini" ,
-        الرسائل = [
-            { "role" : "system" , "content" : "أنت كاتب محتوى تسويقي محترف متخصص في تحسين محركات البحث لمنصة Shopify." } ,
-            { "role" : "user" , "content" : prompt } ,
-        ] ,
-        درجة الحرارة = 0.7 ،
-    )
+response = client.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[
+        {"role": "system", "content": "You are a professional Shopify SEO copywriter."},
+        {"role": "user", "content": prompt},
+    ],
+    temperature=0.4,
+)
 
     raw_text = response.choices[0].message.content if response.choices else ""
     if not raw_text:
