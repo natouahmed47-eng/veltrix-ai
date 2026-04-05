@@ -144,14 +144,6 @@ Return ONLY a valid JSON object with:
 - Then include a <ul> with at least 5 persuasive benefit bullet points
 - Each bullet must highlight a clear benefit (not feature)
 - Make it highly converting and sales-focused
-<p>Upgrade your grooming experience with premium precision and comfort.</p>
-<ul>
-<li>Achieve a smooth, irritation-free shave every time</li>
-<li>Designed for maximum comfort and control</li>
-<li>Save time with fast, efficient performance</li>
-<li>Perfect for daily grooming or professional results</li>
-<li>Boost confidence with a clean, sharp look</li>
-</ul>
 """
 
 PRODUCT:
