@@ -606,10 +606,15 @@ def optimize_all_products():
     for product in products[:5]:
         try:
             ai_result = build_title_and_description_with_ai(product, lang=lang)
-            new_title = ai_result["title"]
-            new_description = ai_result["description"]
-            new_meta_description = ai_result["meta_description"]
-            new_keywords = ai_result["keywords"]
+            title = product.get("title", "")
+description = product.get("body_html", "")
+
+prompt = f"""
+...
+PRODUCT:
+Title: {title}
+Description: {description}
+"""
 
             update_response = requests.put(
                 f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
