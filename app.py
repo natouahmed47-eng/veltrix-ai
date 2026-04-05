@@ -512,7 +512,7 @@ def settings_page():
     const message = document.getElementById("message");
     const resultsBox = document.getElementById("results");
     const lang = document.getElementById("language").value;
-
+}
     message.innerHTML = "Optimizing products...";{
     resultsBox.innerHTML = "";{
 
@@ -561,11 +561,7 @@ def settings_page():
     } catch (error) {
         message.innerHTML = `<div class="error">${error.message}</div>`;
     }
-}
-
     
-
-
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])
 def optimize_all_products():
