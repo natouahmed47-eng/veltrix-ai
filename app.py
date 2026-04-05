@@ -147,10 +147,15 @@ RULES:
 - Use short paragraphs and bullet points
 - Include strong hooks and selling angles
 - Avoid generic descriptions
-- Description must be HTML with <ul><li> benefits
-- Make it sound premium and irresistible
-- Do not use markdown
-- Do not use emojis
+- NEVER repeat the original title
+- ALWAYS generate a NEW improved title
+- Make the title more compelling and benefit-driven
+- Description must be HTML using <ul><li>
+- Title must be catchy and optimized for clicks
+- Meta description max 155 characters
+- Keywords must be high-intent and comma-separated
+- Do NOT use markdown
+- Do NOT use emojis
 
 PRODUCT:
 Title: {title}
