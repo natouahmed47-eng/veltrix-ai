@@ -172,33 +172,21 @@ Description: {body_html}
     temperature=0.7,
     )
 
-    تم تنظيف النص الخام باستخدام دالة strip ( ) .
+    start = cleaned.find("{")
+end = cleaned.rfind("}")
 
-    إذا تم تنظيفها. تبدأ بـ ( "```json" ) :
-        تم تنظيفه = تم تنظيفه [ 7 : ]
-    elif cleaned. startswith ( "```" ) :
-        تم تنظيفه = تم تنظيفه [ 3 : ]
+if start != -1 and end != -1 and end > start:
+    cleaned = cleaned[start:end + 1]
 
-    إذا تم تنظيفها. تنتهي بـ ( "```" ) :
-        تم تنظيفه = تم تنظيفه [ :- 3 ]
-
-    تم التنظيف = تم التنظيف. تجريد ( )
-
-    start = cleaned.find ( "{ " )
-    end = cleaned.rfind ( " }" )
-
-    إذا كانت البداية لا تساوي -1  والنهاية لا تساوي -1  والنهاية أكبر من البداية:
-        تم التنظيف = تم التنظيف [ البداية: النهاية + 1 ]
-
-    يحاول :
-        ai_result = json.loads ( cleaned )
-    باستثناء الاستثناء:
-        نتيجة الذكاء الاصطناعي = {
-            "العنوان": العنوان،"title": title,
-            "الوصف" : sanitize_plain_text ( raw_text ) ,
-            "meta_description" : "" ,
-            "الكلمات المفتاحية" : "" ,
-        }
+try:
+    ai_result = json.loads(cleaned)
+except Exception:
+    ai_result = {
+        "title": title,
+        "description": sanitize_plain_text(raw_text),
+        "meta_description": "",
+        "keywords": "",
+    }
 
     new_title = ( ai_result. get ( "title" )  or title ) . strip ( )
     new_description = ( ai_result. get ( "description" )  or  "" ) . strip ( )
