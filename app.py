@@ -139,23 +139,11 @@ Return ONLY a valid JSON object with:
 - meta_description
 - keywords
 
-RULES:
-- Write like a high-converting e-commerce brand
-- Focus on benefits, transformation, and results
-- Use persuasive and emotional language
-- Make the customer feel the product is a MUST-HAVE
-- Use short paragraphs and bullet points
-- Include strong hooks and selling angles
-- Avoid generic descriptions
-- NEVER repeat the original title
-- ALWAYS generate a NEW improved title
-- Make the title more compelling and benefit-driven
-- Description must be HTML using <ul><li>
-- Title must be catchy and optimized for clicks
-- Meta description max 155 characters
-- Keywords must be high-intent and comma-separated
-- Do NOT use markdown
-- Do NOT use emojis
+- Description MUST be structured HTML
+- Start with a strong hook paragraph
+- Then include a <ul> with at least 5 persuasive benefit bullet points
+- Each bullet must highlight a clear benefit (not feature)
+- Make it highly converting and sales-focused
 
 PRODUCT:
 Title: {title}
