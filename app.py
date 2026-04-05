@@ -5,7 +5,7 @@ import traceback
 from datetime import datetime
 from urllib.parse import urlencode
 
-from flask import Flask, jsonify, redirect, request, Response, render_template_string
+from flask import Flask, jsonify, redirect, request, render_template_string
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI
@@ -53,10 +53,15 @@ class ShopifyStore(db.Model):
     )
 
 
-def sanitize_plain_text(text: str) -> str:
-    if not text:
+def sanitize_plain_text(text_value: str) -> str:
+    if not text_value:
         return ""
-    return text.replace("#", "").replace("*", "").replace("`", "").strip()
+    return (
+        text_value.replace("#", "")
+        .replace("*", "")
+        .replace("`", "")
+        .strip()
+    )
 
 
 def get_store(shop: str):
@@ -116,37 +121,14 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    system_prompt = f"""You are an expert e-commerce copywriter and SEO specialist.
-
-Your task is to generate high-converting Shopify product content.
-
-Return JSON only in this exact format:
-{{
-  "title": "optimized product title",
-  "description": "optimized product description",
-  "meta_description": "short SEO description",
-  "keywords": "comma-separated SEO keywords"
-}}
-
-Rules:
-- Write in {language_name} only
-- Do not use markdown
-- Do not use emojis
-- Make the title strong, clear, and persuasive
-- Make the description conversion-focused
-- Make the meta description concise and SEO-friendly
-- Make the keywords highly relevant to the product
-"""
-
-    prompt = f"""
-You are a world-class Shopify SEO expert and conversion copywriter.
+    prompt = f"""You are a world-class Shopify SEO expert and conversion copywriter.
 
 Rewrite this product in {language_name} with HIGH-CONVERSION and SEO optimization.
 
 STRICT FORMAT:
 Return ONLY a valid JSON object with:
 - title (short, catchy, SEO optimized)
-- description (HTML, persuasive, structured with bullet points)
+- description (HTML, persuasive, structured with clear paragraphs and benefits)
 - meta_description (max 155 characters, SEO optimized)
 - keywords (comma-separated, high search intent)
 
@@ -155,45 +137,68 @@ RULES:
 - Focus on benefits, not just features
 - Add emotional triggers
 - Make it conversion-focused (sales, not just info)
-- Use clean HTML (no markdown)
+- Use clean HTML suitable for Shopify
+- Do not use markdown
 - Make it natural for e-commerce
 
 PRODUCT:
 Title: {title}
+Brand: {vendor}
+Category: {product_type}
+Tags: {tags}
 Description: {body_html}
 """
 
     response = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=[
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": prompt},
-    ],
-    temperature=0.7,
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a professional Shopify SEO copywriter."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.7,
     )
 
+    raw_text = response.choices[0].message.content if response.choices else ""
+    if not raw_text:
+        raise RuntimeError("Empty AI response")
+
+    cleaned = raw_text.strip()
+
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+
+    cleaned = cleaned.strip()
+
     start = cleaned.find("{")
-end = cleaned.rfind("}")
+    end = cleaned.rfind("}")
 
-if start != -1 and end != -1 and end > start:
-    cleaned = cleaned[start:end + 1]
+    if start != -1 and end != -1 and end > start:
+        cleaned = cleaned[start:end + 1]
 
-try:
-    ai_result = json.loads(cleaned)
-except Exception:
-    ai_result = {
-        "title": title,
-        "description": sanitize_plain_text(raw_text),
-        "meta_description": "",
-        "keywords": "",
-    }
+    try:
+        ai_result = json.loads(cleaned)
+    except Exception:
+        ai_result = {
+            "title": title,
+            "description": sanitize_plain_text(raw_text),
+            "meta_description": "",
+            "keywords": "",
+        }
 
-    new_title = ( ai_result. get ( "title" )  or title ) . strip ( )
-    new_description = ( ai_result. get ( "description" )  or  "" ) . strip ( )
-    new_meta_description = ( ai_result. get ( "meta_description" )  or  "" ) . strip ( )
+    new_title = (ai_result.get("title") or title).strip()
+    new_description = (ai_result.get("description") or "").strip()
+    new_meta_description = (ai_result.get("meta_description") or "").strip()
     new_keywords = (ai_result.get("keywords") or "").strip()
 
+    if not new_description:
+        new_description = sanitize_plain_text(raw_text)
 
+    return {
         "title": new_title,
         "description": new_description.replace("\n", "<br>"),
         "meta_description": new_meta_description,
