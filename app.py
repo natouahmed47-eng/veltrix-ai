@@ -194,9 +194,6 @@ except Exception:
     new_keywords = (ai_result.get("keywords") or "").strip()
 
 
-
-
-
         "title": new_title,
         "description": new_description.replace("\n", "<br>"),
         "meta_description": new_meta_description,
