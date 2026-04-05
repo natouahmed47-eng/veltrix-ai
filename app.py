@@ -529,7 +529,7 @@ def settings_page():
             message.innerHTML = `<div class="error">${error.message}</div>`;
         }
     }
-
+const resultsBox = document.getElementById("results");
     async function optimizeProducts() {
         const message = document.getElementById("message");
         const resultsBox = document.getElementById("results");
