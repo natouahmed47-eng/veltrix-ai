@@ -139,11 +139,17 @@ Return ONLY a valid JSON object with:
 - meta_description
 - keywords
 
-- Description MUST be structured HTML
-- Start with a strong hook paragraph
-- Then include a <ul> with at least 5 persuasive benefit bullet points
-- Each bullet must highlight a clear benefit (not feature)
-- Make it highly converting and sales-focused
+- if "<ul>" not in new_description:
+    new_description = f"""
+<p>Upgrade your grooming experience with premium precision and comfort.</p>
+<ul>
+<li>Achieve a smooth, irritation-free shave every time</li>
+<li>Designed for maximum comfort and control</li>
+<li>Save time with fast, efficient performance</li>
+<li>Perfect for daily grooming or professional results</li>
+<li>Boost confidence with a clean, sharp look</li>
+</ul>
+"""
 
 PRODUCT:
 Title: {title}
@@ -153,13 +159,13 @@ Tags: {tags}
 Description: {description}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a professional Shopify SEO copywriter."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.7,
+response =     client.chat.completes.create (​​​
+        model= "gpt-4o-mini" ,
+        الرسائل = [
+            { "role" : "system" , "content" : "أنت كاتب محتوى تسويقي محترف متخصص في تحسين محركات البحث لمنصة Shopify." } ,
+            { "role" : "user" , "content" : prompt } ,
+        ] ,
+        درجة الحرارة = 0.7 ،
     )
 
     raw_text = response.choices[0].message.content if response.choices else ""
