@@ -121,32 +121,36 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    prompt = f"""You are a world-class Shopify SEO expert and conversion copywriter.
+    prompt = f"""
+You are a world-class Shopify SEO expert and conversion copywriter.
 
-Rewrite this product in {language_name} with HIGH-CONVERSION and SEO optimization.
+IMPORTANT:
+You MUST write EVERYTHING in {language_name}.
+DO NOT use any other language.
+DO NOT mix languages.
+If you do, the result is INVALID.
+
+Rewrite the following product with HIGH-CONVERSION and SEO optimization.
 
 STRICT FORMAT:
 Return ONLY a valid JSON object with:
-- title (short, catchy, SEO optimized)
-- description (HTML, persuasive, structured with clear paragraphs and benefits)
-- meta_description (max 155 characters, SEO optimized)
-- keywords (comma-separated, high search intent)
+- title
+- description
+- meta_description
+- keywords
 
 RULES:
-- Use power words
-- Focus on benefits, not just features
-- Add emotional triggers
-- Make it conversion-focused (sales, not just info)
-- Use clean HTML suitable for Shopify
-- Do not use markdown
+- Title: short, catchy, optimized for SEO
+- Description: HTML format (<ul><li>...), persuasive and benefit-focused
+- Meta description: max 155 characters
+- Keywords: comma-separated, high intent
+- Focus on benefits, not features
+- Use emotional triggers and sales language
 - Make it natural for e-commerce
 
 PRODUCT:
 Title: {title}
-Brand: {vendor}
-Category: {product_type}
-Tags: {tags}
-Description: {body_html}
+Description: {description}
 """
 
     response = client.chat.completions.create(
