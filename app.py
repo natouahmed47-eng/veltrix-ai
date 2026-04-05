@@ -139,8 +139,11 @@ Return ONLY a valid JSON object with:
 - meta_description
 - keywords
 
-- if "<ul>" not in new_description:
-    new_description = f"""
+- Description MUST be structured HTML
+- Start with a strong hook paragraph
+- Then include a <ul> with at least 5 persuasive benefit bullet points
+- Each bullet must highlight a clear benefit (not feature)
+- Make it highly converting and sales-focused
 <p>Upgrade your grooming experience with premium precision and comfort.</p>
 <ul>
 <li>Achieve a smooth, irritation-free shave every time</li>
