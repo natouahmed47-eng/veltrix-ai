@@ -104,7 +104,7 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
         raise RuntimeError("OpenAI is not configured")
 
     title = (product.get("title") or "").strip()
-    body_html = (product.get("body_html") or "").strip()
+    description = (product.get("body_html") or "").strip()
     vendor = (product.get("vendor") or "").strip()
     product_type = (product.get("product_type") or "").strip()
     tags = (product.get("tags") or "").strip()
@@ -130,7 +130,7 @@ DO NOT use any other language.
 DO NOT mix languages.
 If you do, the result is INVALID.
 
-Rewrite the following product with HIGH-CONVERSION and SEO optimization.
+Rewrite this product with HIGH-CONVERSION and SEO optimization.
 
 STRICT FORMAT:
 Return ONLY a valid JSON object with:
@@ -140,16 +140,20 @@ Return ONLY a valid JSON object with:
 - keywords
 
 RULES:
-- Title: short, catchy, optimized for SEO
-- Description: HTML format (<ul><li>...), persuasive and benefit-focused
+- Title: short, catchy, SEO optimized
+- Description: clean HTML suitable for Shopify
 - Meta description: max 155 characters
-- Keywords: comma-separated, high intent
-- Focus on benefits, not features
-- Use emotional triggers and sales language
-- Make it natural for e-commerce
+- Keywords: comma-separated, high search intent
+- Focus on benefits, not just features
+- Use persuasive e-commerce language
+- Do not use markdown
+- Do not use emojis
 
 PRODUCT:
 Title: {title}
+Brand: {vendor}
+Category: {product_type}
+Tags: {tags}
 Description: {description}
 """
 
@@ -193,6 +197,21 @@ Description: {description}
             "meta_description": "",
             "keywords": "",
         }
+
+    new_title = (ai_result.get("title") or title).strip()
+    new_description = (ai_result.get("description") or "").strip()
+    new_meta_description = (ai_result.get("meta_description") or "").strip()
+    new_keywords = (ai_result.get("keywords") or "").strip()
+
+    if not new_description:
+        new_description = sanitize_plain_text(raw_text)
+
+    return {
+        "title": new_title,
+        "description": new_description.replace("\n", "<br>"),
+        "meta_description": new_meta_description,
+        "keywords": new_keywords,
+    }
 
     new_title = (ai_result.get("title") or title).strip()
     new_description = (ai_result.get("description") or "").strip()
