@@ -114,144 +114,135 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
         "en": "English",
         "fr": "French",
         "es": "Spanish",
+        "de": "German",
+        "it": "Italian",
+        "pt": "Portuguese",
+        "tr": "Turkish",
     }
     language_name = language_map.get(lang, "English")
 
     prompt = f"""
-You are a world-class elite e-commerce copywriter and Shopify SEO expert.
+You are a world-class Shopify CRO expert, SEO strategist, and winning-product copywriter.
 
 IMPORTANT:
 You MUST write EVERYTHING in {language_name}.
 DO NOT use any other language.
 DO NOT mix languages.
+If you mix languages, the result is invalid.
 
-Your goal is to create HIGH-CONVERSION content that SELLS.
+Your mission:
+Turn this product into a WINNING PRODUCT listing that feels premium, irresistible, and high-converting.
 
 STRICT OUTPUT:
-Return ONLY valid JSON:
+Return ONLY valid JSON in this exact structure:
 {{
-  "title": "...",
-  "description": "...",
-  "meta_description": "...",
-  "keywords": "..."
+  "title": "new title",
+  "description": "html description",
+  "meta_description": "seo meta description",
+  "keywords": "comma-separated keywords"
 }}
 
-COPYWRITING RULES:
-- NEVER repeat the original title
-- Create a NEW powerful title
-- Use emotional triggers (confidence, power, attraction, ease)
-- Focus on transformation (before vs after)
-- Make it irresistible and premium
-- Write like a luxury brand
+COPYWRITING GOALS:
+- Make the product feel desirable and must-have
+- Focus on emotional triggers and real-life benefits
+- Show the transformation the buyer gets
+- Use persuasive e-commerce language
+- Make the title feel stronger than the original
+- NEVER repeat the original title exactly
+- ALWAYS create a clearly improved title
 
 DESCRIPTION STRUCTURE:
-1. Strong hook paragraph
-2. Benefits section (HTML list)
-3. Emotional selling tone
+1. Start with a strong hook paragraph
+2. Explain the problem this product solves
+3. Show the transformation/result
+4. Add a benefit list in HTML using <ul><li>
+5. End with a subtle action-driving closing line
 
-HTML FORMAT:
-<p>Hook</p>
-<ul>
-<li>Benefit 1</li>
-<li>Benefit 2</li>
-<li>Benefit 3</li>
-<li>Benefit 4</li>
-<li>Benefit 5</li>
-</ul>
+DESCRIPTION RULES:
+- Must be valid HTML
+- Start with <p> ... </p>
+- Then include <ul> with at least 5 bullet points
+- Every bullet point must explain a BENEFIT, not just a feature
+- Tone must feel premium, modern, and sales-focused
+- Avoid generic phrases
+- Avoid weak wording
+- No markdown
+- No emojis
 
 SEO RULES:
-- Meta description under 155 characters
-- Keywords must be high-intent
-- Title must be click-optimized
+- Meta description must be under 155 characters
+- Keywords must be high-intent and buyer-focused
+- Title must be optimized for clicks and search relevance
 
-PRODUCT:
+PRODUCT DATA:
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
 Tags: {tags}
-Description: {description}
+Current Description: {description}
 """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are an elite conversion copywriter."},
+            {"role": "system", "content": "You are an elite Shopify winning-product copywriter."},
             {"role": "user", "content": prompt},
         ],
-        temperature=0.5,
+        temperature=0.4,
     )
 
     raw_text = response.choices[0].message.content if response.choices else ""
+    if not raw_text:
+        raise RuntimeError("Empty AI response")
 
-    cleaned = raw_text.strip()
-    cleaned = cleaned.replace("\u200b", "")
+    cleaned = raw_text.strip().replace("\u200b", "")
 
-    if cleaned.startswith("```"):
-        cleaned = cleaned.replace("```json", "").replace("```", "").strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+
+    cleaned = cleaned.strip()
 
     start = cleaned.find("{")
     end = cleaned.rfind("}")
 
-    if start != -1 and end != -1:
+    if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
 
     try:
         ai_result = json.loads(cleaned)
-    except:
+    except Exception:
         ai_result = {
             "title": title,
-            "description": description,
+            "description": sanitize_plain_text(raw_text),
             "meta_description": "",
-            "keywords": ""
+            "keywords": "",
         }
 
-    new_title = ai_result.get("title", title)
-    new_description = ai_result.get("description", description)
-    meta = ai_result.get("meta_description", "")
-    keywords = ai_result.get("keywords", "")
+    new_title = (ai_result.get("title") or title).strip()
+    new_description = (ai_result.get("description") or "").strip()
+    new_meta_description = (ai_result.get("meta_description") or "").strip()
+    new_keywords = (ai_result.get("keywords") or "").strip()
 
-    # 🔥 ضمان HTML قوي
+    if not new_description:
+        new_description = sanitize_plain_text(raw_text)
+
     if "<ul>" not in new_description:
         new_description = f"""
-<p>Upgrade your experience with unmatched performance and confidence.</p>
+<p>Upgrade your daily routine with a smarter, more effective solution designed to deliver comfort, convenience, and results you can feel immediately.</p>
 <ul>
-<li>Enjoy powerful and precise results every time</li>
-<li>Designed for comfort and ease of use</li>
-<li>Save time with efficient performance</li>
-<li>Perfect for everyday use</li>
-<li>Boost confidence with a flawless finish</li>
+<li>Enjoy practical benefits that make everyday use easier and more satisfying</li>
+<li>Get a more comfortable and reliable experience from the first use</li>
+<li>Save time with performance designed around real-world convenience</li>
+<li>Feel more confident thanks to a cleaner, more polished result</li>
+<li>Choose a product built to combine function, comfort, and value</li>
 </ul>
+<p>Make the switch today and experience the difference for yourself.</p>
 """
-
-    return {
-        "title": new_title,
-        "description": new_description,
-        "meta_description": meta,
-        "keywords": keywords,
-    }
-
-    new_title = (ai_result.get("title") or title).strip()
-    new_description = (ai_result.get("description") or "").strip()
-    new_meta_description = (ai_result.get("meta_description") or "").strip()
-    new_keywords = (ai_result.get("keywords") or "").strip()
-
-    if not new_description:
-        new_description = sanitize_plain_text(raw_text)
-
-    return {
-        "title": new_title,
-        "description": new_description.replace("\n", "<br>"),
-        "meta_description": new_meta_description,
-        "keywords": new_keywords,
-    }
-
-    new_title = (ai_result.get("title") or title).strip()
-    new_description = (ai_result.get("description") or "").strip()
-    new_meta_description = (ai_result.get("meta_description") or "").strip()
-    new_keywords = (ai_result.get("keywords") or "").strip()
-
-    if not new_description:
-        new_description = sanitize_plain_text(raw_text)
 
     return {
         "title": new_title,
