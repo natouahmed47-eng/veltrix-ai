@@ -261,8 +261,7 @@ new_description = descriptions[0] if descriptions else ""
 new_meta_description = meta_list[0] if meta_list else ""
 new_keywords = (ai_result.get("keywords") or "").strip()
 
-    if not new_description:
-        new_description = sanitize_plain_text(raw_text)
+    
 
     if "<ul>" not in new_description:
         new_description = f"""
