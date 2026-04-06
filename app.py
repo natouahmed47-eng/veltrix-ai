@@ -479,7 +479,8 @@ def settings_page():
     template = """<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Veltrix AI Settings</title>
 
 <style>
@@ -488,199 +489,85 @@ body {
     background: #f6f7fb;
     margin: 0;
     padding: 24px;
+    color: #111827;
 }
+
 .container {
     max-width: 700px;
     margin: 0 auto;
     background: white;
     padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+h1 {
+    margin-top: 0;
+    font-size: 28px;
+}
+
+.muted {
+    color: #6b7280;
+    margin-bottom: 24px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+select, button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-size: 16px;
+    margin-bottom: 16px;
+}
+
+button {
+    background: #111827;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1f2937;
+}
+
+.success {
+    color: green;
+    margin-top: 12px;
 }
 </style>
-
 </head>
+
 <body>
 
-<h1>Settings</h1>
+<div class="container">
+    <h1>Veltrix AI Settings</h1>
+    <p class="muted">Configure your store AI settings</p>
+
+    <form method="POST">
+        <label>Select Language</label>
+        <select name="language">
+            <option value="en">English</option>
+            <option value="ar">Arabic</option>
+        </select>
+
+        <button type="submit">Save Settings</button>
+    </form>
+
+    <div class="success">
+        Settings updated successfully
+    </div>
+</div>
 
 </body>
 </html>
 """
-            .container {
-                max-width: 700px;
-                margin: 0 auto;
-                background: white;
-                padding: 24px;
-                border-radius: 16px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            }
-            h1 {
-                margin-top: 0;
-                font-size: 28px;
-            }
-            .muted {
-                color: #6b7280;
-                margin-bottom: 24px;
-            }
-            label {
-                display: block;
-                margin-bottom: 8px;
-                font-weight: bold;
-            }
-            select, button {
-                width: 100%;
-                padding: 14px;
-                border-radius: 10px;
-                border: 1px solid #d1d5db;
-                font-size: 16px;
-                margin-bottom: 16px;
-            }
-            button {
-                background: #111827;
-                color: white;
-                border: none;
-                cursor: pointer;
-            }
-            button:hover {
-                background: #1f2937;
-            }
-            .secondary {
-                background: #2563eb;
-            }
-            .secondary:hover {
-                background: #1d4ed8;
-            }
-            .card {
-                border: 1px solid #e5e7eb;
-                border-radius: 12px;
-                padding: 16px;
-                margin-top: 20px;
-                background: #fafafa;
-            }
-            .success {
-                color: green;
-                margin-top: 12px;
-            }
-            .error {
-                color: red;
-                margin-top: 12px;
-            }
-            code {
-                background: #f3f4f6;
-                padding: 2px 6px;
-                border-radius: 6px;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>Veltrix AI Language Settings</h1>
-            <div class="muted">Store: <strong>{{ shop }}</strong></div>
-
-            <div class="card">
-                <label for="language">Choose your default content language</label>
-                <select id="language">
-                    <option value="en" {% if current_lang == "en" %}selected{% endif %}>English</option>
-                    <option value="fr" {% if current_lang == "fr" %}selected{% endif %}>French</option>
-                    <option value="es" {% if current_lang == "es" %}selected{% endif %}>Spanish</option>
-                    <option value="ar" {% if current_lang == "ar" %}selected{% endif %}>Arabic</option>
-                    <option value="de" {% if current_lang == "de" %}selected{% endif %}>German</option>
-                    <option value="it" {% if current_lang == "it" %}selected{% endif %}>Italian</option>
-                    <option value="pt" {% if current_lang == "pt" %}selected{% endif %}>Portuguese</option>
-                    <option value="tr" {% if current_lang == "tr" %}selected{% endif %}>Turkish</option>
-                </select>
-
-                <button onclick="saveLanguage()">Save Language</button>
-                <button class="secondary" onclick="optimizeProducts()">Optimize Products</button>
-
-                <div id="message"></div>
-                <div id="results" style="margin-top:20px;"></div>
-            </div>
-
-            <div class="card">
-                <strong>How it works:</strong>
-                <p>1. Select the language you want.</p>
-                <p>2. Click <code>Save Language</code>.</p>
-                <p>3. Click <code>Optimize Products</code>.</p>
-            </div>
-        </div>
-
-        <script>
-            const shop = {{ shop|tojson }};
-
-            async function saveLanguage() {
-                const lang = document.getElementById("language").value;
-                const message = document.getElementById("message");
-                message.innerHTML = "Saving...";
-
-                try {
-                    const response = await fetch(`/set-store-language?shop=${encodeURIComponent(shop)}&lang=${encodeURIComponent(lang)}`);
-                    const data = await response.json();
-
-                    if (response.ok) {
-                        message.innerHTML = `<div class="success">Language saved successfully: ${data.default_language}</div>`;
-                    } else {
-                        message.innerHTML = `<div class="error">${data.error || "Failed to save language"}</div>`;
-                    }
-                } catch (error) {
-                    message.innerHTML = `<div class="error">${error.message}</div>`;
-                }
-            }
-
-            async function optimizeProducts() {
-                const message = document.getElementById("message");
-                const resultsBox = document.getElementById("results");
-                const lang = document.getElementById("language").value;
-
-                message.innerHTML = "Optimizing products...";
-                resultsBox.innerHTML = "";
-
-                try {
-                    const response = await fetch(`/optimize-all-products?shop=${encodeURIComponent(shop)}&lang=${encodeURIComponent(lang)}`);
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        message.innerHTML = `<div class="error">${data.error || "Optimization failed"}</div>`;
-                        return;
-                    }
-
-                    message.innerHTML = `<div class="success">Optimization completed successfully. Language used: ${data.language_used}</div>`;
-
-                    if (!data.results || !data.results.length) {
-                        resultsBox.innerHTML = `<div class="card"><p>No products were processed.</p></div>`;
-                        return;
-                    }
-
-                    let html = `<div class="card"><h3>Optimization Results</h3>`;
-
-                    data.results.forEach((item, index) => {
-                        html += `
-                            <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
-                                <div><strong>#${index + 1}</strong></div>
-                                <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
-                                <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
-                                <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
-                                <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
-                                <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
-                                <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
-                                <div><strong>Description Preview:</strong><br>${item.new_description_preview ?? ""}</div>
-                                <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
-                                <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
-                                ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
-                            </div>
-                        `;
-                    });
-
-                    html += `</div>`;
-                    resultsBox.innerHTML = html;
-
-                } catch (error) {
-                    message.innerHTML = `<div class="error">${error.message}</div>`;
-                }
-            }
-        </script>
-    </body>
-    </html>
-    """
 
     return render_template_string(template, shop=shop, current_lang=current_lang)
 
