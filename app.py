@@ -229,19 +229,19 @@ Current Description: {description}
     new_keywords = (ai_result.get("keywords") or "").strip()
 
     if not new_description:
-        new_description = sanitize_plain_text(raw_text)
+    new_description = sanitize_plain_text(raw_text)
 
-    if "<ul>" not in new_description:
-        new_description = f"""
-<p>Upgrade your daily routine with a smarter, more effective solution designed to deliver comfort, convenience, and results you can feel immediately.</p>
+new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
+
 <ul>
-<li>Enjoy practical benefits that make everyday use easier and more satisfying</li>
-<li>Get a more comfortable and reliable experience from the first use</li>
-<li>Save time with performance designed around real-world convenience</li>
-<li>Feel more confident thanks to a cleaner, more polished result</li>
-<li>Choose a product built to combine function, comfort, and value</li>
+<li>Enjoy a smoother, irritation-free shave every time</li>
+<li>Get a more comfortable and reliable experience</li>
+<li>Save time with performance designed around real needs</li>
+<li>Feel more confident with a cleaner, sharper look</li>
+<li>Choose a product built for comfort and durability</li>
 </ul>
-<p>Make the switch today and experience the difference for yourself.</p>
+
+<p>Make the switch today and experience the difference.</p>
 """
 
     return {
