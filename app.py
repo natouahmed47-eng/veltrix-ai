@@ -212,9 +212,8 @@ Current Description: {description}
 
     if start != -1 and end != -1 and end > start:
         cleaned = cleaned[start:end + 1]
-
     try:
-        ai_result = json.loads(cleaned)
+        ia-result=json.loads(cleaned)
     except Exception:
         ai_result = {
             "title": title,
