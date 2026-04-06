@@ -221,7 +221,36 @@ except Exception:
         "description": sanitize_plain_text(raw_text),
         "meta_description": "",
         "keywords": ""
-      }
+    }
+
+# Safe extraction
+new_title = ai_result.get("title") or title
+new_description = ai_result.get("description") or ""
+new_meta_description = ai_result.get("meta_description") or ""
+new_keywords = ai_result.get("keywords") or ""
+
+# Ensure description exists
+if not new_description:
+    new_description = sanitize_plain_text(raw_text)
+
+# Add HTML fallback if missing
+if "<ul>" not in new_description:
+    new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
+<ul>
+<li>Enjoy a smoother, irritation-free shave</li>
+<li>Get a more comfortable and reliable experience</li>
+<li>Save time with fast and efficient performance</li>
+<li>Feel more confident with a clean, sharp look</li>
+<li>Designed for comfort and effortless control</li>
+</ul>
+<p>Make every shave a premium experience.</p>"""
+
+return {
+    "title": new_title,
+    "description": new_description.replace("\n", ""),
+    "meta_description": new_meta_description,
+    "keywords": new_keywords,
+}
 # Safe extraction
 new_title = ai_result.get("title") or title
 new_description = ai_result.get("description") or ""
