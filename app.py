@@ -229,15 +229,14 @@ new_description = ai_result.get("description") or ""
 new_meta_description = ai_result.get("meta_description") or ""
 new_keywords = ai_result.get("keywords") or ""
 
-# Ensure description exists
+# Safe extraction from AI result
+new_title = (ai_result.get("title") or title or "").strip()
+
+new_description = (ai_result.get("description") or "").strip()
 if not new_description:
     new_description = sanitize_plain_text(raw_text)
 
-if not new_description:
-    new_description = sanitize_plain_text(raw_text)
-if not new_description:
-    new_description = sanitize_plain_text(raw_text)
-
+# ضمان وجود محتوى نظيف ومنظم
 if "<ul>" not in new_description:
     new_description = """<p>Upgrade your grooming routine with a smarter solution.</p>
 <ul>
@@ -248,6 +247,12 @@ if "<ul>" not in new_description:
 <li>Perfect for daily use at home or on the go</li>
 </ul>
 <p>Make every shave a premium experience.</p>"""
+
+new_meta_description = (ai_result.get("meta_description") or "").strip()
+if not new_meta_description:
+    new_meta_description = new_description[:160]
+
+new_keywords = (ai_result.get("keywords") or "").strip()
 return {
     "title": new_title,
     "description": new_description.replace("\n", ""),
