@@ -265,13 +265,13 @@ new_description = ai_result.get("description") or ""
 new_meta_description = ai_result.get("meta_description") or ""
 new_keywords = ai_result.get("keywords") or ""
 
-# Ensure description exists
-if not new_description:
-    new_description = sanitize_plain_text(raw_text)
-
-# Add HTML fallback if missing
 if "<ul>" not in new_description:
-    new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
+    new_description = """<p>Upgrade your grooming routine</p>
+<ul>
+<li>Better shave</li>
+<li>More comfort</li>
+</ul>
+"""
 <ul>
 <li>Enjoy a smoother, irritation-free shave</li>
 <li>Get a more comfortable and reliable experience</li>
