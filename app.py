@@ -278,10 +278,9 @@ new_keywords = (ai_result.get("keywords") or "").strip()
 if not new_description:
     new_description = sanitize_plain_text(raw_text)
 
-# ضمان وجود HTML احترافي دائمًا
 if "<ul>" not in new_description:
     new_description = f"""
-<p>Upgrade your grooming routine with unmatched precision and confidence.</p>
+<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
 
 <ul>
 <li>Enjoy a smoother, irritation-free shave every time</li>
