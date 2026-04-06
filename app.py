@@ -1,5 +1,5 @@
-import os 
-import json  
+import os
+import json
 import requests
 import traceback
 from datetime import datetime
@@ -57,7 +57,8 @@ def sanitize_plain_text(text_value: str) -> str:
     if not text_value:
         return ""
     return (
-        text_value.replace("#", "")
+        str(text_value)
+        .replace("#", "")
         .replace("*", "")
         .replace("`", "")
         .strip()
@@ -99,6 +100,126 @@ def save_shop_token(
     return store
 
 
+def detect_product_angle(title: str, product_type: str, tags: str, description: str) -> str:
+    text_blob = " ".join([
+        title.lower(),
+        product_type.lower(),
+        tags.lower(),
+        description.lower(),
+    ])
+
+    grooming_keywords = [
+        "shaver", "shave", "razor", "clipper", "beard", "groom", "hair trimmer",
+        "grooming", "barber"
+    ]
+    beauty_keywords = [
+        "beauty", "skincare", "skin", "face", "cosmetic", "serum", "makeup",
+        "cleanser", "cream", "beauty tool"
+    ]
+    home_keywords = [
+        "home", "kitchen", "household", "organizer", "cleaning", "storage",
+        "cook", "appliance", "room"
+    ]
+    tech_keywords = [
+        "tech", "electronic", "device", "smart", "charger", "wireless", "usb",
+        "gadget", "bluetooth"
+    ]
+    fashion_keywords = [
+        "fashion", "wear", "shirt", "dress", "watch", "bag", "shoe", "jewelry",
+        "accessory"
+    ]
+
+    if any(k in text_blob for k in grooming_keywords):
+        return "grooming"
+    if any(k in text_blob for k in beauty_keywords):
+        return "beauty"
+    if any(k in text_blob for k in home_keywords):
+        return "home"
+    if any(k in text_blob for k in tech_keywords):
+        return "tech"
+    if any(k in text_blob for k in fashion_keywords):
+        return "fashion"
+    return "general"
+
+
+def build_fallback_description(angle: str) -> str:
+    fallback_map = {
+        "grooming": (
+            "<p>Upgrade your grooming routine with a premium solution designed "
+            "for comfort, confidence, and consistently clean results.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more comfortable grooming experience</li>"
+            "<li>Save time with efficient performance built for daily use</li>"
+            "<li>Feel more confident with a cleaner, more polished look</li>"
+            "<li>Get reliable control and convenience from the first use</li>"
+            "<li>Choose a smarter grooming essential that fits your lifestyle</li>"
+            "</ul>"
+            "<p>Make every session easier, sharper, and more satisfying.</p>"
+        ),
+        "beauty": (
+            "<p>Elevate your beauty routine with a solution designed to help you "
+            "look refreshed, polished, and effortlessly put together.</p>"
+            "<ul>"
+            "<li>Support a more refined and confident everyday look</li>"
+            "<li>Enjoy a routine that feels easier, smoother, and more effective</li>"
+            "<li>Get results that help you feel polished and ready faster</li>"
+            "<li>Add comfort and convenience to your daily self-care ritual</li>"
+            "<li>Choose a beauty essential made to enhance your routine</li>"
+            "</ul>"
+            "<p>Refresh your routine with a beauty upgrade you will actually enjoy using.</p>"
+        ),
+        "home": (
+            "<p>Make everyday living easier with a practical solution designed "
+            "to save time, reduce hassle, and improve comfort at home.</p>"
+            "<ul>"
+            "<li>Bring more ease and convenience into your daily routine</li>"
+            "<li>Save time with a solution built around real household needs</li>"
+            "<li>Enjoy a more organized, efficient, and stress-free experience</li>"
+            "<li>Improve comfort and usability in the moments that matter most</li>"
+            "<li>Choose a dependable addition that supports everyday living</li>"
+            "</ul>"
+            "<p>Simplify your routine with a home essential built for real life.</p>"
+        ),
+        "tech": (
+            "<p>Upgrade your setup with a smart solution designed for convenience, "
+            "performance, and modern everyday use.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother, more efficient daily experience</li>"
+            "<li>Save time with practical functionality that fits your routine</li>"
+            "<li>Get dependable performance where it matters most</li>"
+            "<li>Add convenience and flexibility to your everyday setup</li>"
+            "<li>Choose a modern essential built to keep up with your lifestyle</li>"
+            "</ul>"
+            "<p>Make the smarter choice for a more seamless everyday routine.</p>"
+        ),
+        "fashion": (
+            "<p>Refine your look with a stylish essential designed to bring more "
+            "confidence, versatility, and polish to your everyday wardrobe.</p>"
+            "<ul>"
+            "<li>Enhance your personal style with a more elevated finish</li>"
+            "<li>Enjoy a versatile piece that works across different occasions</li>"
+            "<li>Feel more confident with a polished and put-together look</li>"
+            "<li>Bring comfort and style together in one smart choice</li>"
+            "<li>Choose an item that adds value to your everyday wardrobe</li>"
+            "</ul>"
+            "<p>Step into a sharper, more confident version of your style.</p>"
+        ),
+        "general": (
+            "<p>Upgrade your routine with a smarter, more effective solution designed "
+            "to deliver comfort, convenience, and results you can feel from the start.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more reliable experience every time</li>"
+            "<li>Save time with practical performance built for daily use</li>"
+            "<li>Feel more confident with cleaner, more polished results</li>"
+            "<li>Experience comfort and control designed around real needs</li>"
+            "<li>Choose a product that combines function, convenience, and value</li>"
+            "</ul>"
+            "<p>Make the switch today and experience the difference for yourself.</p>"
+        ),
+    }
+    return fallback_map.get(angle, fallback_map["general"])
+
+
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -121,58 +242,109 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
+    angle = detect_product_angle(title, product_type, tags, description)
+
+    angle_instructions = {
+        "grooming": (
+            "Use a sleek, confident, premium grooming tone. "
+            "Emphasize precision, comfort, confidence, clean results, convenience, and polished appearance."
+        ),
+        "beauty": (
+            "Use a refined beauty/self-care tone. "
+            "Emphasize glow, confidence, routine upgrade, elegance, ease, and polished results."
+        ),
+        "home": (
+            "Use a practical but persuasive household tone. "
+            "Emphasize ease, saving time, convenience, comfort, and improving everyday life."
+        ),
+        "tech": (
+            "Use a smart, modern, performance-driven tone. "
+            "Emphasize convenience, speed, smooth experience, efficiency, and reliability."
+        ),
+        "fashion": (
+            "Use a stylish, premium fashion tone. "
+            "Emphasize confidence, versatility, elegance, daily wearability, and elevated style."
+        ),
+        "general": (
+            "Use a premium, conversion-focused e-commerce tone. "
+            "Emphasize benefits, ease, comfort, value, and transformation."
+        ),
+    }
+
     prompt = f"""
-You are a world-class Shopify CRO expert, SEO strategist, and winning-product copywriter.
+You are a world-class Shopify SEO strategist, direct-response copywriter, and conversion expert.
 
-IMPORTANT:
-You MUST write EVERYTHING in {language_name}.
-DO NOT use any other language.
-DO NOT mix languages.
-If you mix languages, the result is invalid.
+IMPORTANT LANGUAGE RULES:
+- Write EVERYTHING in {language_name}.
+- Do NOT mix languages.
+- Do NOT use English words unless the requested language is English.
+- The output must feel native, natural, and professional for e-commerce buyers in that language.
 
-Your mission:
-Turn this product into a WINNING PRODUCT listing that feels premium, irresistible, and high-converting.
+PRODUCT ANGLE:
+- Product type classification: {angle}
+- Writing style instruction: {angle_instructions.get(angle, angle_instructions["general"])}
 
-STRICT OUTPUT:
-Return ONLY valid JSON in this exact structure:
+YOUR JOB:
+Rewrite this Shopify product listing to maximize:
+1. Click-through rate
+2. Conversion rate
+3. SEO relevance
+4. Perceived value
+
+STRICT OUTPUT FORMAT:
+Return ONLY a valid JSON object in this exact structure:
 {{
-  "title": "new title",
-  "description": "html description",
-  "meta_description": "seo meta description",
-  "keywords": "comma-separated keywords"
+  "title": "string",
+  "description": "string",
+  "meta_description": "string",
+  "keywords": "string"
 }}
 
-COPYWRITING GOALS:
-- Make the product feel desirable and must-have
-- Focus on emotional triggers and real-life benefits
-- Show the transformation the buyer gets
-- Use persuasive e-commerce language
-- Make the title feel stronger than the original
-- NEVER repeat the original title exactly
-- ALWAYS create a clearly improved title
+FIELD RULES:
 
-DESCRIPTION STRUCTURE:
-1. Start with a strong hook paragraph
-2. Explain the problem this product solves
-3. Show the transformation/result
-4. Add a benefit list in HTML using <ul><li>
-5. End with a subtle action-driving closing line
+TITLE:
+- Must be clearly better than the original
+- 45 to 70 characters preferred
+- Strong, premium, persuasive
+- SEO-friendly
+- No quotation marks
+- No emojis
+- Avoid generic phrases like "Best Product" or "High Quality Item"
 
-DESCRIPTION RULES:
-- Must be valid HTML
-- Start with <p> ... </p>
-- Then include <ul> with at least 5 bullet points
-- Every bullet point must explain a BENEFIT, not just a feature
-- Tone must feel premium, modern, and sales-focused
-- Avoid generic phrases
-- Avoid weak wording
+DESCRIPTION:
+- Must be valid HTML only
+- Start with exactly one strong <p> hook paragraph
+- Then include exactly one <ul> with 5 to 7 <li> items
+- Each bullet must focus on a BENEFIT, not just a feature
+- End with exactly one closing <p> that encourages action
+- Tone must be persuasive, premium, clear, and modern
 - No markdown
 - No emojis
+- No fake claims
+- No excessive hype
+- No repeated sentences
+- Avoid vague filler
 
-SEO RULES:
-- Meta description must be under 155 characters
-- Keywords must be high-intent and buyer-focused
-- Title must be optimized for clicks and search relevance
+META DESCRIPTION:
+- Maximum 155 characters
+- SEO-friendly
+- Natural and compelling
+- Must make people want to click
+
+KEYWORDS:
+- Comma-separated only
+- 6 to 10 keywords
+- High buying intent
+- No hashtags
+- No duplicate keywords
+- No long full sentences
+
+COPYWRITING STRATEGY:
+- Focus on the transformation the customer gets
+- Emphasize comfort, convenience, confidence, performance, and ease of use when relevant
+- Make the product feel desirable and worth buying now
+- Do not simply restate the original title or description
+- Be concrete and benefit-driven
 
 PRODUCT DATA:
 Title: {title}
@@ -185,17 +357,23 @@ Current Description: {description}
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are an elite Shopify winning-product copywriter."},
+            {
+                "role": "system",
+                "content": (
+                    "You are an elite Shopify conversion copywriter. "
+                    "You always return clean JSON only."
+                ),
+            },
             {"role": "user", "content": prompt},
         ],
-        temperature=0.4,
+        temperature=0.5,
     )
 
     raw_text = response.choices[0].message.content if response.choices else ""
     if not raw_text:
         raise RuntimeError("Empty AI response")
 
-    cleaned = raw_text.strip().replace("\u200b", "")
+    cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
 
     if cleaned.startswith("```json"):
         cleaned = cleaned[7:]
@@ -207,97 +385,54 @@ Current Description: {description}
 
     cleaned = cleaned.strip()
 
-start = cleaned.find("{")
-end = cleaned.rfind("}")
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        cleaned = cleaned[start:end + 1]
 
-if start != -1 and end != -1 and end > start:
-    cleaned = cleaned[start:end + 1]
+    try:
+        ai_result = json.loads(cleaned)
+    except Exception:
+        ai_result = {
+            "title": title,
+            "description": "",
+            "meta_description": "",
+            "keywords": "",
+        }
 
-try:
-    ai_result = json.loads(cleaned)
-except Exception:
-    ai_result = {
-        "title": title,
-        "description": sanitize_plain_text(raw_text),
-        "meta_description": "",
-        "keywords": ""
-    }
+    new_title = str(ai_result.get("title") or title).strip()
+    new_description = str(ai_result.get("description") or "").strip()
+    new_meta_description = str(ai_result.get("meta_description") or "").strip()
+    new_keywords = str(ai_result.get("keywords") or "").strip()
 
-# Safe extraction
-new_title = ai_result.get("title") or title
-new_description = ai_result.get("description") or ""
-new_meta_description = ai_result.get("meta_description") or ""
-new_keywords = ai_result.get("keywords") or ""
+    if not new_title:
+        new_title = title
 
-# Safe extraction from AI result
-new_title = (ai_result.get("title") or title or "").strip()
+    fallback_description = build_fallback_description(angle)
 
-new_description = (ai_result.get("description") or "").strip()
-if not new_description:
-    new_description = sanitize_plain_text(raw_text)
+    if not new_description:
+        new_description = fallback_description
 
-new_title = (ai_result.get("title") or title).strip()
-new_description = (ai_result.get("description") or "").strip()
-new_meta_description = (ai_result.get("meta_description") or "").strip()
-new_keywords = (ai_result.get("keywords") or "").strip()
+    if "<ul>" not in new_description or "<li>" not in new_description:
+        new_description = fallback_description
 
-if not new_description:
-    new_description = sanitize_plain_text(raw_text)
+    if not new_meta_description:
+        fallback_meta = sanitize_plain_text(new_title)
+        if len(fallback_meta) > 155:
+            fallback_meta = fallback_meta[:152].rstrip() + "..."
+        new_meta_description = fallback_meta
 
-if "<ul>" not in new_description:
-    new_description = """<p>Upgrade your grooming routine with a smarter solution.</p>
-<ul>
-<li>Enjoy a smoother, irritation-free shave</li>
-<li>Get a more comfortable and reliable experience</li>
-<li>Save time with fast and efficient performance</li>
-<li>Feel more confident with a clean, sharp look</li>
-<li>Designed for comfort and effortless control</li>
-</ul>
-<p>Make every shave a premium experience.</p>"""
+    if len(new_meta_description) > 155:
+        new_meta_description = new_meta_description[:152].rstrip() + "..."
 
-return {
-    "title": new_title,
-    "description": new_description.replace("\n", ""),
-    "meta_description": new_meta_description,
-    "keywords": new_keywords,
-}
-return {
-    "title": new_title,
-    "description": new_description.replace("\n", ""),
-    "meta_description": new_meta_description, 
-    "keywords": new_keywords,
-    new_title = (ai_result.get("title") or title).strip()
-new_description = (ai_result.get("description") or "").strip()
-new_meta_description = (ai_result.get("meta_description") or "").strip()
-new_keywords = (ai_result.get("keywords") or "").strip()
-"""
-if not new_description:
-    new_description = sanitize_plain_text(raw_text)
-
-if "<ul>" not in new_description:
-    new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
-
-<ul>
-<li>Enjoy a smoother, irritation-free shave every time</li>
-<li>Get a more comfortable and reliable experience</li>
-<li>Save time with performance designed around real needs</li>
-<li>Feel more confident with a cleaner, sharper look</li>
-<li>Choose a product built for comfort and durability</li>
-</ul>
-
-<p>Make the switch today and experience the difference.</p>
-"""
-
-return {
-    "title": new_title,
-    "description": new_description.replace("\n", ""),
-    "meta_description": new_meta_description,
-    "keywords": new_keywords,
-}
+    if not new_keywords:
+        keyword_parts = [title, vendor, product_type]
+        keyword_parts = [k.strip() for k in keyword_parts if k and k.strip()]
+        new_keywords = ", ".join(keyword_parts[:6])
 
     return {
         "title": new_title,
-        "description": new_description.replace("\n", "<br>"),
+        "description": new_description,
         "meta_description": new_meta_description,
         "keywords": new_keywords,
     }
@@ -468,8 +603,8 @@ def settings_page():
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Veltrix AI Settings</title>
     <style>
         body {
@@ -646,7 +781,6 @@ def settings_page():
 
                 html += `</div>`;
                 resultsBox.innerHTML = html;
-
             } catch (error) {
                 message.innerHTML = `<div class="error">${error.message}</div>`;
             }
