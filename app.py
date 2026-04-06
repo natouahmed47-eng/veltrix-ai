@@ -122,25 +122,54 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     language_name = language_map.get(lang, "English")
 
     prompt = f"""
-You are a world-class Shopify CRO expert, SEO strategist, and winning-product copywriter.
+You are a world-class Shopify CRO expert and A/B testing strategist.
 
 IMPORTANT:
-You MUST write EVERYTHING in {language_name}.
-DO NOT use any other language.
-DO NOT mix languages.
-If you mix languages, the result is invalid.
+Write everything in {language_name} only.
 
 Your mission:
-Turn this product into a WINNING PRODUCT listing that feels premium, irresistible, and high-converting.
+Generate 3 HIGH-CONVERTING variations of this product.
 
 STRICT OUTPUT:
-Return ONLY valid JSON in this exact structure:
+Return ONLY valid JSON in this structure:
+
 {{
-  "title": "new title",
-  "description": "html description",
-  "meta_description": "seo meta description",
+  "titles": ["title1", "title2", "title3"],
+  "descriptions": ["html1", "html2", "html3"],
+  "meta_descriptions": ["meta1", "meta2", "meta3"],
   "keywords": "comma-separated keywords"
 }}
+
+RULES:
+
+TITLES:
+- Each must be unique
+- Use different angles (premium, problem-solution, emotional)
+- Make them click-worthy
+
+DESCRIPTIONS:
+- Must be HTML
+- Each must start with <p>
+- Include <ul> with at least 5 benefit bullet points
+- Each version should use a different tone/style:
+  1. Premium luxury tone
+  2. Problem → solution
+  3. Fast & practical lifestyle
+
+META:
+- Max 155 characters
+- Each one different
+
+KEYWORDS:
+- High intent only
+
+PRODUCT:
+Title: {title}
+Brand: {vendor}
+Category: {product_type}
+Tags: {tags}
+Description: {description}
+"""
 
 COPYWRITING GOALS:
 - Make the product feel desirable and must-have
@@ -223,10 +252,14 @@ Current Description: {description}
             "keywords": "",
         }
 
-    new_title = (ai_result.get("title") or title).strip()
-    new_description = (ai_result.get("description") or "").strip()
-    new_meta_description = (ai_result.get("meta_description") or "").strip()
-    new_keywords = (ai_result.get("keywords") or "").strip()
+    titles = ai_result.get("titles") or []
+descriptions = ai_result.get("descriptions") or []
+meta_list = ai_result.get("meta_descriptions") or []
+
+new_title = titles[0] if titles else title
+new_description = descriptions[0] if descriptions else ""
+new_meta_description = meta_list[0] if meta_list else ""
+new_keywords = (ai_result.get("keywords") or "").strip()
 
     if not new_description:
         new_description = sanitize_plain_text(raw_text)
