@@ -236,51 +236,31 @@ new_description = (ai_result.get("description") or "").strip()
 if not new_description:
     new_description = sanitize_plain_text(raw_text)
 
-# ضمان وجود محتوى نظيف ومنظم
+new_title = (ai_result.get("title") or title).strip()
+new_description = (ai_result.get("description") or "").strip()
+new_meta_description = (ai_result.get("meta_description") or "").strip()
+new_keywords = (ai_result.get("keywords") or "").strip()
+
+if not new_description:
+    new_description = sanitize_plain_text(raw_text)
+
 if "<ul>" not in new_description:
     new_description = """<p>Upgrade your grooming routine with a smarter solution.</p>
 <ul>
-<li>Enjoy a smoother, irritation-free shave</li>
-<li>Save time with fast and efficient performance</li>
-<li>Feel more confident with a clean, sharp look</li>
-<li>Designed for comfort and effortless control</li>
-<li>Perfect for daily use at home or on the go</li>
-</ul>
-<p>Make every shave a premium experience.</p>"""
-
-new_meta_description = (ai_result.get("meta_description") or "").strip()
-if not new_meta_description:
-    new_meta_description = new_description[:160]
-
-new_keywords = (ai_result.get("keywords") or "").strip()
-return {
-    "title": new_title,
-    "description": new_description.replace("\n", ""),
-    "meta_description": new_meta_description,
-    "keywords": new_keywords,
-}
-# Safe extraction
-new_title = ai_result.get("title") or title
-new_description = ai_result.get("description") or ""
-new_meta_description = ai_result.get("meta_description") or ""
-new_keywords = ai_result.get("keywords") or ""
-
-if "<ul>" not in new_description:
-    new_description = """<p>Upgrade your grooming routine</p>
-<ul>
-<li>Better shave</li>
-<li>More comfort</li>
-</ul>
-"""
-}
 <li>Enjoy a smoother, irritation-free shave</li>
 <li>Get a more comfortable and reliable experience</li>
 <li>Save time with fast and efficient performance</li>
 <li>Feel more confident with a clean, sharp look</li>
 <li>Designed for comfort and effortless control</li>
 </ul>
-<p>Make every shave a premium experience.</p>
-"""
+<p>Make every shave a premium experience.</p>"""
+
+return {
+    "title": new_title,
+    "description": new_description.replace("\n", ""),
+    "meta_description": new_meta_description,
+    "keywords": new_keywords,
+}
 return {
     "title": new_title,
     "description": new_description.replace("\n", ""),
