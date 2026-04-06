@@ -276,10 +276,10 @@ if "<ul>" not in new_description:
 return {
     "title": new_title,
     "description": new_description.replace("\n", ""),
-    "meta_description": new_meta_description,
+    "meta_description": new_meta_description, 
     "keywords": new_keywords,
 }
-  new_title = (ai_result.get("title") or title).strip()
+    new_title = (ai_result.get("title") or title).strip()
 new_description = (ai_result.get("description") or "").strip()
 new_meta_description = (ai_result.get("meta_description") or "").strip()
 new_keywords = (ai_result.get("keywords") or "").strip()
