@@ -221,8 +221,7 @@ except Exception:
         "description": sanitize_plain_text(raw_text),
         "meta_description": "",
         "keywords": ""
-    }
-
+      }
 # Safe extraction
 new_title = ai_result.get("title") or title
 new_description = ai_result.get("description") or ""
