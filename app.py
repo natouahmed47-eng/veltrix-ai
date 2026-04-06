@@ -233,15 +233,17 @@ new_keywords = ai_result.get("keywords") or ""
 if not new_description:
     new_description = sanitize_plain_text(raw_text)
 
-# Add HTML fallback if missing
+if not new_description:
+    new_description = sanitize_plain_text(raw_text)
+
 if "<ul>" not in new_description:
-    new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
+    new_description = """<p>Upgrade your grooming routine with a smarter solution.</p>
 <ul>
 <li>Enjoy a smoother, irritation-free shave</li>
-<li>Get a more comfortable and reliable experience</li>
 <li>Save time with fast and efficient performance</li>
 <li>Feel more confident with a clean, sharp look</li>
 <li>Designed for comfort and effortless control</li>
+<li>Perfect for daily use at home or on the go</li>
 </ul>
 <p>Make every shave a premium experience.</p>"""
 
