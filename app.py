@@ -265,10 +265,14 @@ new_description = ai_result.get("description") or ""
 new_meta_description = ai_result.get("meta_description") or ""
 new_keywords = ai_result.get("keywords") or ""
 
-new_description = sanitize_plain_text(raw_text)
-
-new_description = """<p>Upgrade your...
+if "<ul>" not in new_description:
+    new_description = """<p>Upgrade your grooming routine</p>
 <ul>
+<li>Better shave</li>
+<li>More comfort</li>
+</ul>
+"""
+}
 <li>Enjoy a smoother, irritation-free shave</li>
 <li>Get a more comfortable and reliable experience</li>
 <li>Save time with fast and efficient performance</li>
