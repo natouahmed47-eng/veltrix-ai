@@ -245,12 +245,12 @@ Current Description: {description}
     try:
         ai_result = json.loads(cleaned)
     except Exception:
-        ai_result = {
-            "title": title,
-            "description": sanitize_plain_text(raw_text),
-            "meta_description": "",
-            "keywords": "",
-        }
+    ai_result = {
+        "titles": [title],
+        "descriptions": [sanitize_plain_text(raw_text)],
+        "meta_descriptions": [""],
+        "keywords": "",
+}
 
     titles = ai_result.get("titles") or []
 descriptions = ai_result.get("descriptions") or []
