@@ -476,21 +476,35 @@ def settings_page():
 
     current_lang = store.default_language or "en"
 
-    template = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Veltrix AI Settings</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                background: #f6f7fb;
-                margin: 0;
-                padding: 24px;
-                color: #111827;
-            }
+    template = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Veltrix AI Settings</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f6f7fb;
+    margin: 0;
+    padding: 24px;
+}
+.container {
+    max-width: 700px;
+    margin: 0 auto;
+    background: white;
+    padding: 24px;
+}
+</style>
+
+</head>
+<body>
+
+<h1>Settings</h1>
+
+</body>
+</html>
+"""
             .container {
                 max-width: 700px;
                 margin: 0 auto;
