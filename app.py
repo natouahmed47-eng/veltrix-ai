@@ -276,6 +276,10 @@ new_keywords = (ai_result.get("keywords") or "").strip()
 </ul>
 <p>Make the switch today and experience the difference for yourself.</p>
 """
+if not new_description:
+    new_description = sanitize_plain_text(raw_text)
+
+# ضمان وجود HTML احترافي دائمًا
 if "<ul>" not in new_description:
     new_description = f"""
 <p>Upgrade your grooming routine with unmatched precision and confidence.</p>
@@ -290,12 +294,13 @@ if "<ul>" not in new_description:
 
 <p>Make every shave a premium experience.</p>
 """
-    return {
-        "title": new_title,
-        "description": new_description.replace("\n", "<br>"),
-        "meta_description": new_meta_description,
-        "keywords": new_keywords,
-    }
+
+return {
+    "title": new_title,
+    "description": new_description.replace("\n", ""),
+    "meta_description": new_meta_description,
+    "keywords": new_keywords,
+}
 
 
 @app.route("/")
