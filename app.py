@@ -224,14 +224,15 @@ Current Description: {description}
         }
 
     new_title = (ai_result.get("title") or title).strip()
-    new_description = (ai_result.get("description") or "").strip()
-    new_meta_description = (ai_result.get("meta_description") or "").strip()
-    new_keywords = (ai_result.get("keywords") or "").strip()
+new_description = (ai_result.get("description") or "").strip()
+new_meta_description = (ai_result.get("meta_description") or "").strip()
+new_keywords = (ai_result.get("keywords") or "").strip()
 
-    if not new_description:
+if not new_description:
     new_description = sanitize_plain_text(raw_text)
 
-new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
+if "<ul>" not in new_description:
+    new_description = """<p>Upgrade your grooming routine with a smarter, more effective solution.</p>
 
 <ul>
 <li>Enjoy a smoother, irritation-free shave every time</li>
@@ -243,6 +244,13 @@ new_description = """<p>Upgrade your grooming routine with a smarter, more effec
 
 <p>Make the switch today and experience the difference.</p>
 """
+
+return {
+    "title": new_title,
+    "description": new_description.replace("\n", ""),
+    "meta_description": new_meta_description,
+    "keywords": new_keywords,
+}
 
     return {
         "title": new_title,
