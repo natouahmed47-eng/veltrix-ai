@@ -252,13 +252,9 @@ Current Description: {description}
         "keywords": "",
 }
 
-    titles = ai_result.get("titles") or []
-descriptions = ai_result.get("descriptions") or []
-meta_list = ai_result.get("meta_descriptions") or []
-
-new_title = titles[0] if titles else title
-new_description = descriptions[0] if descriptions else ""
-new_meta_description = meta_list[0] if meta_list else ""
+    new_title = (ai_result.get("title") or title).strip()
+new_description = (ai_result.get("description") or "").strip()
+new_meta_description = (ai_result.get("meta_description") or "").strip()
 new_keywords = (ai_result.get("keywords") or "").strip()
 
     
