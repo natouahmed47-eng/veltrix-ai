@@ -243,7 +243,20 @@ Current Description: {description}
 </ul>
 <p>Make the switch today and experience the difference for yourself.</p>
 """
+if "<ul>" not in new_description:
+    new_description = f"""
+<p>Upgrade your grooming routine with unmatched precision and confidence.</p>
 
+<ul>
+<li>Enjoy a smoother, irritation-free shave every time</li>
+<li>Save time with fast and efficient performance</li>
+<li>Feel more confident with a clean, sharp look</li>
+<li>Designed for comfort and effortless control</li>
+<li>Perfect for daily use at home or on the go</li>
+</ul>
+
+<p>Make every shave a premium experience.</p>
+"""
     return {
         "title": new_title,
         "description": new_description.replace("\n", "<br>"),
