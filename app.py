@@ -235,6 +235,8 @@ if not new_description:
 
 if not new_description:
     new_description = sanitize_plain_text(raw_text)
+if not new_description:
+    new_description = sanitize_plain_text(raw_text)
 
 if "<ul>" not in new_description:
     new_description = """<p>Upgrade your grooming routine with a smarter solution.</p>
@@ -246,7 +248,6 @@ if "<ul>" not in new_description:
 <li>Perfect for daily use at home or on the go</li>
 </ul>
 <p>Make every shave a premium experience.</p>"""
-
 return {
     "title": new_title,
     "description": new_description.replace("\n", ""),
