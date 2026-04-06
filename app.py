@@ -271,8 +271,8 @@ if "<ul>" not in new_description:
 <li>Feel more confident with a clean, sharp look</li>
 <li>Designed for comfort and effortless control</li>
 </ul>
-<p>Make every shave a premium experience.</p>"""
-
+<p>Make every shave a premium experience.</p>
+"""
 return {
     "title": new_title,
     "description": new_description.replace("\n", ""),
@@ -282,7 +282,7 @@ return {
 new_description = (ai_result.get("description") or "").strip()
 new_meta_description = (ai_result.get("meta_description") or "").strip()
 new_keywords = (ai_result.get("keywords") or "").strip()
-
+"""
 if not new_description:
     new_description = sanitize_plain_text(raw_text)
 
