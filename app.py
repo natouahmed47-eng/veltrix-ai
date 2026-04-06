@@ -854,17 +854,50 @@ def optimize_all_products():
                 timeout=30,
             )
 
+           # Save SEO data as Shopify metafields
+            metafields_payload = {
+            "metafields": [
+        {
+            "namespace": "custom",
+            "key": "ai_meta_description",
+            "type": "single_line_text_field",
+            "value": new_meta_description[:155],
+        },
+        {
+            "namespace": "custom",
+            "key": "ai_keywords",
+            "type": "multi_line_text_field",
+            "value": new_keywords,
+        },
+    ]
+}
+
+metafields_response = requests.post(
+    f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
+    headers={
+        "X-Shopify-Access-Token": store.access_token,
+        "Content-Type": "application/json",
+    },
+    json=metafields_payload,
+    timeout=30,
+)
+            
+            
+            
+            
             results.append({
-                "product_id": product["id"],
-                "old_title": product.get("title"),
-                "new_title": new_title,
-                "success": update_response.status_code == 200,
-                "status_code": update_response.status_code,
-                "language_used": lang,
-                "new_description_preview": new_description[:200],
-                "meta_description_preview": new_meta_description[:160],
-                "keywords": new_keywords,
-            })
+    "product_id": product["id"],
+    "old_title": product.get("title"),
+    "new_title": new_title,
+    "success": update_response.status_code == 200,
+    "status_code": update_response.status_code,
+    "language_used": lang,
+    "new_description_preview": new_description[:200],
+    "meta_description_preview": new_meta_description[:160],
+    "keywords": new_keywords,
+    "metafields_saved": metafields_response.status_code in (200, 201),
+    "metafields_status_code": metafields_response.status_code,
+})
 
         except Exception as e:
             print("ERROR:", str(e))
