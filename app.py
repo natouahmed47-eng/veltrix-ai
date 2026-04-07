@@ -261,140 +261,70 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    angle = detect_product_angle(title, product_type, tags, description)
+    prompt = f"""You are a top 1% Shopify conversion expert and direct-response copywriter.
 
-    market_map = {
-        "en": "US",
-        "fr": "EU",
-        "de": "EU",
-        "it": "EU",
-        "es": "EU",
-        "pt": "EU",
-        "ar": "Arab",
-        "tr": "Regional",
-    }
-    market = market_map.get(lang, "Global")
+LANGUAGE:
+Write ONLY in {language_name}.
+No mixing languages.
 
-    angle_instructions = {
-        "grooming": "Use a sleek, premium grooming tone focused on precision, comfort, confidence, and clean results.",
-        "beauty": "Use a refined beauty tone focused on glow, confidence, elegance, and self-care.",
-        "home": "Use a practical but persuasive household tone focused on convenience, comfort, and saving time.",
-        "tech": "Use a modern, performance-driven tone focused on efficiency, convenience, and reliability.",
-        "fashion": "Use a stylish premium tone focused on confidence, versatility, and polished appearance.",
-        "fitness": "Use an energetic, performance-driven tone focused on consistency, comfort, and better workout results.",
-        "pet": "Use a reassuring, practical tone focused on comfort, ease of care, and a better routine for pets and owners.",
-        "general": "Use a premium, conversion-focused e-commerce tone focused on benefits, value, comfort, and transformation.",
-    }
-
-    market_instructions = {
-        "US": "Use stronger direct-response language, sharper hooks, more urgency, clearer outcomes, and stronger buyer motivation.",
-        "EU": "Use cleaner, more refined, trust-focused language with a premium but balanced tone. Avoid overly aggressive hype.",
-        "Arab": "Use elegant, persuasive, aspirational language that emphasizes trust, comfort, confidence, quality, and value.",
-        "Regional": "Use a persuasive but balanced modern e-commerce tone focused on practicality, clarity, and confidence.",
-        "Global": "Use a polished premium global e-commerce tone focused on benefits, trust, clarity, and desirability.",
-    }
-
-    prompt = f'''
-
-You are a world-class Shopify SEO strategist, direct-response copywriter, and conversion expert.
-
-IMPORTANT LANGUAGE RULES:
-
-- Write EVERYTHING in {language_name}.
-- Do NOT mix languages.
-- Do NOT use English words unless the requested language is English.
-- The output must feel native, natural, and professional for e-commerce buyers in that language.
-
-PRODUCT ANGLE:
-
-- Product classification: {angle}
-- Writing direction: {angle_instructions.get(angle, angle_instructions["general"])}
-
-MARKET CONTEXT:
-
-- Primary market style: {market}
-- Market writing direction: {market_instructions.get(market, market_instructions["Global"])}
-
-YOUR JOB:
-Rewrite this Shopify product listing to maximize:
-
-1. Click-through rate
-2. Conversion rate
-3. SEO relevance
-4. Perceived value
-
-STRICT OUTPUT FORMAT:
-Return ONLY valid JSON in this exact structure:
+OUTPUT FORMAT (STRICT JSON ONLY):
 {{
-"title": "string",
-"title_variants": ["string", "string", "string"],
-"description": "string",
-"meta_description": "string",
-"keywords": "string"
+  "title": "...",
+  "description": "...",
+  "meta_description": "...",
+  "keywords": "..."
 }}
 
-FIELD RULES:
+MISSION:
+Turn this product into a HIGH-CONVERTING WINNING PRODUCT.
+
+PSYCHOLOGY RULES:
+- Focus on transformation, not features
+- Make the customer imagine their new life after buying
+- Trigger desire, confidence, and relief
+- Use emotional + practical benefits together
+- Write like a premium brand (not cheap dropshipping)
 
 TITLE:
+- Must feel powerful and desirable
+- Must create curiosity or promise a result
+- Avoid generic words like "best" or "high quality"
 
-- Clearly stronger than the original
-- 45 to 70 characters preferred
-- Premium, persuasive, SEO-friendly
+DESCRIPTION STRUCTURE (STRICT):
+
+<p>Powerful emotional hook (make them want it immediately)</p>
+
+<p>Explain the pain/problem and how this product solves it</p>
+
+<ul>
+<li>Benefit + real-life outcome</li>
+<li>Benefit + emotional impact</li>
+<li>Benefit + convenience or time saving</li>
+<li>Benefit + confidence boost</li>
+<li>Benefit + lifestyle upgrade</li>
+</ul>
+
+<p>Subtle but strong closing line that encourages action</p>
+
+STRICT RULES:
+- No broken HTML
+- No short or incomplete bullets
+- Each bullet must be a full persuasive sentence
+- Minimum 5 bullets
+- No weak phrases like "this product is good"
 - No emojis
-- No quotation marks
-- Do not repeat the original title exactly
 
-TITLE_VARIANTS:
-
-- Return exactly 3 variants
-- Each variant must use a different angle:
-  1. Benefit-driven
-  2. Premium/desire-driven
-  3. Problem-solution-driven
-- Keep them distinct and useful for A/B testing
-- All must stay in the requested language
-
-DESCRIPTION:
-
-- Must be valid HTML only
-- Start with one strong <p> hook
-- Then one <ul> with 5 to 7 <li> items
-- Every bullet must be a benefit, not a feature
-- End with one closing <p>
-- No markdown
-- No emojis
-- No fake claims
-- No repetitive filler
-
-META DESCRIPTION:
-
-- Maximum 155 characters
-- Natural, compelling, SEO-friendly
-
-KEYWORDS:
-
-- Comma-separated only
-- 6 to 10 keywords
-- High buying intent
-- No duplicates
-- No hashtags
-- No full sentences
-
-COPYWRITING STRATEGY:
-
-- Focus on outcome, not just product details
-- Emphasize comfort, convenience, confidence, transformation, and real-life value
-- Make the product feel desirable and easy to justify buying now
-- Reflect the tone expected in the target market
-- Avoid weak, generic filler language
+SEO:
+- Meta description under 155 chars
+- Keywords = buyer intent keywords (not generic)
 
 PRODUCT DATA:
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
 Tags: {tags}
-Current Description: {description}
-'''
+Description: {description}
+"""
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -437,66 +367,14 @@ Current Description: {description}
     except Exception:
         ai_result = {
             "title": title,
-            "title_variants": [title, title, title],
             "description": "",
             "meta_description": "",
             "keywords": "",
         }
 
     base_title = str(ai_result.get("title") or title).strip()
-    title_variants = ai_result.get("title_variants") or []
 
-    if not isinstance(title_variants, list):
-        title_variants = []
-
-    cleaned_variants = []
-    for item in title_variants:
-        value = str(item).strip()
-        if value:
-            cleaned_variants.append(value)
-
-    if base_title:
-        cleaned_variants.insert(0, base_title)
-
-    deduped_variants = []
-    seen = set()
-    for variant in cleaned_variants:
-        normalized = variant.lower().strip()
-        if normalized and normalized not in seen:
-            seen.add(normalized)
-            deduped_variants.append(variant)
-
-    while len(deduped_variants) < 3:
-        deduped_variants.append(base_title or title)
-
-    deduped_variants = deduped_variants[:3]
-
-    def score_title_variant(variant: str) -> int:
-        score = 0
-        text = variant.lower()
-
-        if 45 <= len(variant) <= 70:
-            score += 3
-        elif 35 <= len(variant) <= 80:
-            score += 1
-
-        power_words = [
-            "premium", "professional", "ultimate", "smart", "advanced",
-            "precision", "comfort", "luxury", "essential", "upgrade"
-        ]
-        score += sum(1 for word in power_words if word in text)
-
-        if any(char.isdigit() for char in variant):
-            score -= 1
-
-        if text == (title or "").lower().strip():
-            score -= 3
-
-        return score
-
-    best_title = max(deduped_variants, key=score_title_variant) if deduped_variants else (base_title or title)
-    new_title = best_title.strip() if best_title else title
-
+    new_title = base_title.strip() if base_title else title
     new_description = str(ai_result.get("description") or "").strip()
     new_meta_description = str(ai_result.get("meta_description") or "").strip()
     new_keywords = str(ai_result.get("keywords") or "").strip()
@@ -504,7 +382,7 @@ Current Description: {description}
     if not new_title:
         new_title = title
 
-    fallback_description = build_fallback_description(angle)
+    fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
 
     if not new_description:
         new_description = fallback_description
@@ -522,13 +400,12 @@ Current Description: {description}
         new_meta_description = new_meta_description[:152].rstrip() + "..."
 
     if not new_keywords:
-        keyword_parts = [title, vendor, product_type, angle]
+        keyword_parts = [title, vendor, product_type]
         keyword_parts = [k.strip() for k in keyword_parts if k and k.strip()]
         new_keywords = ", ".join(keyword_parts[:8])
 
     return {
         "title": new_title,
-        "title_variants": deduped_variants,
         "description": new_description,
         "meta_description": new_meta_description,
         "keywords": new_keywords,
@@ -942,7 +819,6 @@ def optimize_all_products():
             new_description = ai_result["description"]
             new_meta_description = ai_result["meta_description"]
             new_keywords = ai_result["keywords"]
-            title_variants = ai_result.get("title_variants", [])
             update_response = requests.put(
                 f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
                 headers={
@@ -1055,7 +931,6 @@ def optimize_all_products():
                 "product_id": product["id"],
                 "old_title": product.get("title"),
                 "new_title": new_title,
-                "title_variants": title_variants,
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
                 "language_used": lang,
