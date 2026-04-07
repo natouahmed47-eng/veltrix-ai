@@ -263,10 +263,6 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
 
     prompt = f"""You are a top 1% Shopify conversion expert and direct-response copywriter.
 
-LANGUAGE:
-Write ONLY in {language_name}.
-No mixing languages.
-
 OUTPUT FORMAT (STRICT JSON ONLY):
 {{
   "title": "...",
@@ -275,48 +271,39 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   "keywords": "..."
 }}
 
-MISSION:
-Turn this product into a HIGH-CONVERTING WINNING PRODUCT.
+CRITICAL RULE:
+- Description MUST include <ul> with 5–7 <li>
+- If missing → INVALID
 
-PSYCHOLOGY RULES:
-- Focus on transformation, not features
-- Make the customer imagine their new life after buying
-- Trigger desire, confidence, and relief
-- Use emotional + practical benefits together
-- Write like a premium brand (not cheap dropshipping)
+COPYWRITING MODE:
+Write like a premium brand that sells transformation, not products.
 
-TITLE:
-- Must feel powerful and desirable
-- Must create curiosity or promise a result
-- Avoid generic words like "best" or "high quality"
+DESCRIPTION STRUCTURE:
 
-DESCRIPTION STRUCTURE (STRICT):
+<p>Create a vivid emotional hook that makes the customer instantly imagine a better version of themselves.</p>
 
-<p>Powerful emotional hook (make them want it immediately)</p>
-
-<p>Explain the pain/problem and how this product solves it</p>
+<p>Show the before/after transformation. Make the pain feel real, then show the relief.</p>
 
 <ul>
-<li>Benefit + real-life outcome</li>
-<li>Benefit + emotional impact</li>
-<li>Benefit + convenience or time saving</li>
-<li>Benefit + confidence boost</li>
-<li>Benefit + lifestyle upgrade</li>
+<li>Specific outcome: what changes in their daily life immediately after using this?</li>
+<li>Confidence effect: how do they feel about themselves after using it?</li>
+<li>Time/effort gain: what frustration or wasted time disappears?</li>
+<li>Status/lifestyle: how does this elevate their image or lifestyle?</li>
+<li>Tangible result: what real, visible improvement happens?</li>
+<li>Emotional payoff: what relief, comfort, or satisfaction do they feel?</li>
 </ul>
 
-<p>Subtle but strong closing line that encourages action</p>
+<p>Close with urgency and identity shift: they are upgrading their life now.</p>
 
 STRICT RULES:
-- No broken HTML
-- No short or incomplete bullets
-- Each bullet must be a full persuasive sentence
-- Minimum 5 bullets
-- No weak phrases like "this product is good"
+- No generic phrases
+- No filler text
 - No emojis
+- Every sentence must feel valuable and persuasive
 
 SEO:
 - Meta description under 155 chars
-- Keywords = buyer intent keywords (not generic)
+- Keywords = high-intent buyer keywords
 
 PRODUCT DATA:
 Title: {title}
