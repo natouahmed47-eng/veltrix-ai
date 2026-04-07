@@ -239,6 +239,14 @@ def build_fallback_description(angle: str) -> str:
     return fallback_map.get(angle, fallback_map["general"])
 
 
+def _is_valid_ai_description(description: str) -> bool:
+    """Return True only if description contains <ul> and between 5 and 7 <li> items."""
+    if "<ul>" not in description:
+        return False
+    li_count = description.count("<li>")
+    return 5 <= li_count <= 7
+
+
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -310,7 +318,7 @@ STRICT RULES:
 - No broken HTML
 - No short or incomplete bullets
 - Each bullet must be a full persuasive sentence
-- Minimum 5 bullets
+- Minimum 5 bullets, maximum 7 bullets
 - No weak phrases like "this product is good"
 - No emojis
 
@@ -326,68 +334,71 @@ Tags: {tags}
 Description: {description}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            },
-        ],
-        temperature=0.55,
-    )
-
-    raw_text = response.choices[0].message.content if response.choices else ""
-    if not raw_text:
-        raise RuntimeError("Empty AI response")
-
-    cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
-
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    elif cleaned.startswith("```"):
-        cleaned = cleaned[3:]
-
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
-
-    cleaned = cleaned.strip()
-
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        cleaned = cleaned[start:end + 1]
-
-    try:
-        ai_result = json.loads(cleaned)
-    except Exception:
-        ai_result = {
-            "title": title,
-            "description": "",
-            "meta_description": "",
-            "keywords": "",
-        }
-
-    base_title = str(ai_result.get("title") or title).strip()
-
-    new_title = base_title.strip() if base_title else title
-    new_description = str(ai_result.get("description") or "").strip()
-    new_meta_description = str(ai_result.get("meta_description") or "").strip()
-    new_keywords = str(ai_result.get("keywords") or "").strip()
-
-    if not new_title:
-        new_title = title
-
     fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
 
-    if not new_description:
-        new_description = fallback_description
+    MAX_RETRIES = 3
+    new_title = title
+    new_description = None
+    new_meta_description = ""
+    new_keywords = ""
 
-    if "<ul>" not in new_description or "<li>" not in new_description:
+    for attempt in range(MAX_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
+            ],
+            temperature=0.55,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+
+        cleaned = cleaned.strip()
+
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            cleaned = cleaned[start:end + 1]
+
+        try:
+            ai_result = json.loads(cleaned)
+        except Exception:
+            continue
+
+        candidate_title = str(ai_result.get("title") or title).strip() or title
+        candidate_description = str(ai_result.get("description") or "").strip()
+        candidate_meta = str(ai_result.get("meta_description") or "").strip()
+        candidate_keywords = str(ai_result.get("keywords") or "").strip()
+
+        if not _is_valid_ai_description(candidate_description):
+            continue
+
+        new_title = candidate_title
+        new_description = candidate_description
+        new_meta_description = candidate_meta
+        new_keywords = candidate_keywords
+        break
+
+    if not new_description:
         new_description = fallback_description
 
     if not new_meta_description:
