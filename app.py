@@ -822,21 +822,18 @@ def optimize_all_products():
             "X-Shopify-Access-Token": store.access_token,
             "Content-Type": "application/json",
         },
-        timeout=30,
+    timeout=30,
     )
-
     products_data = products_response.json()
     products = products_data.get("products", [])
     results = []
     for product in products[:5]:
     try:
         ai_result = build_title_and_description_with_ai(product, lang=lang)
-
         new_title = ai_result["title"]
         new_description = ai_result["description"]
         new_meta_description = ai_result["meta_description"]
         new_keywords = ai_result["keywords"]
-
         update_response = requests.put(
             f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
             headers={
