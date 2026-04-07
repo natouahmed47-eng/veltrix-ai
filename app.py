@@ -822,12 +822,23 @@ def settings_page():
                 let html = `<div class="card"><h3>Optimization Results</h3>`;
 
                 data.results.forEach((item, index) => {
+                    const variants = Array.isArray(item.title_variants) ? item.title_variants : [];
+                    const variantsHtml = variants.length
+                        ? `<div style="margin-top:10px; border-left:3px solid #2563eb; padding-left:12px;">
+                            <strong>Title Variants:</strong>
+                            <ul style="margin:8px 0 0 18px; padding:0;">
+                                ${variants.map((variant, i) => `<li><strong>Variant ${i + 1}:</strong> ${variant ?? ""}</li>`).join("")}
+                            </ul>
+                        </div>`
+                        : "";
+
                     html += `
                         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
                             <div><strong>#${index + 1}</strong></div>
                             <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
                             <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
                             <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
+                            ${variantsHtml}
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
@@ -894,6 +905,7 @@ def optimize_all_products():
             new_description = ai_result["description"]
             new_meta_description = ai_result["meta_description"]
             new_keywords = ai_result["keywords"]
+            title_variants = ai_result.get("title_variants", [])
             update_response = requests.put(
                 f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
                 headers={
@@ -1006,6 +1018,7 @@ def optimize_all_products():
                 "product_id": product["id"],
                 "old_title": product.get("title"),
                 "new_title": new_title,
+                "title_variants": title_variants,
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
                 "language_used": lang,
