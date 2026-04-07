@@ -278,45 +278,52 @@ OUTPUT FORMAT (STRICT JSON ONLY):
 MISSION:
 Turn this product into a HIGH-CONVERTING WINNING PRODUCT.
 
+CRITICAL RULE:
+Description MUST contain:
+- At least one <ul>
+- 5 to 7 <li> items
+If not → REGENERATE.
+
 PSYCHOLOGY RULES:
 - Focus on transformation, not features
 - Make the customer imagine their new life after buying
 - Trigger desire, confidence, and relief
 - Use emotional + practical benefits together
-- Write like a premium brand (not cheap dropshipping)
+- Write like a premium brand
 
 TITLE:
-- Must feel powerful and desirable
-- Must create curiosity or promise a result
-- Avoid generic words like "best" or "high quality"
+- Powerful + curiosity-driven
+- Promise a result
+- No generic words
 
 DESCRIPTION STRUCTURE (STRICT):
 
-<p>Powerful emotional hook (make them want it immediately)</p>
+<p>Emotional hook that makes the customer instantly feel the transformation and desire the product.</p>
 
-<p>Explain the pain/problem and how this product solves it</p>
+<p>Before/After transformation showing the pain and how this product completely eliminates it.</p>
 
 <ul>
-<li>Benefit + real-life outcome</li>
-<li>Benefit + emotional impact</li>
-<li>Benefit + convenience or time saving</li>
-<li>Benefit + confidence boost</li>
-<li>Benefit + lifestyle upgrade</li>
+<li>Specific real-life outcome with emotional impact</li>
+<li>Confidence boost with visible change</li>
+<li>Time-saving or effort elimination benefit</li>
+<li>Lifestyle upgrade or status improvement</li>
+<li>Removal of frustration or hidden pain point</li>
+<li>Premium experience or luxury feeling</li>
+<li>Social proof or noticeable external impact</li>
 </ul>
 
-<p>Subtle but strong closing line that encourages action</p>
+<p>Urgency + call to action. Make them feel now is the moment.</p>
 
 STRICT RULES:
-- No broken HTML
-- No short or incomplete bullets
-- Each bullet must be a full persuasive sentence
-- Minimum 5 bullets
-- No weak phrases like "this product is good"
-- No emojis
+- NO broken HTML
+- NO generic phrases
+- MUST include <ul> with 5-7 <li>
+- Each bullet = real outcome + emotion
+- If structure is missing → REGENERATE
 
 SEO:
 - Meta description under 155 chars
-- Keywords = buyer intent keywords (not generic)
+- Keywords = high intent only
 
 PRODUCT DATA:
 Title: {title}
