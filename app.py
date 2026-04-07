@@ -934,7 +934,7 @@ def optimize_all_products():
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
                 "language_used": lang,
-                "new_description_preview": new_description[:200],
+                "new_description_preview": new_description,
                 "meta_description_preview": new_meta_description[:160],
                 "keywords": new_keywords,
             })
