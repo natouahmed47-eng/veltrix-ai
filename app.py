@@ -443,7 +443,7 @@ Current Description: {description}
             "keywords": "",
         }
 
-    new_title = str(ai_result.get("title") or title).strip()
+    base_title = str(ai_result.get("title") or title).strip()
     title_variants = ai_result.get("title_variants") or []
 
     if not isinstance(title_variants, list):
@@ -455,10 +455,47 @@ Current Description: {description}
         if value:
             cleaned_variants.append(value)
 
-    while len(cleaned_variants) < 3:
-        cleaned_variants.append(new_title or title)
+    if base_title:
+        cleaned_variants.insert(0, base_title)
 
-    cleaned_variants = cleaned_variants[:3]
+    deduped_variants = []
+    seen = set()
+    for variant in cleaned_variants:
+        normalized = variant.lower().strip()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            deduped_variants.append(variant)
+
+    while len(deduped_variants) < 3:
+        deduped_variants.append(base_title or title)
+
+    deduped_variants = deduped_variants[:3]
+
+    def score_title_variant(variant: str) -> int:
+        score = 0
+        text = variant.lower()
+
+        if 45 <= len(variant) <= 70:
+            score += 3
+        elif 35 <= len(variant) <= 80:
+            score += 1
+
+        power_words = [
+            "premium", "professional", "ultimate", "smart", "advanced",
+            "precision", "comfort", "luxury", "essential", "upgrade"
+        ]
+        score += sum(1 for word in power_words if word in text)
+
+        if any(char.isdigit() for char in variant):
+            score -= 1
+
+        if text == (title or "").lower().strip():
+            score -= 3
+
+        return score
+
+    best_title = max(deduped_variants, key=score_title_variant) if deduped_variants else (base_title or title)
+    new_title = best_title.strip() if best_title else title
 
     new_description = str(ai_result.get("description") or "").strip()
     new_meta_description = str(ai_result.get("meta_description") or "").strip()
@@ -491,7 +528,7 @@ Current Description: {description}
 
     return {
         "title": new_title,
-        "title_variants": cleaned_variants,
+        "title_variants": deduped_variants,
         "description": new_description,
         "meta_description": new_meta_description,
         "keywords": new_keywords,
@@ -837,7 +874,7 @@ def settings_page():
                             <div><strong>#${index + 1}</strong></div>
                             <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
                             <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
-                            <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
+                            <div><strong>New Title (Selected):</strong> ${item.new_title ?? ""}</div>
                             ${variantsHtml}
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
