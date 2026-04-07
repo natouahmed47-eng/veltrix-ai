@@ -831,55 +831,72 @@ def optimize_all_products():
     results = []
 
     for product in products[:5]:
-        try:
-            ai_result = build_title_and_description_with_ai(product, lang=lang)
-            new_title = ai_result["title"]
-            new_description = ai_result["description"]
-            new_meta_description = ai_result["meta_description"]
-            new_keywords = ai_result["keywords"]
+    try:
+        ai_result = build_title_and_description_with_ai(product, lang=lang)
+
+        new_title = ai_result["title"]
+        new_description = ai_result["description"]
+        new_meta_description = ai_result["meta_description"]
+        new_keywords = ai_result["keywords"]
+
         update_response = requests.put(
-    f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
-    headers={
-        "X-Shopify-Access-Token": store.access_token,
-        "Content-Type": "application/json",
-    },
-    json={
-        "product": {
-            "id": product["id"],
-            "title": new_title,
-            "body_html": new_description,
-        }
-    },
-    timeout=30,
-)
+            f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
+            headers={
+                "X-Shopify-Access-Token": store.access_token,
+                "Content-Type": "application/json",
+            },
+            json={
+                "product": {
+                    "id": product["id"],
+                    "title": new_title,
+                    "body_html": new_description,
+                }
+            },
+            timeout=30,
+        )
 
-# Save SEO data as Shopify metafields
-metafields_payload = {
-    "metafields": [
-        {
-            "namespace": "custom",
-            "key": "ai_meta_description",
-            "type": "single_line_text_field",
-            "value": new_meta_description[:155],
-        },
-        {
-            "namespace": "custom",
-            "key": "ai_keywords",
-            "type": "multi_line_text_field",
-            "value": new_keywords,
-        },
-    ]
-}
+        # ✅ هنا metafields
+        metafields_response = requests.post(
+            f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
+            headers={
+                "X-Shopify-Access-Token": store.access_token,
+                "Content-Type": "application/json",
+            },
+            json={
+                "metafield": {
+                    "namespace": "seo",
+                    "key": "meta_description",
+                    "value": new_meta_description,
+                    "type": "single_line_text_field",
+                }
+            },
+            timeout=30,
+        )
 
-metafields_response = requests.post(
-    f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
-    headers={
-        "X-Shopify-Access-Token": store.access_token,
-        "Content-Type": "application/json",
-    },
-    json=metafields_payload,
-    timeout=30,
-)
+        results.append({
+            "product_id": product["id"],
+            "old_title": product.get("title"),
+            "new_title": new_title,
+            "success": update_response.status_code == 200,
+            "status_code": update_response.status_code,
+            "language_used": lang,
+            "new_description_preview": new_description[:200],
+            "meta_description_preview": new_meta_description[:160],
+            "keywords": new_keywords,
+            "metafields_saved": metafields_response.status_code == 201,
+            "metafields_status_code": metafields_response.status_code,
+        })
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        print(traceback.format_exc())
+
+        results.append({
+            "product_id": product.get("id"),
+            "old_title": product.get("title"),
+            "success": False,
+            "error": str(e),
+        })
 
 results.append({
     "product_id": product["id"],
