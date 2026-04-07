@@ -36,6 +36,8 @@ SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
+MAX_AI_GENERATION_RETRIES = 3
+
 
 class ShopifyStore(db.Model):
     __tablename__ = "shopify_stores"
@@ -239,6 +241,13 @@ def build_fallback_description(angle: str) -> str:
     return fallback_map.get(angle, fallback_map["general"])
 
 
+def is_description_valid(description: str) -> bool:
+    if "<ul>" not in description:
+        return False
+    li_count = description.count("<li>")
+    return 5 <= li_count <= 7
+
+
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -326,51 +335,62 @@ Tags: {tags}
 Description: {description}
 """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            },
-        ],
-        temperature=0.55,
-    )
+    ai_result = {
+        "title": title,
+        "description": "",
+        "meta_description": "",
+        "keywords": "",
+    }
+    for _attempt in range(MAX_AI_GENERATION_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
+            ],
+            temperature=0.55,
+        )
 
-    raw_text = response.choices[0].message.content if response.choices else ""
-    if not raw_text:
-        raise RuntimeError("Empty AI response")
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
 
-    cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
+        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
 
-    if cleaned.startswith("```json"):
-        cleaned = cleaned[7:]
-    elif cleaned.startswith("```"):
-        cleaned = cleaned[3:]
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
 
-    if cleaned.endswith("```"):
-        cleaned = cleaned[:-3]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
 
-    cleaned = cleaned.strip()
+        cleaned = cleaned.strip()
 
-    start = cleaned.find("{")
-    end = cleaned.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        cleaned = cleaned[start:end + 1]
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            cleaned = cleaned[start:end + 1]
 
-    try:
-        ai_result = json.loads(cleaned)
-    except Exception:
-        ai_result = {
-            "title": title,
-            "description": "",
-            "meta_description": "",
-            "keywords": "",
-        }
+        try:
+            ai_result = json.loads(cleaned)
+        except Exception:
+            ai_result = {
+                "title": title,
+                "description": "",
+                "meta_description": "",
+                "keywords": "",
+            }
+
+        candidate_description = str(ai_result.get("description") or "").strip()
+        if is_description_valid(candidate_description):
+            break
 
     base_title = str(ai_result.get("title") or title).strip()
 
