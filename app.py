@@ -827,9 +827,7 @@ def optimize_all_products():
 
     products_data = products_response.json()
     products = products_data.get("products", [])
-
     results = []
-
     for product in products[:5]:
     try:
         ai_result = build_title_and_description_with_ai(product, lang=lang)
