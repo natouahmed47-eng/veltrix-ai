@@ -756,7 +756,7 @@ def settings_page():
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
-                            <div><strong>Description Preview:</strong><br>${item.new_description_preview ?? ""}</div>
+                            <div><strong>Description:</strong><br>${item.new_description ?? ""}</div>
                             <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
                             <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
                             ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
@@ -934,7 +934,7 @@ def optimize_all_products():
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
                 "language_used": lang,
-                "new_description_preview": new_description[:200],
+                "new_description": new_description,
                 "meta_description_preview": new_meta_description[:160],
                 "keywords": new_keywords,
             })
