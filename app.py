@@ -207,11 +207,7 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    prompt = f"""You are a top 1% Shopify conversion expert and direct-response copywriter.
-
-LANGUAGE:
-Write ONLY in {language_name}.
-No mixing languages.
+    prompt = f"""You are a top 1% Shopify conversion expert.
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 {{
@@ -221,48 +217,27 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   "keywords": "..."
 }}
 
-MISSION:
-Turn this product into a HIGH-CONVERTING WINNING PRODUCT.
+CRITICAL RULE:
+The description MUST contain:
+- At least one <ul>
+- 5 to 7 <li> items
+If missing → response is INVALID
 
-PSYCHOLOGY RULES:
-- Focus on transformation, not features
-- Make the customer imagine their new life after buying
-- Trigger desire, confidence, and relief
-- Use emotional + practical benefits together
-- Write like a premium brand (not cheap dropshipping)
+DESCRIPTION STRUCTURE:
 
-TITLE:
-- Must feel powerful and desirable
-- Must create curiosity or promise a result
-- Avoid generic words like "best" or "high quality"
+<p>Strong emotional hook</p>
 
-DESCRIPTION STRUCTURE (STRICT):
-
-<p>Powerful emotional hook (make them want it immediately)</p>
-
-<p>Explain the pain/problem and how this product solves it</p>
+<p>Before/after transformation</p>
 
 <ul>
-<li>Benefit + real-life outcome</li>
-<li>Benefit + emotional impact</li>
-<li>Benefit + convenience or time saving</li>
-<li>Benefit + confidence boost</li>
-<li>Benefit + lifestyle upgrade</li>
+<li>Specific outcome benefit</li>
+<li>Confidence boost</li>
+<li>Time or effort saved</li>
+<li>Premium experience</li>
+<li>Lifestyle upgrade</li>
 </ul>
 
-<p>Subtle but strong closing line that encourages action</p>
-
-STRICT RULES:
-- No broken HTML
-- No short or incomplete bullets
-- Each bullet must be a full persuasive sentence
-- Minimum 5 bullets
-- No weak phrases like "this product is good"
-- No emojis
-
-SEO:
-- Meta description under 155 chars
-- Keywords = buyer intent keywords (not generic)
+<p>Close with urgency</p>
 
 PRODUCT DATA:
 Title: {title}
