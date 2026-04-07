@@ -327,6 +327,7 @@ STRICT OUTPUT FORMAT:
 Return ONLY valid JSON in this exact structure:
 {{
 "title": "string",
+"title_variants": ["string", "string", "string"],
 "description": "string",
 "meta_description": "string",
 "keywords": "string"
@@ -342,6 +343,16 @@ TITLE:
 - No emojis
 - No quotation marks
 - Do not repeat the original title exactly
+
+TITLE_VARIANTS:
+
+- Return exactly 3 variants
+- Each variant must use a different angle:
+  1. Benefit-driven
+  2. Premium/desire-driven
+  3. Problem-solution-driven
+- Keep them distinct and useful for A/B testing
+- All must stay in the requested language
 
 DESCRIPTION:
 
@@ -426,12 +437,29 @@ Current Description: {description}
     except Exception:
         ai_result = {
             "title": title,
+            "title_variants": [title, title, title],
             "description": "",
             "meta_description": "",
             "keywords": "",
         }
 
     new_title = str(ai_result.get("title") or title).strip()
+    title_variants = ai_result.get("title_variants") or []
+
+    if not isinstance(title_variants, list):
+        title_variants = []
+
+    cleaned_variants = []
+    for item in title_variants:
+        value = str(item).strip()
+        if value:
+            cleaned_variants.append(value)
+
+    while len(cleaned_variants) < 3:
+        cleaned_variants.append(new_title or title)
+
+    cleaned_variants = cleaned_variants[:3]
+
     new_description = str(ai_result.get("description") or "").strip()
     new_meta_description = str(ai_result.get("meta_description") or "").strip()
     new_keywords = str(ai_result.get("keywords") or "").strip()
@@ -463,6 +491,7 @@ Current Description: {description}
 
     return {
         "title": new_title,
+        "title_variants": cleaned_variants,
         "description": new_description,
         "meta_description": new_meta_description,
         "keywords": new_keywords,
