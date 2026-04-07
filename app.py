@@ -837,7 +837,6 @@ def optimize_all_products():
             new_description = ai_result["description"]
             new_meta_description = ai_result["meta_description"]
             new_keywords = ai_result["keywords"]
-
         update_response = requests.put(
     f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
     headers={
