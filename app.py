@@ -263,6 +263,18 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
 
     angle = detect_product_angle(title, product_type, tags, description)
 
+    market_map = {
+        "en": "US",
+        "fr": "EU",
+        "de": "EU",
+        "it": "EU",
+        "es": "EU",
+        "pt": "EU",
+        "ar": "Arab",
+        "tr": "Regional",
+    }
+    market = market_map.get(lang, "Global")
+
     angle_instructions = {
         "grooming": "Use a sleek, premium grooming tone focused on precision, comfort, confidence, and clean results.",
         "beauty": "Use a refined beauty tone focused on glow, confidence, elegance, and self-care.",
@@ -272,6 +284,14 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
         "fitness": "Use an energetic, performance-driven tone focused on consistency, comfort, and better workout results.",
         "pet": "Use a reassuring, practical tone focused on comfort, ease of care, and a better routine for pets and owners.",
         "general": "Use a premium, conversion-focused e-commerce tone focused on benefits, value, comfort, and transformation.",
+    }
+
+    market_instructions = {
+        "US": "Use stronger direct-response language, sharper hooks, more urgency, clearer outcomes, and stronger buyer motivation.",
+        "EU": "Use cleaner, more refined, trust-focused language with a premium but balanced tone. Avoid overly aggressive hype.",
+        "Arab": "Use elegant, persuasive, aspirational language that emphasizes trust, comfort, confidence, quality, and value.",
+        "Regional": "Use a persuasive but balanced modern e-commerce tone focused on practicality, clarity, and confidence.",
+        "Global": "Use a polished premium global e-commerce tone focused on benefits, trust, clarity, and desirability.",
     }
 
     prompt = f'''
@@ -289,6 +309,11 @@ PRODUCT ANGLE:
 
 - Product classification: {angle}
 - Writing direction: {angle_instructions.get(angle, angle_instructions["general"])}
+
+MARKET CONTEXT:
+
+- Primary market style: {market}
+- Market writing direction: {market_instructions.get(market, market_instructions["Global"])}
 
 YOUR JOB:
 Rewrite this Shopify product listing to maximize:
@@ -349,6 +374,7 @@ COPYWRITING STRATEGY:
 - Focus on outcome, not just product details
 - Emphasize comfort, convenience, confidence, transformation, and real-life value
 - Make the product feel desirable and easy to justify buying now
+- Reflect the tone expected in the target market
 - Avoid weak, generic filler language
 
 PRODUCT DATA:
