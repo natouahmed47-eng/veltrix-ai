@@ -855,6 +855,98 @@ def optimize_all_products():
                 timeout=30,
             )
 
+            # Fetch existing metafields
+            metafields_check = requests.get(
+                f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
+                headers={
+                    "X-Shopify-Access-Token": store.access_token,
+                    "Content-Type": "application/json",
+                },
+                timeout=30,
+            )
+
+            existing_metafields = metafields_check.json().get("metafields", [])
+
+            def find_metafield(key):
+                for mf in existing_metafields:
+                    if mf.get("namespace") == "custom" and mf.get("key") == key:
+                        return mf
+                return None
+
+            # META DESCRIPTION
+            existing_meta = find_metafield("ai_meta_description")
+
+            if existing_meta:
+                meta_description_response = requests.put(
+                    f"https://{shop}/admin/api/2024-01/metafields/{existing_meta['id']}.json",
+                    headers={
+                        "X-Shopify-Access-Token": store.access_token,
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "metafield": {
+                            "id": existing_meta["id"],
+                            "value": new_meta_description[:155],
+                            "type": "single_line_text_field",
+                        }
+                    },
+                    timeout=30,
+                )
+            else:
+                meta_description_response = requests.post(
+                    f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
+                    headers={
+                        "X-Shopify-Access-Token": store.access_token,
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "metafield": {
+                            "namespace": "custom",
+                            "key": "ai_meta_description",
+                            "value": new_meta_description[:155],
+                            "type": "single_line_text_field",
+                        }
+                    },
+                    timeout=30,
+                )
+
+            # KEYWORDS
+            existing_keywords = find_metafield("ai_keywords")
+
+            if existing_keywords:
+                keywords_response = requests.put(
+                    f"https://{shop}/admin/api/2024-01/metafields/{existing_keywords['id']}.json",
+                    headers={
+                        "X-Shopify-Access-Token": store.access_token,
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "metafield": {
+                            "id": existing_keywords["id"],
+                            "value": new_keywords,
+                            "type": "multi_line_text_field",
+                        }
+                    },
+                    timeout=30,
+                )
+            else:
+                keywords_response = requests.post(
+                    f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
+                    headers={
+                        "X-Shopify-Access-Token": store.access_token,
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "metafield": {
+                            "namespace": "custom",
+                            "key": "ai_keywords",
+                            "value": new_keywords,
+                            "type": "multi_line_text_field",
+                        }
+                    },
+                    timeout=30,
+                )
+
             results.append({
                 "product_id": product["id"],
                 "old_title": product.get("title"),
