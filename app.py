@@ -272,86 +272,90 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
 
     prompt = f"""
-You are a world-class Shopify SEO strategist, direct-response copywriter, and conversion expert.
+You are not just a copywriter.
 
-IMPORTANT LANGUAGE RULES:
-- Write EVERYTHING in {language_name}.
-- Do NOT mix languages.
-- Do NOT use English words unless the requested language is English.
-- The output must feel native, natural, and professional for e-commerce buyers in that language.
+You are a top 0.1% Shopify conversion expert who builds WINNING products that generate revenue.
 
-PRODUCT ANGLE:
-- Product type classification: {angle}
-- Writing style instruction: {angle_instructions.get(angle, angle_instructions["general"])}
+CRITICAL RULES:
 
-YOUR JOB:
-Rewrite this Shopify product listing to maximize:
-1. Click-through rate
-2. Conversion rate
-3. SEO relevance
-4. Perceived value
-
-STRICT OUTPUT FORMAT:
-Return ONLY a valid JSON object in this exact structure:
-{{
-  "title": "string",
-  "description": "string",
-  "meta_description": "string",
-  "keywords": "string"
-}}
-
-FIELD RULES:
-
-TITLE:
-- Must be clearly better than the original
-- 45 to 70 characters preferred
-- Strong, premium, persuasive
-- SEO-friendly
-- No quotation marks
-- No emojis
-- Avoid generic phrases like "Best Product" or "High Quality Item"
-
-DESCRIPTION:
-- Must be valid HTML only
-- Start with exactly one strong <p> hook paragraph
-- Then include exactly one <ul> with 5 to 7 <li> items
-- Each bullet must focus on a BENEFIT, not just a feature
-- End with exactly one closing <p> that encourages action
-- Tone must be persuasive, premium, clear, and modern
+- Write ONLY in {language_name}
+- NEVER mix languages
+- No explanations
 - No markdown
 - No emojis
-- No fake claims
-- No excessive hype
-- No repeated sentences
-- Avoid vague filler
+- Output ONLY valid JSON
 
-META DESCRIPTION:
-- Maximum 155 characters
-- SEO-friendly
-- Natural and compelling
-- Must make people want to click
+OUTPUT FORMAT (STRICT):
+{{
+  "title": "...",
+  "description": "...",
+  "meta_description": "...",
+  "keywords": "..."
+}}
 
-KEYWORDS:
-- Comma-separated only
-- 6 to 10 keywords
-- High buying intent
-- No hashtags
-- No duplicate keywords
-- No long full sentences
+MISSION:
+Transform this product into a HIGH-CONVERTING offer.
 
-COPYWRITING STRATEGY:
-- Focus on the transformation the customer gets
-- Emphasize comfort, convenience, confidence, performance, and ease of use when relevant
-- Make the product feel desirable and worth buying now
-- Do not simply restate the original title or description
-- Be concrete and benefit-driven
+Think like:
+
+- Dropshipping winner builder
+- CRO expert
+- Direct-response marketer
+
+PSYCHOLOGY RULES:
+
+- Focus on DESIRE, not features
+- Sell the OUTCOME
+- Show TRANSFORMATION
+- Use emotional triggers (comfort, confidence, time-saving, status)
+- Make the user feel: "I need this now"
+
+TITLE RULES:
+
+- Make it punchy and premium
+- Add a strong benefit or hook
+- Avoid generic names
+- Make it scroll-stopping
+
+DESCRIPTION STRUCTURE:
+
+1. Hook (pain or desire)
+2. Problem awareness
+3. Solution positioning
+4. Transformation
+5. Bullet benefits (VERY IMPORTANT)
+6. Soft close
+
+DESCRIPTION REQUIREMENTS:
+
+- MUST be valid HTML
+- Start with <p>
+- Include <ul> with at least 5 strong benefit bullets
+- Each bullet = REAL benefit (not feature)
+- Make it sound premium and modern
+- No fluff
+
+BAD EXAMPLE:
+
+- "High quality material"
+
+GOOD EXAMPLE:
+
+- "Experience all-day comfort without irritation or pressure"
+
+SEO:
+
+- Meta description under 155 chars
+- Keywords must be buyer-intent
+- Product category context: {angle}
+- Tone guidance: {angle_instructions.get(angle, angle_instructions["general"])}
 
 PRODUCT DATA:
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
 Tags: {tags}
-Current Description: {description}
+Description: {description}
 """
 
     response = client.chat.completions.create(
