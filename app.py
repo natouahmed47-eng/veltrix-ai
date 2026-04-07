@@ -292,31 +292,28 @@ TITLE:
 
 DESCRIPTION STRUCTURE (STRICT):
 
-<p>Powerful emotional hook (make them want it immediately)</p>
+<p>Powerful emotional hook that creates immediate desire and relief.</p>
 
-<p>Explain the pain/problem and how this product solves it</p>
+<p>Clear before/after transformation.</p>
 
 <ul>
-<li>Benefit + real-life outcome</li>
-<li>Benefit + emotional impact</li>
-<li>Benefit + convenience or time saving</li>
-<li>Benefit + confidence boost</li>
-<li>Benefit + lifestyle upgrade</li>
+<li>Specific real-life benefit with clear outcome</li>
+<li>Confidence and emotional impact</li>
+<li>Time-saving or friction reduction</li>
+<li>Premium experience feeling</li>
+<li>Lifestyle upgrade effect</li>
 </ul>
 
-<p>Subtle but strong closing line that encourages action</p>
+<p>Close with urgency and action.</p>
 
 STRICT RULES:
-- No broken HTML
-- No short or incomplete bullets
-- Each bullet must be a full persuasive sentence
-- Minimum 5 bullets
-- No weak phrases like "this product is good"
+- Valid HTML only
 - No emojis
+- No weak phrases
 
 SEO:
 - Meta description under 155 chars
-- Keywords = buyer intent keywords (not generic)
+- Keywords = buyer intent keywords
 
 PRODUCT DATA:
 Title: {title}
