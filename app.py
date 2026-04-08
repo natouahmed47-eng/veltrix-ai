@@ -495,21 +495,27 @@ Description: {description}
     new_meta_description = ""
     new_keywords = ""
 
-    for attempt in range(MAX_RETRIES):
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                },
-            ],
-            temperature=0.55,
-        )
+    MAX_RETRIES = 3
+new_title = title
+new_description = None
+new_meta_description = ""
+new_keywords = ""
+
+for attempt in range(MAX_RETRIES):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            },
+        ],
+        temperature=0.55,
+)
 
         raw_text = response.choices[0].message.content if response.choices else ""
         if not raw_text:
