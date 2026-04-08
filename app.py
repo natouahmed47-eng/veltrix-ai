@@ -516,21 +516,6 @@ for attempt in range(MAX_RETRIES):
         ],
         temperature=0.55,
 )
-    for attempt in range(MAX_RETRIES):
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            },
-        ],
-        temperature=0.55,
-    )
 
     try:
         ai_result = json.loads(cleaned)
