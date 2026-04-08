@@ -279,9 +279,9 @@ def build_fallback_description(angle: str) -> str:
             "<p>Make the switch today and experience the difference for yourself.</p>"
         ),
     }
-    return fallback_map.get(angle, fallback_map["general"])
-           copilot/add-validation-to-ai-output  
-def _is_valid_ai_description(description: str) -> bool:
+   
+ return fallback_map.get(angle, fallback_map["general"]
+    def _is_valid_ai_description(description: str) -> bool:
     """Return True only if description contains <ul> and between 5 and 7 <li> items."""
 def is_description_valid(description: str) -> bool:
       main
@@ -291,11 +291,6 @@ def is_description_valid(description: str) -> bool:
     return 5 <= li_count <= 7
 
 
-     copilot/add-validation-to-ai-output
-
-
-    main
-      main
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
