@@ -516,22 +516,47 @@ for attempt in range(MAX_RETRIES):
         ],
         temperature=0.55,
 )
+    for attempt in range(MAX_RETRIES):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            },
+        ],
+        temperature=0.55,
+    )
+
+    raw_text = response.choices[0].message.content if response.choices else ""
     if not raw_text:
-    continue = response.choices[0].message.content if response.choices else ""
-        if not raw_text:
-            continue
-        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-        cleaned = cleaned.strip()
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            cleaned = cleaned[start:end + 1]
+        continue
+
+    cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
+
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+
+    cleaned = cleaned.strip()
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        cleaned = cleaned[start:end + 1]
+
+    try:
+        ai_result = json.loads(cleaned)
+    except Exception:
+        continue
 
         try:
             ai_result = json.loads(cleaned)
