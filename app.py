@@ -348,10 +348,14 @@ Description: {description}
                 new_keywords = ", ".join(keyword_parts[:6])
 
             return {
-                "title": new_title or title,
-                "description": new_description,
-                "meta_description": new_meta_description,
-                "keywords": new_keywords,
+    "title": new_title or title,
+    "description": new_description,
+    "meta_description": new_meta_description,
+    "keywords": new_keywords,
+    "source_used": source_used,
+    "has_ul": "<ul>" in new_description.lower(),
+    "li_count": new_description.lower().count("<li>"),
+    "contains_bullet_symbol": "•" in new_description,
             }
 
     fallback_description = build_fallback_description(title, vendor)
