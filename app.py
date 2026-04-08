@@ -899,7 +899,11 @@ def optimize_all_products():
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
                 "language_used": lang,
+ copilot/fix-frontend-response-full-description
+                "new_description_preview": new_description,
+
                 "new_description": new_description,
+      main
                 "meta_description_preview": new_meta_description[:160],
                 "keywords": new_keywords,
             })
