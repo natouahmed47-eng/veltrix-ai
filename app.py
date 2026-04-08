@@ -597,24 +597,6 @@ for attempt in range(MAX_RETRIES):
             temperature=0.5,
         )
 
-        raw_text = response.choices[0].message.content if response.choices else ""
-        if not raw_text:
-            continue
-
-        cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
-         main
-
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-         main
-
-        cleaned = cleaned.strip()
-
     if not new_meta_description:
         fallback_meta = sanitize_plain_text(new_title)
         if len(fallback_meta) > 155:
