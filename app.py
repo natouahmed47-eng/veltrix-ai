@@ -577,26 +577,6 @@ for attempt in range(MAX_RETRIES):
                 "keywords": "",
             }
 
-        candidate_description = str(ai_result.get("description") or "").strip()
-        if is_description_valid(candidate_description):
-            break
-
-    response = None
-    raw_text = ""
-
-    for attempt in range(3):
-        response=client.chat.completions.create
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an elite Shopify conversion copywriter. Return valid JSON only.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.5,
-        )
-
     if not new_meta_description:
         fallback_meta = sanitize_plain_text(new_title)
         if len(fallback_meta) > 155:
