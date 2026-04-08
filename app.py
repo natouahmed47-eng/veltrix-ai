@@ -487,7 +487,6 @@ Description: {description}
         "contains_bullet_symbol": "•" in new_description,
         }
 
-     copilot/add-validation-to-ai-output
     fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
 
     MAX_RETRIES = 3
