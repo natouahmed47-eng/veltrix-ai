@@ -1117,25 +1117,6 @@ def optimize_all_products():
                     timeout=30,
                 )
 
-            results.append({
-                "product_id": product["id"],
-                "old_title": product.get("title"),
-                "new_title": new_title,
-                "success": update_response.status_code == 200,
-                "status_code": update_response.status_code,
-                "language_used": lang,       copilot/fix-description-truncation
-                "new_description_preview": new_description,
-
-  copilot/fix-frontend-response-full-description
-                "new_description_preview": new_description,
-
-                "new_description": new_description,
-      main
-      main
-                "meta_description_preview": new_meta_description[:160],
-                "keywords": new_keywords,
-            })
-
         except Exception as e:
             print("ERROR:", str(e))
             print(traceback.format_exc())
