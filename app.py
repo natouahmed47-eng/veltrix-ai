@@ -207,9 +207,15 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    prompt = f"""You are a top 1% Shopify conversion expert.
+    prompt = f"""You are a top 1% Shopify conversion copywriter and CRO expert.
 
-OUTPUT FORMAT (STRICT JSON ONLY):
+Your job is to generate HIGH-CONVERTING product content that increases sales.
+
+=====================
+OUTPUT FORMAT (STRICT JSON ONLY)
+=====================
+Return ONLY valid JSON. No explanations. No extra text.
+
 {{
   "title": "...",
   "description": "...",
@@ -217,29 +223,61 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   "keywords": "..."
 }}
 
-CRITICAL RULE:
-The description MUST contain:
-- At least one <ul>
-- 5 to 7 <li> items
-If missing → response is INVALID
+=====================
+TITLE REQUIREMENTS
+=====================
+- Must be DIFFERENT from the original title
+- Must be more compelling and benefit-driven
+- Use power words and emotional triggers
+- Keep it clear and readable
+- Do NOT repeat the original title wording
 
-DESCRIPTION STRUCTURE:
+=====================
+DESCRIPTION REQUIREMENTS (CRITICAL)
+=====================
+You MUST return VALID HTML ONLY.
 
-<p>Strong emotional hook</p>
+Structure EXACTLY like this:
 
-<p>Before/after transformation</p>
+<p>Hook paragraph that grabs attention and highlights the main benefit.</p>
+
+<p>Second paragraph addressing pain points and positioning the product as the solution.</p>
 
 <ul>
-<li>Specific outcome benefit</li>
-<li>Confidence boost</li>
-<li>Time or effort saved</li>
-<li>Premium experience</li>
-<li>Lifestyle upgrade</li>
+<li><strong>Benefit 1:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 2:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 3:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 4:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 5:</strong> Clear outcome-focused benefit.</li>
 </ul>
 
-<p>Close with urgency</p>
+STRICT RULES:
+- ONLY use <p>, <ul>, <li>, <strong>
+- DO NOT use "•" or "-" or "*" or any plain text bullets
+- Each bullet MUST be inside <li>
+- MUST include between 5 to 7 <li> items
+- DO NOT escape HTML
+- DO NOT return plain text
+- DO NOT wrap output in markdown
+- HTML must be clean and valid
 
-PRODUCT DATA:
+=====================
+META DESCRIPTION
+=====================
+- Max 155 characters
+- Persuasive and click-focused
+- Summarize the core benefit
+
+=====================
+KEYWORDS
+=====================
+- Comma-separated
+- Include product type, brand, and main benefits
+- No duplicates
+
+=====================
+PRODUCT DATA
+=====================
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
