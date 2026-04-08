@@ -342,6 +342,24 @@ DESCRIPTION REQUIREMENTS (CRITICAL)
 
 You MUST return VALID HTML ONLY.
 
+     copilot/replace-ai-copywriting-prompt
+<p>Powerful emotional hook that creates immediate desire and relief.</p>
+
+<p>Clear before/after transformation.</p>
+
+<ul>
+<li>Specific real-life benefit with clear outcome</li>
+<li>Confidence and emotional impact</li>
+<li>Time-saving or friction reduction</li>
+<li>Premium experience feeling</li>
+<li>Lifestyle upgrade effect</li>
+</ul>
+
+<p>Close with urgency and action.</p>
+
+STRICT RULES:
+- Valid HTML only
+
 Structure EXACTLY like this:
 
 <p>Hook paragraph that grabs attention and highlights the main benefit.</p>
@@ -362,12 +380,13 @@ STRICT RULES:
 - No short or incomplete bullets
 - Each bullet must be a full persuasive sentence
 - Minimum 5 bullets, maximum 7 bullets
-- No weak phrases like "this product is good"
+- No weak phrases like "this product is good"   main
 - No emojis
+- No weak phrases
 
 SEO:
 - Meta description under 155 chars
-- Keywords = buyer intent keywords (not generic)
+- Keywords = buyer intent keywords
 
 PRODUCT DATA:
 
