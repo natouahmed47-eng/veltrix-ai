@@ -546,29 +546,6 @@ for attempt in range(MAX_RETRIES):
         new_keywords = candidate_keywords
         break
 
-     copilot/add-validation-retry-logic
-    ai_result = {
-        "title": title,
-        "description": "",
-        "meta_description": "",
-        "keywords": "",
-    }
-    for _attempt in range(MAX_AI_GENERATION_RETRIES):
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                },
-            ],
-            temperature=0.55,
-        )
-
         raw_text = response.choices[0].message.content if response.choices else ""
         if not raw_text:
             continue
