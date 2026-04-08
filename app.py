@@ -282,12 +282,28 @@ def build_fallback_description(angle: str) -> str:
    
  return fallback_map.get(angle, fallback_)
 
-def _is_valid_ai_description(description: str):
-    """Return True only if description contains valid HTML"""
-    if "<ul>" not in description:
+def _is_valid_ai_description(description: str) -> bool:
+    import re
+
+    if not description or not isinstance(description, str):
         return False
-    li_count = description.count("<li>")
-    return 5 <= li_count <= 7
+
+    text = description.strip().lower()
+
+    if "<ul>" not in text or "</ul>" not in text:
+        return False
+
+    if "<p>" not in text or "</p>" not in text:
+        return False
+
+    if "•" in description or re.search(r"(^|\n)\s*[-*]\s+", description):
+        return False
+
+    li_tags = re.findall(r"<li\b[^>]*>.*?</li>", description, re.DOTALL | re.IGNORECASE)
+    if len(li_tags) < 5 or len(li_tags) > 7:
+        return False
+
+    return True
 
 
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
@@ -316,9 +332,7 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
 
 Your job is to generate HIGH-CONVERTING product content that increases sales.
 
-
 OUTPUT FORMAT (STRICT JSON ONLY)
-
 Return ONLY valid JSON. No explanations. No extra text.
 
 {{
@@ -328,44 +342,21 @@ Return ONLY valid JSON. No explanations. No extra text.
   "keywords": "..."
 }}
 
-
 TITLE REQUIREMENTS
-
 - Must be DIFFERENT from the original title
 - Must be more compelling and benefit-driven
 - Use power words and emotional triggers
 - Keep it clear and readable
 - Do NOT repeat the original title wording
-
+- Write ONLY in {language_name}
 
 DESCRIPTION REQUIREMENTS (CRITICAL)
-
 You MUST return VALID HTML ONLY.
-
-     copilot/replace-ai-copywriting-prompt
-<p>Powerful emotional hook that creates immediate desire and relief.</p>
-
-<p>Clear before/after transformation.</p>
-
-<ul>
-<li>Specific real-life benefit with clear outcome</li>
-<li>Confidence and emotional impact</li>
-<li>Time-saving or friction reduction</li>
-<li>Premium experience feeling</li>
-<li>Lifestyle upgrade effect</li>
-</ul>
-
-<p>Close with urgency and action.</p>
-
-STRICT RULES:
-- Valid HTML only
 
 Structure EXACTLY like this:
 
 <p>Hook paragraph that grabs attention and highlights the main benefit.</p>
-
 <p>Second paragraph addressing pain points and positioning the product as the solution.</p>
-
 <ul>
 <li><strong>Benefit 1:</strong> Clear outcome-focused benefit.</li>
 <li><strong>Benefit 2:</strong> Clear outcome-focused benefit.</li>
@@ -373,56 +364,129 @@ Structure EXACTLY like this:
 <li><strong>Benefit 4:</strong> Clear outcome-focused benefit.</li>
 <li><strong>Benefit 5:</strong> Clear outcome-focused benefit.</li>
 </ul>
+<p>Close with urgency and action.</p>
 
 STRICT RULES:
-      copilot/add-validation-to-ai-output
+- ONLY use <p>, <ul>, <li>, <strong>
+- DO NOT use "•" or "-" or "*" or any plain text bullets
+- Each bullet MUST be inside <li>
+- MUST include between 5 to 7 <li> items
 - No broken HTML
 - No short or incomplete bullets
 - Each bullet must be a full persuasive sentence
-- Minimum 5 bullets, maximum 7 bullets
-- No weak phrases like "this product is good"   main
-- No emojis
-- No weak phrases
+- DO NOT escape HTML
+- DO NOT return plain text
+- DO NOT wrap output in markdown
 
 SEO:
 - Meta description under 155 chars
 - Keywords = buyer intent keywords
 
-PRODUCT DATA:
-
-- ONLY use <p>, <ul>, <li>, <strong>
-- DO NOT use "•" or "-" or "*" or any plain text bullets
-- Each bullet MUST be inside <li>
-- MUST include between 5 to 7 <li> items
-- DO NOT escape HTML
-- DO NOT return plain text
-- DO NOT wrap output in markdown
-- HTML must be clean and valid
-
-
-META DESCRIPTION
-
-- Max 155 characters
-- Persuasive and click-focused
-- Summarize the core benefit
-
-
-KEYWORDS
-
-- Comma-separated
-- Include product type, brand, and main benefits
-- No duplicates
-
-
 PRODUCT DATA
-
-        main
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
 Tags: {tags}
 Description: {description}
 """
+
+    fallback_description = build_fallback_description(
+        detect_product_angle(title, product_type, tags, description)
+    )
+
+    MAX_RETRIES = 3
+    new_title = title
+    new_description = ""
+    new_meta_description = ""
+    new_keywords = ""
+    source_used = "none"
+
+    for attempt in range(MAX_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
+            ],
+            temperature=0.55,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+
+        cleaned = cleaned.strip()
+
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            cleaned = cleaned[start:end + 1]
+
+        try:
+            ai_result = json.loads(cleaned)
+        except Exception:
+            continue
+
+        candidate_title = str(ai_result.get("title") or title).strip() or title
+        candidate_description = str(ai_result.get("description") or "").strip()
+        candidate_meta = str(ai_result.get("meta_description") or "").strip()
+        candidate_keywords = str(ai_result.get("keywords") or "").strip()
+
+        if not _is_valid_ai_description(candidate_description):
+            continue
+
+        new_title = candidate_title
+        new_description = candidate_description
+        new_meta_description = candidate_meta
+        new_keywords = candidate_keywords
+        source_used = "ai"
+        break
+
+    if not new_description or not _is_valid_ai_description(new_description):
+        new_description = fallback_description
+        new_title = title
+        source_used = "generated_fallback"
+
+    if not new_meta_description:
+        fallback_meta = sanitize_plain_text(new_title)
+        if len(fallback_meta) > 155:
+            fallback_meta = fallback_meta[:152].rstrip() + "..."
+        new_meta_description = fallback_meta
+
+    if len(new_meta_description) > 155:
+        new_meta_description = new_meta_description[:152].rstrip() + "..."
+
+    if not new_keywords:
+        fallback_keywords_parts = [title, vendor, product_type]
+        fallback_keywords_parts = [k.strip() for k in fallback_keywords_parts if k and k.strip()]
+        new_keywords = ", ".join(fallback_keywords_parts[:6])
+
+    return {
+        "title": new_title,
+        "description": new_description,
+        "meta_description": new_meta_description,
+        "keywords": new_keywords,
+        "source_used": source_used,
+        "has_ul": "<ul>" in new_description.lower(),
+        "li_count": new_description.lower().count("<li>"),
+        "contains_bullet_symbol": "•" in new_description,
+        }
 
      copilot/add-validation-to-ai-output
     fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
