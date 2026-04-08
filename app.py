@@ -36,6 +36,8 @@ SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
+MAX_AI_GENERATION_RETRIES = 3
+
 
 class ShopifyStore(db.Model):
     __tablename__ = "shopify_stores"
@@ -63,6 +65,46 @@ def sanitize_plain_text(text_value: str) -> str:
         .replace("`", "")
         .strip()
     )
+
+
+def is_valid_html_description(html: str) -> bool:
+    if not html or not isinstance(html, str):
+        return False
+
+    text = html.strip().lower()
+
+    if "<ul>" not in text or "</ul>" not in text:
+        return False
+
+    li_count = text.count("<li>")
+    if li_count < 5 or li_count > 7:
+        return False
+
+    if "<p>" not in text or "</p>" not in text:
+        return False
+
+    return True
+
+
+def build_fallback_description(product_title: str = "", brand: str = "", angle: str = "general") -> str:
+    name = (product_title or "this product").strip()
+    brand_text = f" from {brand.strip()}" if brand and brand.strip() else ""
+
+    return f"""
+<p>Upgrade your routine with {name}{brand_text} and enjoy a smarter, more confident everyday experience.</p>
+
+<p>If you are tired of disappointing results, wasted time, or products that feel average, this is designed to give you a smoother, more reliable, and more satisfying outcome from the start.</p>
+
+<ul>
+<li>Enjoy a more polished result that helps you feel confident every time you use it.</li>
+<li>Save time with a smoother, more efficient experience built for everyday convenience.</li>
+<li>Reduce frustration with a solution designed to feel reliable, comfortable, and easy to use.</li>
+<li>Upgrade your lifestyle with a product that feels more premium and intentional.</li>
+<li>Experience visible, practical benefits that make your daily routine feel easier and better.</li>
+</ul>
+
+<p>Make the switch today and enjoy the difference a better choice can make.</p>
+""".strip()
 
 
 def get_store(shop: str):
@@ -145,6 +187,7 @@ def detect_product_angle(title: str, product_type: str, tags: str, description: 
     return "general"
 
 
+    copilot/add-validation-retry-logic
 def build_fallback_description(angle: str) -> str:
     fallback_map = {
         "grooming": (
@@ -239,14 +282,23 @@ def build_fallback_description(angle: str) -> str:
     return fallback_map.get(angle, fallback_map["general"])
 
 
+     copilot/add-validation-to-ai-output
 def _is_valid_ai_description(description: str) -> bool:
     """Return True only if description contains <ul> and between 5 and 7 <li> items."""
+
+def is_description_valid(description: str) -> bool:
+      main
     if "<ul>" not in description:
         return False
     li_count = description.count("<li>")
     return 5 <= li_count <= 7
 
 
+     copilot/add-validation-to-ai-output
+
+
+    main
+      main
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -269,13 +321,15 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    prompt = f"""You are a top 1% Shopify conversion expert and direct-response copywriter.
+    prompt = f"""You are a top 1% Shopify conversion copywriter and CRO expert.
 
-LANGUAGE:
-Write ONLY in {language_name}.
-No mixing languages.
+Your job is to generate HIGH-CONVERTING product content that increases sales.
 
-OUTPUT FORMAT (STRICT JSON ONLY):
+
+OUTPUT FORMAT (STRICT JSON ONLY)
+
+Return ONLY valid JSON. No explanations. No extra text.
+
 {{
   "title": "...",
   "description": "...",
@@ -283,38 +337,36 @@ OUTPUT FORMAT (STRICT JSON ONLY):
   "keywords": "..."
 }}
 
-MISSION:
-Turn this product into a HIGH-CONVERTING WINNING PRODUCT.
 
-PSYCHOLOGY RULES:
-- Focus on transformation, not features
-- Make the customer imagine their new life after buying
-- Trigger desire, confidence, and relief
-- Use emotional + practical benefits together
-- Write like a premium brand (not cheap dropshipping)
+TITLE REQUIREMENTS
 
-TITLE:
-- Must feel powerful and desirable
-- Must create curiosity or promise a result
-- Avoid generic words like "best" or "high quality"
+- Must be DIFFERENT from the original title
+- Must be more compelling and benefit-driven
+- Use power words and emotional triggers
+- Keep it clear and readable
+- Do NOT repeat the original title wording
 
-DESCRIPTION STRUCTURE (STRICT):
 
-<p>Powerful emotional hook (make them want it immediately)</p>
+DESCRIPTION REQUIREMENTS (CRITICAL)
 
-<p>Explain the pain/problem and how this product solves it</p>
+You MUST return VALID HTML ONLY.
+
+Structure EXACTLY like this:
+
+<p>Hook paragraph that grabs attention and highlights the main benefit.</p>
+
+<p>Second paragraph addressing pain points and positioning the product as the solution.</p>
 
 <ul>
-<li>Benefit + real-life outcome</li>
-<li>Benefit + emotional impact</li>
-<li>Benefit + convenience or time saving</li>
-<li>Benefit + confidence boost</li>
-<li>Benefit + lifestyle upgrade</li>
+<li><strong>Benefit 1:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 2:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 3:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 4:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 5:</strong> Clear outcome-focused benefit.</li>
 </ul>
 
-<p>Subtle but strong closing line that encourages action</p>
-
 STRICT RULES:
+      copilot/add-validation-to-ai-output
 - No broken HTML
 - No short or incomplete bullets
 - Each bullet must be a full persuasive sentence
@@ -327,6 +379,34 @@ SEO:
 - Keywords = buyer intent keywords (not generic)
 
 PRODUCT DATA:
+
+- ONLY use <p>, <ul>, <li>, <strong>
+- DO NOT use "•" or "-" or "*" or any plain text bullets
+- Each bullet MUST be inside <li>
+- MUST include between 5 to 7 <li> items
+- DO NOT escape HTML
+- DO NOT return plain text
+- DO NOT wrap output in markdown
+- HTML must be clean and valid
+
+
+META DESCRIPTION
+
+- Max 155 characters
+- Persuasive and click-focused
+- Summarize the core benefit
+
+
+KEYWORDS
+
+- Comma-separated
+- Include product type, brand, and main benefits
+- No duplicates
+
+
+PRODUCT DATA
+
+        main
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
@@ -334,6 +414,7 @@ Tags: {tags}
 Description: {description}
 """
 
+     copilot/add-validation-to-ai-output
     fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
 
     MAX_RETRIES = 3
@@ -398,8 +479,97 @@ Description: {description}
         new_keywords = candidate_keywords
         break
 
-    if not new_description:
-        new_description = fallback_description
+     copilot/add-validation-retry-logic
+    ai_result = {
+        "title": title,
+        "description": "",
+        "meta_description": "",
+        "keywords": "",
+    }
+    for _attempt in range(MAX_AI_GENERATION_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
+            ],
+            temperature=0.55,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+
+        cleaned = cleaned.strip()
+
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            cleaned = cleaned[start:end + 1]
+
+        try:
+            ai_result = json.loads(cleaned)
+        except Exception:
+            ai_result = {
+                "title": title,
+                "description": "",
+                "meta_description": "",
+                "keywords": "",
+            }
+
+        candidate_description = str(ai_result.get("description") or "").strip()
+        if is_description_valid(candidate_description):
+            break
+
+    response = None
+    raw_text = ""
+
+    for attempt in range(3):
+        response=client.chat.completions.create
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return valid JSON only.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.5,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
+         main
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+         main
+
+        cleaned = cleaned.strip()
 
     if not new_meta_description:
         fallback_meta = sanitize_plain_text(new_title)
@@ -407,19 +577,22 @@ Description: {description}
             fallback_meta = fallback_meta[:152].rstrip() + "..."
         new_meta_description = fallback_meta
 
-    if len(new_meta_description) > 155:
-        new_meta_description = new_meta_description[:152].rstrip() + "..."
+    fallback_description = build_fallback_description(title, vendor)
 
-    if not new_keywords:
-        keyword_parts = [title, vendor, product_type]
-        keyword_parts = [k.strip() for k in keyword_parts if k and k.strip()]
-        new_keywords = ", ".join(keyword_parts[:8])
+    fallback_title = title if title else "Optimized Product"
+    fallback_meta = sanitize_plain_text(fallback_title)
+    if len(fallback_meta) > 155:
+        fallback_meta = fallback_meta[:152].rstrip() + "..."
+
+    fallback_keywords_parts = [title, vendor, product_type]
+    fallback_keywords_parts = [k.strip() for k in fallback_keywords_parts if k and k.strip()]
+    fallback_keywords = ", ".join(fallback_keywords_parts[:6])
 
     return {
-        "title": new_title,
-        "description": new_description,
-        "meta_description": new_meta_description,
-        "keywords": new_keywords,
+        "title": fallback_title,
+        "description": fallback_description,
+        "meta_description": fallback_meta,
+        "keywords": fallback_keywords,
     }
 
 
@@ -767,7 +940,7 @@ def settings_page():
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
-                            <div><strong>Description Preview:</strong><br>${item.new_description_preview ?? ""}</div>
+                            <div><strong>Description:</strong><br>${item.new_description ?? ""}</div>
                             <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
                             <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
                             ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
@@ -944,8 +1117,15 @@ def optimize_all_products():
                 "new_title": new_title,
                 "success": update_response.status_code == 200,
                 "status_code": update_response.status_code,
-                "language_used": lang,
-                "new_description_preview": new_description[:200],
+                "language_used": lang,       copilot/fix-description-truncation
+                "new_description_preview": new_description,
+
+  copilot/fix-frontend-response-full-description
+                "new_description_preview": new_description,
+
+                "new_description": new_description,
+      main
+      main
                 "meta_description_preview": new_meta_description[:160],
                 "keywords": new_keywords,
             })
