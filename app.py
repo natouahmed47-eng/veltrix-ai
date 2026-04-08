@@ -280,11 +280,10 @@ def build_fallback_description(angle: str) -> str:
         ),
     }
    
- return fallback_map.get(angle, fallback_map["general"]
-    def _is_valid_ai_description(description: str) -> bool:
-    """Return True only if description contains <ul> and between 5 and 7 <li> items."""
-def is_description_valid(description: str) -> bool:
-      main
+ return fallback_map.get(angle, fallback_)
+
+def _is_valid_ai_description(description: str):
+    """Return True only if description contains valid HTML"""
     if "<ul>" not in description:
         return False
     li_count = description.count("<li>")
