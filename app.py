@@ -280,7 +280,7 @@ def build_fallback_description(angle: str) -> str:
         ),
     }
     return fallback_map.get(angle, fallback_map["general"])
-   copilot/add-validation-to-ai-output  
+           copilot/add-validation-to-ai-output  
 def _is_valid_ai_description(description: str) -> bool:
     """Return True only if description contains <ul> and between 5 and 7 <li> items."""
 def is_description_valid(description: str) -> bool:
