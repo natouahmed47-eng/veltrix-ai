@@ -289,7 +289,7 @@ Description: {description}
     raw_text = ""
 
     for attempt in range(3):
-        response = "contains_bullet_symbol": "•" in new_description,
+        response = client.chat.completions.create
             model="gpt-4o-mini",
             messages=[
                 {
