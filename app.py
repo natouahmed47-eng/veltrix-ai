@@ -36,6 +36,8 @@ SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
+MAX_AI_GENERATION_RETRIES = 3
+
 
 class ShopifyStore(db.Model):
     __tablename__ = "shopify_stores"
@@ -185,6 +187,110 @@ def detect_product_angle(title: str, product_type: str, tags: str, description: 
     return "general"
 
 
+    copilot/add-validation-retry-logic
+def build_fallback_description(angle: str) -> str:
+    fallback_map = {
+        "grooming": (
+            "<p>Upgrade your grooming routine with a premium solution built for comfort, confidence, and consistently clean results.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more comfortable grooming experience every time</li>"
+            "<li>Save time with efficient performance designed for daily use</li>"
+            "<li>Feel more confident with a cleaner, sharper, more polished look</li>"
+            "<li>Get dependable control and convenience from the very first use</li>"
+            "<li>Choose a grooming essential that combines comfort, function, and value</li>"
+            "</ul>"
+            "<p>Make every session easier, cleaner, and more satisfying.</p>"
+        ),
+        "beauty": (
+            "<p>Elevate your beauty routine with a refined solution designed to help you look fresher, more polished, and more confident.</p>"
+            "<ul>"
+            "<li>Support a more radiant and put-together everyday look</li>"
+            "<li>Enjoy a routine that feels smoother, easier, and more effective</li>"
+            "<li>Get results that help you feel polished and ready faster</li>"
+            "<li>Add comfort and convenience to your daily self-care ritual</li>"
+            "<li>Choose a beauty essential that enhances your routine with ease</li>"
+            "</ul>"
+            "<p>Refresh your routine with a beauty upgrade you will actually enjoy using.</p>"
+        ),
+        "home": (
+            "<p>Make everyday living easier with a practical solution designed to save time, reduce hassle, and improve comfort at home.</p>"
+            "<ul>"
+            "<li>Bring more ease and convenience into your daily routine</li>"
+            "<li>Save time with a solution built around real household needs</li>"
+            "<li>Enjoy a more organized, efficient, and stress-free experience</li>"
+            "<li>Improve comfort and usability in the moments that matter most</li>"
+            "<li>Choose a dependable addition that supports everyday living</li>"
+            "</ul>"
+            "<p>Simplify your routine with a home essential built for real life.</p>"
+        ),
+        "tech": (
+            "<p>Upgrade your setup with a smart solution designed for convenience, performance, and modern everyday use.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more efficient daily experience</li>"
+            "<li>Save time with practical functionality that fits your routine</li>"
+            "<li>Get dependable performance where it matters most</li>"
+            "<li>Add convenience and flexibility to your everyday setup</li>"
+            "<li>Choose a modern essential built to keep up with your lifestyle</li>"
+            "</ul>"
+            "<p>Make the smarter choice for a more seamless everyday routine.</p>"
+        ),
+        "fashion": (
+            "<p>Refine your look with a stylish essential designed to bring more confidence, versatility, and polish to your everyday wardrobe.</p>"
+            "<ul>"
+            "<li>Enhance your personal style with a more elevated finish</li>"
+            "<li>Enjoy a versatile piece that works across different occasions</li>"
+            "<li>Feel more confident with a polished and put-together look</li>"
+            "<li>Bring comfort and style together in one smart choice</li>"
+            "<li>Choose an item that adds value to your everyday wardrobe</li>"
+            "</ul>"
+            "<p>Step into a sharper, more confident version of your style.</p>"
+        ),
+        "fitness": (
+            "<p>Support your performance with a fitness-focused solution designed to improve consistency, comfort, and results.</p>"
+            "<ul>"
+            "<li>Make your routine feel more effective and easier to maintain</li>"
+            "<li>Stay more comfortable and focused during training</li>"
+            "<li>Support better performance with a smarter fitness choice</li>"
+            "<li>Reduce friction in your routine and improve consistency</li>"
+            "<li>Choose a solution built around real performance needs</li>"
+            "</ul>"
+            "<p>Upgrade your training experience with a smarter fitness essential.</p>"
+        ),
+        "pet": (
+            "<p>Make pet care easier with a practical solution designed for comfort, convenience, and everyday reliability.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and less stressful care routine</li>"
+            "<li>Save time while improving your pet care experience</li>"
+            "<li>Support better comfort for both you and your pet</li>"
+            "<li>Make daily care feel easier, cleaner, and more efficient</li>"
+            "<li>Choose a dependable pet essential built for real use</li>"
+            "</ul>"
+            "<p>Simplify your routine with a pet care upgrade that makes daily life easier.</p>"
+        ),
+        "general": (
+            "<p>Upgrade your routine with a smarter, more effective solution designed to deliver comfort, convenience, and results you can feel from the start.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more reliable experience every time</li>"
+            "<li>Save time with practical performance built for daily use</li>"
+            "<li>Feel more confident with cleaner and more polished results</li>"
+            "<li>Experience comfort and control designed around real needs</li>"
+            "<li>Choose a product that combines function, convenience, and value</li>"
+            "</ul>"
+            "<p>Make the switch today and experience the difference for yourself.</p>"
+        ),
+    }
+    return fallback_map.get(angle, fallback_map["general"])
+
+
+def is_description_valid(description: str) -> bool:
+    if "<ul>" not in description:
+        return False
+    li_count = description.count("<li>")
+    return 5 <= li_count <= 7
+
+
+
+    main
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -211,9 +317,9 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
 
 Your job is to generate HIGH-CONVERTING product content that increases sales.
 
-=====================
+
 OUTPUT FORMAT (STRICT JSON ONLY)
-=====================
+
 Return ONLY valid JSON. No explanations. No extra text.
 
 {{
@@ -223,18 +329,18 @@ Return ONLY valid JSON. No explanations. No extra text.
   "keywords": "..."
 }}
 
-=====================
+
 TITLE REQUIREMENTS
-=====================
+
 - Must be DIFFERENT from the original title
 - Must be more compelling and benefit-driven
 - Use power words and emotional triggers
 - Keep it clear and readable
 - Do NOT repeat the original title wording
 
-=====================
+
 DESCRIPTION REQUIREMENTS (CRITICAL)
-=====================
+
 You MUST return VALID HTML ONLY.
 
 Structure EXACTLY like this:
@@ -261,29 +367,87 @@ STRICT RULES:
 - DO NOT wrap output in markdown
 - HTML must be clean and valid
 
-=====================
+
 META DESCRIPTION
-=====================
+
 - Max 155 characters
 - Persuasive and click-focused
 - Summarize the core benefit
 
-=====================
+
 KEYWORDS
-=====================
+
 - Comma-separated
 - Include product type, brand, and main benefits
 - No duplicates
 
-=====================
+
 PRODUCT DATA
-=====================
+
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
 Tags: {tags}
 Description: {description}
 """
+
+     copilot/add-validation-retry-logic
+    ai_result = {
+        "title": title,
+        "description": "",
+        "meta_description": "",
+        "keywords": "",
+    }
+    for _attempt in range(MAX_AI_GENERATION_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
+            ],
+            temperature=0.55,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+
+        cleaned = cleaned.strip()
+
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            cleaned = cleaned[start:end + 1]
+
+        try:
+            ai_result = json.loads(cleaned)
+        except Exception:
+            ai_result = {
+                "title": title,
+                "description": "",
+                "meta_description": "",
+                "keywords": "",
+            }
+
+        candidate_description = str(ai_result.get("description") or "").strip()
+        if is_description_valid(candidate_description):
+            break
 
     response = None
     raw_text = ""
@@ -306,6 +470,7 @@ Description: {description}
             continue
 
         cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
+         main
 
         if cleaned.startswith("```json"):
             cleaned = cleaned[7:]
