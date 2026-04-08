@@ -279,8 +279,7 @@ def build_fallback_description(angle: str) -> str:
             "<p>Make the switch today and experience the difference for yourself.</p>"
         ),
     }
-   
- return fallback_map.get(angle, fallback_)
+    
 
 def _is_valid_ai_description(description: str) -> bool:
     import re
