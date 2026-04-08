@@ -282,15 +282,23 @@ def build_fallback_description(angle: str) -> str:
     return fallback_map.get(angle, fallback_map["general"])
 
 
+     copilot/add-validation-to-ai-output
+def _is_valid_ai_description(description: str) -> bool:
+    """Return True only if description contains <ul> and between 5 and 7 <li> items."""
+
 def is_description_valid(description: str) -> bool:
+      main
     if "<ul>" not in description:
         return False
     li_count = description.count("<li>")
     return 5 <= li_count <= 7
 
 
+     copilot/add-validation-to-ai-output
+
 
     main
+      main
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -358,6 +366,20 @@ Structure EXACTLY like this:
 </ul>
 
 STRICT RULES:
+      copilot/add-validation-to-ai-output
+- No broken HTML
+- No short or incomplete bullets
+- Each bullet must be a full persuasive sentence
+- Minimum 5 bullets, maximum 7 bullets
+- No weak phrases like "this product is good"
+- No emojis
+
+SEO:
+- Meta description under 155 chars
+- Keywords = buyer intent keywords (not generic)
+
+PRODUCT DATA:
+
 - ONLY use <p>, <ul>, <li>, <strong>
 - DO NOT use "•" or "-" or "*" or any plain text bullets
 - Each bullet MUST be inside <li>
@@ -384,12 +406,78 @@ KEYWORDS
 
 PRODUCT DATA
 
+        main
 Title: {title}
 Brand: {vendor}
 Category: {product_type}
 Tags: {tags}
 Description: {description}
 """
+
+     copilot/add-validation-to-ai-output
+    fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
+
+    MAX_RETRIES = 3
+    new_title = title
+    new_description = None
+    new_meta_description = ""
+    new_keywords = ""
+
+    for attempt in range(MAX_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
+            ],
+            temperature=0.55,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+
+        cleaned = cleaned.strip()
+
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            cleaned = cleaned[start:end + 1]
+
+        try:
+            ai_result = json.loads(cleaned)
+        except Exception:
+            continue
+
+        candidate_title = str(ai_result.get("title") or title).strip() or title
+        candidate_description = str(ai_result.get("description") or "").strip()
+        candidate_meta = str(ai_result.get("meta_description") or "").strip()
+        candidate_keywords = str(ai_result.get("keywords") or "").strip()
+
+        if not _is_valid_ai_description(candidate_description):
+            continue
+
+        new_title = candidate_title
+        new_description = candidate_description
+        new_meta_description = candidate_meta
+        new_keywords = candidate_keywords
+        break
 
      copilot/add-validation-retry-logic
     ai_result = {
@@ -479,49 +567,15 @@ Description: {description}
 
         if cleaned.endswith("```"):
             cleaned = cleaned[:-3]
+         main
 
         cleaned = cleaned.strip()
 
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            cleaned = cleaned[start:end + 1]
-
-        try:
-            ai_result = json.loads(cleaned)
-        except Exception:
-            ai_result = {}
-
-        new_title = str(ai_result.get("title") or title).strip()
-        new_description = str(ai_result.get("description") or "").strip()
-        new_meta_description = str(ai_result.get("meta_description") or "").strip()
-        new_keywords = str(ai_result.get("keywords") or "").strip()
-
-        if is_valid_html_description(new_description):
-            if not new_meta_description:
-                fallback_meta = sanitize_plain_text(new_title)
-                if len(fallback_meta) > 155:
-                    fallback_meta = fallback_meta[:152].rstrip() + "..."
-                new_meta_description = fallback_meta
-
-            if len(new_meta_description) > 155:
-                new_meta_description = new_meta_description[:152].rstrip() + "..."
-
-            if not new_keywords:
-                keyword_parts = [title, vendor, product_type]
-                keyword_parts = [k.strip() for k in keyword_parts if k and k.strip()]
-                new_keywords = ", ".join(keyword_parts[:6])
-
-            return {
-    "title": new_title or title,
-    "description": new_description,
-    "meta_description": new_meta_description,
-    "keywords": new_keywords,
-    "source_used": source_used,
-    "has_ul": "<ul>" in new_description.lower(),
-    "li_count": new_description.lower().count("<li>"),
-    "contains_bullet_symbol": "•" in new_description,
-            }
+    if not new_meta_description:
+        fallback_meta = sanitize_plain_text(new_title)
+        if len(fallback_meta) > 155:
+            fallback_meta = fallback_meta[:152].rstrip() + "..."
+        new_meta_description = fallback_meta
 
     fallback_description = build_fallback_description(title, vendor)
 

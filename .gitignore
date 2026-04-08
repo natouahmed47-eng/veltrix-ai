@@ -1,1 +1,6 @@
 __pycache__/
+     copilot/add-validation-to-ai-output
+*.pyc
+*.pyo
+
+      main
