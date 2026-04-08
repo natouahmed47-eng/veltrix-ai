@@ -516,8 +516,7 @@ for attempt in range(MAX_RETRIES):
         ],
         temperature=0.55,
 )
-
-        raw_text = response.choices[0].message.content if response.choices else ""
+    raw_text = response.choices[0].message.content if response.choices else ""
         if not raw_text:
             continue
 
