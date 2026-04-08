@@ -289,7 +289,7 @@ Description: {description}
     raw_text = ""
 
     for attempt in range(3):
-        response = client.chat.completions.create
+        response=client.chat.completions.create
             model="gpt-4o-mini",
             messages=[
                 {
