@@ -359,15 +359,6 @@ Category: {product_type}
 Description: {description}
 """
 
-IMPORTANT
-- Do NOT use generic phrases like:
-  "premium shaver"
-  "ultimate grooming solution"
-  "redefines your grooming routine"
-  "our product"
-- Use specific search-intent keywords instead.
-"""
-
 
 
 OUTPUT FORMAT (STRICT JSON ONLY)
