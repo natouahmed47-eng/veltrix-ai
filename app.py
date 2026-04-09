@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import requests
 from datetime import datetime
@@ -294,6 +295,42 @@ def save_shop_token(
     return store
 
 
+def _convert_bullets_to_html(text: str) -> str:
+    """Convert plain-text bullet lines (• or -) to <ul><li> HTML if no <ul> is present."""
+    if "<ul>" in text.lower():
+        return text
+
+    lines = text.splitlines()
+    bullet_pattern = re.compile(r"^\s*[•\-]\s+(.+)$")
+    result = []
+    ul_items = []
+
+    def flush_ul():
+        if ul_items:
+            result.append("<ul>")
+            for item in ul_items:
+                # Bold the label before the first colon, if present
+                if ":" in item:
+                    label, _, rest = item.partition(":")
+                    result.append(f"<li><strong>{label.strip()}:</strong>{rest}</li>")
+                else:
+                    result.append(f"<li>{item.strip()}</li>")
+            result.append("</ul>")
+            ul_items.clear()
+
+    for line in lines:
+        m = bullet_pattern.match(line)
+        if m:
+            ul_items.append(m.group(1))
+        else:
+            flush_ul()
+            if line.strip():
+                result.append(line)
+
+    flush_ul()
+    return "\n".join(result)
+
+
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
     if not client:
         raise RuntimeError("OpenAI is not configured")
@@ -478,6 +515,8 @@ Description: {description}
         fallback_keywords_parts = [title, vendor, product_type]
         fallback_keywords_parts = [k.strip() for k in fallback_keywords_parts if k and k.strip()]
         new_keywords = ", ".join(fallback_keywords_parts[:6])
+
+    new_description = _convert_bullets_to_html(new_description)
 
     return {
         "title": new_title,
