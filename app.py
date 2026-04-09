@@ -1060,43 +1060,6 @@ def optimize_all_products():
                     timeout=30,
                 )
 
-            # KEYWORDS
-            existing_keywords = find_metafield("ai_keywords")
-
-            if existing_keywords:
-                keywords_response = requests.put(
-                    f"https://{shop}/admin/api/2024-01/metafields/{existing_keywords['id']}.json",
-                    headers={
-                        "X-Shopify-Access-Token": store.access_token,
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "metafield": {
-                            "id": existing_keywords["id"],
-                            "value": new_keywords,
-                            "type": "multi_line_text_field",
-                        }
-                    },
-                    timeout=30,
-                )
-            else:
-                keywords_response = requests.post(
-                    f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
-                    headers={
-                        "X-Shopify-Access-Token": store.access_token,
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "metafield": {
-                            "namespace": "custom",
-                            "key": "ai_keywords",
-                            "value": new_keywords,
-                            "type": "multi_line_text_field",
-                        }
-                    },
-                    timeout=30,
-                )
-
 
 @app.route("/run-migration", methods=["GET"])
 def run_migration():
