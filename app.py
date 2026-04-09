@@ -549,7 +549,9 @@ for attempt in range(MAX_RETRIES):
         candidate_keywords = str(ai_result.get("keywords") or "").strip()
 
         if not _is_valid_ai_description(candidate_description):
-            continue
+    candidate_description = ""
+    continue
+            
 
         new_title = candidate_title
         new_description = candidate_description
