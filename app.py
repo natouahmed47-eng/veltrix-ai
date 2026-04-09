@@ -1,3 +1,4 @@
+import html
 import os
 import re
 import json
@@ -301,7 +302,7 @@ def _convert_bullets_to_html(text: str) -> str:
         return text
 
     lines = text.splitlines()
-    bullet_pattern = re.compile(r"^\s*[•\-]\s+(.+)$")
+    bullet_pattern = re.compile(r"^\s*[-•]\s+(\S[^\r\n]*)$")
     result = []
     ul_items = []
 
@@ -312,9 +313,11 @@ def _convert_bullets_to_html(text: str) -> str:
                 # Bold the label before the first colon, if present
                 if ":" in item:
                     label, _, rest = item.partition(":")
-                    result.append(f"<li><strong>{label.strip()}:</strong>{rest}</li>")
+                    result.append(
+                        f"<li><strong>{html.escape(label.strip())}:</strong>{html.escape(rest)}</li>"
+                    )
                 else:
-                    result.append(f"<li>{item.strip()}</li>")
+                    result.append(f"<li>{html.escape(item.strip())}</li>")
             result.append("</ul>")
             ul_items.clear()
 
