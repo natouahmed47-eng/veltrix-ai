@@ -453,22 +453,57 @@ Description: {description}
         if not _is_valid_ai_description(candidate_description):
     candidate_description = ""
     continue
-       
-    
-       
-        new_title = candidate_title
+
+
+
+    # قيم ابتدائية آمنة
+new_title = title
+new_description = ""
+new_meta_description = ""
+new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
+source_used = "initial_fallback"
+
+# جرّب مرشحات الذكاء الاصطناعي
+for candidate in candidates:
+    candidate_title = candidate.get("title", "").strip()
+    candidate_description = candidate.get("description", "").strip()
+    candidate_meta = candidate.get("meta_description", "").strip()
+    candidate_keywords = candidate.get("keywords", "").strip()
+
+    if candidate_description and _is_valid(candidate_description):
+        new_title = candidate_title or title
         new_description = candidate_description
         new_meta_description = candidate_meta
-        new_keywords = candidate_keywords
+        new_keywords = candidate_keywords or new_keywords
         source_used = "ai"
         break
 
-    if not new_description or not _is_valid_ai_description(new_description):
+# fallback إذا لم نجد وصفًا صالحًا
+if not new_description or not _is_valid(new_description):
     new_description = fallback_description
     new_title = title
-    new_meta_description = sanitize_plain_text(title)[:155]
-    new_keywords = f"{title}, {vendor}, {product_type}"
+    new_meta_description = sanitize_plain_text(fallback_description)
+    new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
     source_used = "generated_fallback"
+
+# fallback للـ meta description
+if not new_meta_description:
+    fallback_meta = sanitize_plain_text(new_description or fallback_description or title)
+    if len(fallback_meta) > 155:
+        fallback_meta = fallback_meta[:155].rsplit(" ", 1)[0]
+    new_meta_description = fallback_meta
+
+# fallback أخير للكلمات المفتاحية
+if not new_keywords:
+    new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
+
+result = {
+    "title": new_title,
+    "description": new_description,
+    "meta_description": new_meta_description,
+    "keywords": new_keywords,
+    "source_used": source_used,
+}
         
         
         
