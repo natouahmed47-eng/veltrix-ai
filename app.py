@@ -1023,43 +1023,6 @@ def optimize_all_products():
                         return mf
                 return None
 
-            # META DESCRIPTION
-            existing_meta = find_metafield("ai_meta_description")
-
-            if existing_meta:
-                meta_description_response = requests.put(
-                    f"https://{shop}/admin/api/2024-01/metafields/{existing_meta['id']}.json",
-                    headers={
-                        "X-Shopify-Access-Token": store.access_token,
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "metafield": {
-                            "id": existing_meta["id"],
-                            "value": new_meta_description[:155],
-                            "type": "single_line_text_field",
-                        }
-                    },
-                    timeout=30,
-                )
-            else:
-                meta_description_response = requests.post(
-                    f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
-                    headers={
-                        "X-Shopify-Access-Token": store.access_token,
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "metafield": {
-                            "namespace": "custom",
-                            "key": "ai_meta_description",
-                            "value": new_meta_description[:155],
-                            "type": "single_line_text_field",
-                        }
-                    },
-                    timeout=30,
-                )
-
 
 @app.route("/run-migration", methods=["GET"])
 def run_migration():
