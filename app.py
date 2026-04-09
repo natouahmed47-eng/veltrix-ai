@@ -329,6 +329,7 @@ STRICT RULE:
 
 OUTPUT FORMAT (STRICT JSON ONLY)
 Return ONLY valid JSON:
+
 {{
   "title": "...",
   "description": "...",
@@ -336,46 +337,27 @@ Return ONLY valid JSON:
   "keywords": "..."
 }}
 
-LANGUAGE RULE
-- Write ONLY in {language_name}
+TITLE REQUIREMENTS:
+- Must include a real search keyword
+- Keep it clear and clickable
 
-PRIMARY SEO KEYWORD
-- {product_type}
-- If the product is a shaver, use terms like: precision shaver, electric shaver, men's shaver, sensitive skin shaver when natural
+DESCRIPTION REQUIREMENTS:
+- First sentence MUST include main keyword
+- Write 120-180 words
+- Include bullet points
 
-TITLE REQUIREMENTS
-- Must be SEO-friendly
-- Must contain a real search keyword
-- Must NOT use vague words like "premium product", "ultimate solution", "our product"
-- Must be clear, specific, and clickable
-- Keep it natural and benefit-driven
-- Max 60 characters if possible
+META DESCRIPTION:
+- 140-155 characters
 
-DESCRIPTION REQUIREMENTS
-- Return VALID HTML ONLY
-- First sentence MUST contain the main SEO keyword
-- Write for both SEO and conversion
-- Include practical benefits, not fluff
-- Use natural search phrases shoppers may type into Google
-- Avoid generic marketing language
-- Include a short intro paragraph + bullet points + short closing paragraph
-- Keep it around 120-180 words
+KEYWORDS:
+- Comma-separated SEO keywords
 
-META DESCRIPTION REQUIREMENTS
-- 140 to 155 characters
-- Must contain the main keyword
-- Make it click-worthy and natural
-
-KEYWORDS REQUIREMENTS
-- Comma-separated
-- Include primary + secondary + long-tail keywords
-- No generic filler keywords
-
-PRODUCT DATA
-- Original title: {title}
-- Brand: {vendor}
-- Product type: {product_type}
-- Existing description: {description}
+PRODUCT DATA:
+Title: {title}
+Brand: {vendor}
+Category: {product_type}
+Description: {description}
+"""
 
 IMPORTANT
 - Do NOT use generic phrases like:
@@ -385,15 +367,6 @@ IMPORTANT
   "our product"
 - Use specific search-intent keywords instead.
 """
-
-
-
-
-
-
-
-
-
 
 
 
