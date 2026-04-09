@@ -1004,26 +1004,6 @@ def optimize_all_products():
     results = []
     for product in products[:5]:
         try:
-            ai_result = build_title_and_description_with_ai(product, lang=lang)
-            new_title = ai_result["title"]
-            new_description = ai_result["description"]
-            new_meta_description = ai_result["meta_description"]
-            new_keywords = ai_result["keywords"]
-            update_response = requests.put(
-                f"https://{shop}/admin/api/2024-01/products/{product['id']}.json",
-                headers={
-                    "X-Shopify-Access-Token": store.access_token,
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "product": {
-                        "id": product["id"],
-                        "title": new_title,
-                        "body_html": new_description,
-                    }
-                },
-                timeout=30,
-            )
 
             # Fetch existing metafields
             metafields_check = requests.get(
