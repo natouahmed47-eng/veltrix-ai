@@ -1,7 +1,6 @@
-import os  
-import json  
+import os
+import json
 import requests
-import traceback
 from datetime import datetime
 from urllib.parse import urlencode
 
@@ -9,7 +8,6 @@ from flask import Flask, jsonify, redirect, request, render_template_string
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI
-from sqlalchemy import text
 
 app = Flask(__name__)
 CORS(app)
@@ -90,64 +88,114 @@ def build_fallback_description(product_title: str = "", brand: str = "", angle: 
     name = (product_title or "this product").strip()
     brand_text = f" from {brand.strip()}" if brand and brand.strip() else ""
 
-    return f"""
-<p>Upgrade your routine with {name}{brand_text} and enjoy a smarter, more confident everyday experience.</p>
+    fallback_map = {
+        "grooming": (
+            f"<p>Upgrade your grooming routine with {name}{brand_text} and enjoy a cleaner, more confident result.</p>"
+            "<p>Designed for comfort and convenience, this product helps make your routine feel easier and more effective.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother grooming experience with practical everyday performance.</li>"
+            "<li>Save time with a solution built for convenience and reliability.</li>"
+            "<li>Feel more confident with cleaner, more polished results.</li>"
+            "<li>Use a product designed to make your routine feel easier.</li>"
+            "<li>Choose a dependable option that supports daily grooming needs.</li>"
+            "</ul>"
+            "<p>Make the switch today and enjoy the difference a better grooming essential can make.</p>"
+        ),
+        "beauty": (
+            f"<p>Elevate your beauty routine with {name}{brand_text} and enjoy a more polished, confident look.</p>"
+            "<p>This solution is designed to help your daily self-care feel smoother, easier, and more rewarding.</p>"
+            "<ul>"
+            "<li>Support a more radiant and put-together everyday appearance.</li>"
+            "<li>Enjoy a routine that feels easier, smoother, and more effective.</li>"
+            "<li>Save time while upgrading your self-care experience.</li>"
+            "<li>Add comfort and convenience to your daily beauty routine.</li>"
+            "<li>Choose a beauty essential that helps you feel more confident.</li>"
+            "</ul>"
+            "<p>Refresh your routine today with a beauty upgrade you will actually enjoy using.</p>"
+        ),
+        "home": (
+            f"<p>Make everyday living easier with {name}{brand_text} and enjoy a more practical home routine.</p>"
+            "<p>Built to simplify daily tasks, this product helps reduce hassle and improve comfort at home.</p>"
+            "<ul>"
+            "<li>Bring more ease and convenience into your daily routine.</li>"
+            "<li>Save time with a solution built around real household needs.</li>"
+            "<li>Enjoy a more organized and stress-free experience.</li>"
+            "<li>Improve comfort and usability in the moments that matter most.</li>"
+            "<li>Choose a dependable addition that supports everyday living.</li>"
+            "</ul>"
+            "<p>Simplify your routine with a home essential built for real life.</p>"
+        ),
+        "tech": (
+            f"<p>Upgrade your setup with {name}{brand_text} and enjoy a smarter everyday experience.</p>"
+            "<p>This product is designed to bring convenience, performance, and modern functionality into your routine.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more efficient daily experience.</li>"
+            "<li>Save time with practical functionality that fits your routine.</li>"
+            "<li>Get dependable performance where it matters most.</li>"
+            "<li>Add convenience and flexibility to your everyday setup.</li>"
+            "<li>Choose a modern essential built to keep up with your lifestyle.</li>"
+            "</ul>"
+            "<p>Make the smarter choice for a more seamless everyday routine.</p>"
+        ),
+        "fashion": (
+            f"<p>Refine your look with {name}{brand_text} and add more confidence to your style.</p>"
+            "<p>Designed to feel versatile and polished, this piece helps elevate your everyday wardrobe.</p>"
+            "<ul>"
+            "<li>Enhance your personal style with a more elevated finish.</li>"
+            "<li>Enjoy a versatile piece that works across different occasions.</li>"
+            "<li>Feel more confident with a polished and put-together look.</li>"
+            "<li>Bring comfort and style together in one smart choice.</li>"
+            "<li>Choose an item that adds value to your everyday wardrobe.</li>"
+            "</ul>"
+            "<p>Step into a sharper, more confident version of your style today.</p>"
+        ),
+        "fitness": (
+            f"<p>Support your performance with {name}{brand_text} and make your fitness routine feel more effective.</p>"
+            "<p>Built for comfort and consistency, this solution helps support your training goals with less friction.</p>"
+            "<ul>"
+            "<li>Make your routine feel more effective and easier to maintain.</li>"
+            "<li>Stay more comfortable and focused during training.</li>"
+            "<li>Support better performance with a smarter fitness choice.</li>"
+            "<li>Reduce friction in your routine and improve consistency.</li>"
+            "<li>Choose a solution built around real performance needs.</li>"
+            "</ul>"
+            "<p>Upgrade your training experience with a smarter fitness essential.</p>"
+        ),
+        "pet": (
+            f"<p>Make pet care easier with {name}{brand_text} and enjoy a calmer daily routine.</p>"
+            "<p>Designed for comfort and convenience, this product helps simplify the care you provide every day.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and less stressful care routine.</li>"
+            "<li>Save time while improving your pet care experience.</li>"
+            "<li>Support better comfort for both you and your pet.</li>"
+            "<li>Make daily care feel easier, cleaner, and more efficient.</li>"
+            "<li>Choose a dependable pet essential built for real use.</li>"
+            "</ul>"
+            "<p>Simplify your routine with a pet care upgrade that makes daily life easier.</p>"
+        ),
+        "general": (
+            f"<p>Upgrade your routine with {name}{brand_text} and enjoy a smarter, more effective experience.</p>"
+            "<p>This product is designed to deliver comfort, convenience, and practical value from the start.</p>"
+            "<ul>"
+            "<li>Enjoy a smoother and more reliable experience every time.</li>"
+            "<li>Save time with practical performance built for daily use.</li>"
+            "<li>Feel more confident with cleaner and more polished results.</li>"
+            "<li>Experience comfort and control designed around real needs.</li>"
+            "<li>Choose a product that combines function, convenience, and value.</li>"
+            "</ul>"
+            "<p>Make the switch today and experience the difference for yourself.</p>"
+        ),
+    }
 
-<p>If you are tired of disappointing results, wasted time, or products that feel average, this is designed to give you a smoother, more reliable, and more satisfying outcome from the start.</p>
-
-<ul>
-<li>Enjoy a more polished result that helps you feel confident every time you use it.</li>
-<li>Save time with a smoother, more efficient experience built for everyday convenience.</li>
-<li>Reduce frustration with a solution designed to feel reliable, comfortable, and easy to use.</li>
-<li>Upgrade your lifestyle with a product that feels more premium and intentional.</li>
-<li>Experience visible, practical benefits that make your daily routine feel easier and better.</li>
-</ul>
-
-<p>Make the switch today and enjoy the difference a better choice can make.</p>
-""".strip()
-
-
-def get_store(shop: str):
-    return ShopifyStore.query.filter_by(shop=shop).first()
-
-
-def get_latest_store():
-    return ShopifyStore.query.order_by(ShopifyStore.updated_at.desc()).first()
-
-
-def save_shop_token(
-    shop: str,
-    access_token: str,
-    scope: str | None = None,
-    default_language: str = "en",
-):
-    store = get_store(shop)
-
-    if store:
-        store.access_token = access_token
-        store.scope = scope
-        if not store.default_language:
-            store.default_language = default_language
-        store.updated_at = datetime.utcnow()
-    else:
-        store = ShopifyStore(
-            shop=shop,
-            access_token=access_token,
-            scope=scope,
-            default_language=default_language,
-        )
-        db.session.add(store)
-
-    db.session.commit()
-    return store
+    return fallback_map.get(angle, fallback_map["general"])
 
 
 def detect_product_angle(title: str, product_type: str, tags: str, description: str) -> str:
     text_blob = " ".join([
-        title.lower(),
-        product_type.lower(),
-        tags.lower(),
-        description.lower(),
+        (title or "").lower(),
+        (product_type or "").lower(),
+        (tags or "").lower(),
+        (description or "").lower(),
     ])
 
     angle_map = {
@@ -187,100 +235,6 @@ def detect_product_angle(title: str, product_type: str, tags: str, description: 
     return "general"
 
 
-    copilot/add-validation-retry-logic
-def build_fallback_description(angle: str) -> str:
-    fallback_map = {
-        "grooming": (
-            "<p>Upgrade your grooming routine with a premium solution built for comfort, confidence, and consistently clean results.</p>"
-            "<ul>"
-            "<li>Enjoy a smoother and more comfortable grooming experience every time</li>"
-            "<li>Save time with efficient performance designed for daily use</li>"
-            "<li>Feel more confident with a cleaner, sharper, more polished look</li>"
-            "<li>Get dependable control and convenience from the very first use</li>"
-            "<li>Choose a grooming essential that combines comfort, function, and value</li>"
-            "</ul>"
-            "<p>Make every session easier, cleaner, and more satisfying.</p>"
-        ),
-        "beauty": (
-            "<p>Elevate your beauty routine with a refined solution designed to help you look fresher, more polished, and more confident.</p>"
-            "<ul>"
-            "<li>Support a more radiant and put-together everyday look</li>"
-            "<li>Enjoy a routine that feels smoother, easier, and more effective</li>"
-            "<li>Get results that help you feel polished and ready faster</li>"
-            "<li>Add comfort and convenience to your daily self-care ritual</li>"
-            "<li>Choose a beauty essential that enhances your routine with ease</li>"
-            "</ul>"
-            "<p>Refresh your routine with a beauty upgrade you will actually enjoy using.</p>"
-        ),
-        "home": (
-            "<p>Make everyday living easier with a practical solution designed to save time, reduce hassle, and improve comfort at home.</p>"
-            "<ul>"
-            "<li>Bring more ease and convenience into your daily routine</li>"
-            "<li>Save time with a solution built around real household needs</li>"
-            "<li>Enjoy a more organized, efficient, and stress-free experience</li>"
-            "<li>Improve comfort and usability in the moments that matter most</li>"
-            "<li>Choose a dependable addition that supports everyday living</li>"
-            "</ul>"
-            "<p>Simplify your routine with a home essential built for real life.</p>"
-        ),
-        "tech": (
-            "<p>Upgrade your setup with a smart solution designed for convenience, performance, and modern everyday use.</p>"
-            "<ul>"
-            "<li>Enjoy a smoother and more efficient daily experience</li>"
-            "<li>Save time with practical functionality that fits your routine</li>"
-            "<li>Get dependable performance where it matters most</li>"
-            "<li>Add convenience and flexibility to your everyday setup</li>"
-            "<li>Choose a modern essential built to keep up with your lifestyle</li>"
-            "</ul>"
-            "<p>Make the smarter choice for a more seamless everyday routine.</p>"
-        ),
-        "fashion": (
-            "<p>Refine your look with a stylish essential designed to bring more confidence, versatility, and polish to your everyday wardrobe.</p>"
-            "<ul>"
-            "<li>Enhance your personal style with a more elevated finish</li>"
-            "<li>Enjoy a versatile piece that works across different occasions</li>"
-            "<li>Feel more confident with a polished and put-together look</li>"
-            "<li>Bring comfort and style together in one smart choice</li>"
-            "<li>Choose an item that adds value to your everyday wardrobe</li>"
-            "</ul>"
-            "<p>Step into a sharper, more confident version of your style.</p>"
-        ),
-        "fitness": (
-            "<p>Support your performance with a fitness-focused solution designed to improve consistency, comfort, and results.</p>"
-            "<ul>"
-            "<li>Make your routine feel more effective and easier to maintain</li>"
-            "<li>Stay more comfortable and focused during training</li>"
-            "<li>Support better performance with a smarter fitness choice</li>"
-            "<li>Reduce friction in your routine and improve consistency</li>"
-            "<li>Choose a solution built around real performance needs</li>"
-            "</ul>"
-            "<p>Upgrade your training experience with a smarter fitness essential.</p>"
-        ),
-        "pet": (
-            "<p>Make pet care easier with a practical solution designed for comfort, convenience, and everyday reliability.</p>"
-            "<ul>"
-            "<li>Enjoy a smoother and less stressful care routine</li>"
-            "<li>Save time while improving your pet care experience</li>"
-            "<li>Support better comfort for both you and your pet</li>"
-            "<li>Make daily care feel easier, cleaner, and more efficient</li>"
-            "<li>Choose a dependable pet essential built for real use</li>"
-            "</ul>"
-            "<p>Simplify your routine with a pet care upgrade that makes daily life easier.</p>"
-        ),
-        "general": (
-            "<p>Upgrade your routine with a smarter, more effective solution designed to deliver comfort, convenience, and results you can feel from the start.</p>"
-            "<ul>"
-            "<li>Enjoy a smoother and more reliable experience every time</li>"
-            "<li>Save time with practical performance built for daily use</li>"
-            "<li>Feel more confident with cleaner and more polished results</li>"
-            "<li>Experience comfort and control designed around real needs</li>"
-            "<li>Choose a product that combines function, convenience, and value</li>"
-            "</ul>"
-            "<p>Make the switch today and experience the difference for yourself.</p>"
-        ),
-    }
-    
-
 def _is_valid_ai_description(description: str) -> bool:
     import re
 
@@ -303,6 +257,41 @@ def _is_valid_ai_description(description: str) -> bool:
         return False
 
     return True
+
+
+def get_store(shop: str):
+    return ShopifyStore.query.filter_by(shop=shop).first()
+
+
+def get_latest_store():
+    return ShopifyStore.query.order_by(ShopifyStore.updated_at.desc()).first()
+
+
+def save_shop_token(
+    shop: str,
+    access_token: str,
+    scope: str | None = None,
+    default_language: str = "en",
+):
+    store = get_store(shop)
+
+    if store:
+        store.access_token = access_token
+        store.scope = scope
+        if not store.default_language:
+            store.default_language = default_language
+        store.updated_at = datetime.utcnow()
+    else:
+        store = ShopifyStore(
+            shop=shop,
+            access_token=access_token,
+            scope=scope,
+            default_language=default_language,
+        )
+        db.session.add(store)
+
+    db.session.commit()
+    return store
 
 
 def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict:
@@ -376,8 +365,9 @@ STRICT RULES:
 - DO NOT escape HTML
 - DO NOT return plain text
 - DO NOT wrap output in markdown
-   - If you output bullet points using "•" or "-" instead of <li>, your answer is INVALID
+- If you output bullet points using "•" or "-" instead of <li>, your answer is INVALID
 - You MUST use <ul> and <li> or the response will be rejected
+
 SEO:
 - Meta description under 155 chars
 - Keywords = buyer intent keywords
@@ -391,27 +381,28 @@ Description: {description}
 """
 
     fallback_description = build_fallback_description(
-        detect_product_angle(title, product_type, tags, description)
+        product_title=title,
+        brand=vendor,
+        angle=detect_product_angle(title, product_type, tags, description),
     )
 
-    MAX_RETRIES = 3
-    new_title = title
+    new_title = title or "Optimized Product"
     new_description = ""
     new_meta_description = ""
-    new_keywords = ""
-    source_used = "none"
+    new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
+    source_used = "initial_fallback"
 
-    for attempt in range(MAX_RETRIES):
+    for _ in range(MAX_AI_GENERATION_RETRIES):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
+                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only.",
                 },
                 {
                     "role": "user",
-                    "content": prompt
+                    "content": prompt,
                 },
             ],
             temperature=0.55,
@@ -447,69 +438,26 @@ Description: {description}
         candidate_description = str(ai_result.get("description") or "").strip()
         candidate_meta = str(ai_result.get("meta_description") or "").strip()
         candidate_keywords = str(ai_result.get("keywords") or "").strip()
-      
-        
-        
+
         if not _is_valid_ai_description(candidate_description):
-    
-    
+            continue
 
-
-
-    # قيم ابتدائية آمنة
-new_title = title
-new_description = ""
-new_meta_description = ""
-new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
-source_used = "initial_fallback"
-
-# جرّب مرشحات الذكاء الاصطناعي
-for candidate in candidates:
-    candidate_title = candidate.get("title", "").strip()
-    candidate_description = candidate.get("description", "").strip()
-    candidate_meta = candidate.get("meta_description", "").strip()
-    candidate_keywords = candidate.get("keywords", "").strip()
-
-    if candidate_description and _is_valid(candidate_description):
-        new_title = candidate_title or title
+        new_title = candidate_title
         new_description = candidate_description
         new_meta_description = candidate_meta
         new_keywords = candidate_keywords or new_keywords
         source_used = "ai"
         break
 
-# fallback إذا لم نجد وصفًا صالحًا
-if not new_description or not _is_valid(new_description):
-    new_description = fallback_description
-    new_title = title
-    new_meta_description = sanitize_plain_text(fallback_description)
-    new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
-    source_used = "generated_fallback"
-
-# fallback للـ meta description
-if not new_meta_description:
-    fallback_meta = sanitize_plain_text(new_description or fallback_description or title)
-    if len(fallback_meta) > 155:
-        fallback_meta = fallback_meta[:155].rsplit(" ", 1)[0]
-    new_meta_description = fallback_meta
-
-# fallback أخير للكلمات المفتاحية
-if not new_keywords:
-    new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
-
-result = {
-    "title": new_title,
-    "description": new_description,
-    "meta_description": new_meta_description,
-    "keywords": new_keywords,
-    "source_used": source_used,
-}
-        
-        
-        
+    if not new_description or not _is_valid_ai_description(new_description):
+        new_description = fallback_description
+        new_title = title or "Optimized Product"
+        new_meta_description = sanitize_plain_text(new_description)
+        new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
+        source_used = "generated_fallback"
 
     if not new_meta_description:
-        fallback_meta = sanitize_plain_text(new_title)
+        fallback_meta = sanitize_plain_text(new_description or fallback_description or new_title)
         if len(fallback_meta) > 155:
             fallback_meta = fallback_meta[:152].rstrip() + "..."
         new_meta_description = fallback_meta
@@ -531,122 +479,6 @@ result = {
         "has_ul": "<ul>" in new_description.lower(),
         "li_count": new_description.lower().count("<li>"),
         "contains_bullet_symbol": "•" in new_description,
-        }
-
-    fallback_description = build_fallback_description(detect_product_angle(title, product_type, tags, description))
-
-    MAX_RETRIES = 3
-    new_title = title
-    new_description = None
-    new_meta_description = ""
-    new_keywords = ""
-
-    MAX_RETRIES = 3
-new_title = title
-new_description = None
-new_meta_description = ""
-new_keywords = ""
-
-for attempt in range(MAX_RETRIES):
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": "You are an elite Shopify conversion copywriter. Return clean JSON only."
-            },
-            {
-                "role": "user",
-                "content": prompt
-            },
-        ],
-        temperature=0.55,
-)
-
-    try:
-        ai_result = json.loads(cleaned)
-    except Exception:
-        continue
-
-    try:
-        ai_result = json.loads(cleaned)
-    except Exception:
-        continue
-
-        try:
-            ai_result = json.loads(cleaned)
-        except Exception:
-            continue
-
-        candidate_title = str(ai_result.get("title") or title).strip() or title
-        candidate_description = str(ai_result.get("description") or "").strip()
-        candidate_meta = str(ai_result.get("meta_description") or "").strip()
-        candidate_keywords = str(ai_result.get("keywords") or "").strip()
-
-        if not _is_valid_ai_description(candidate_description):
-    candidate_description = ""
-    continue
-            
-
-        new_title = candidate_title
-        new_description = candidate_description
-        new_meta_description = candidate_meta
-        new_keywords = candidate_keywords
-        break
-
-        raw_text = response.choices[0].message.content if response.choices else ""
-        if not raw_text:
-            continue
-
-        cleaned = raw_text.strip().replace("\\u200b", "").replace("\\ufeff", "")
-
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
-
-        cleaned = cleaned.strip()
-
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            cleaned = cleaned[start:end + 1]
-
-        try:
-            ai_result = json.loads(cleaned)
-        except Exception:
-            ai_result = {
-                "title": title,
-                "description": "",
-                "meta_description": "",
-                "keywords": "",
-            }
-
-    if not new_meta_description:
-        fallback_meta = sanitize_plain_text(new_title)
-        if len(fallback_meta) > 155:
-            fallback_meta = fallback_meta[:152].rstrip() + "..."
-        new_meta_description = fallback_meta
-
-    fallback_description = build_fallback_description(title, vendor)
-
-    fallback_title = title if title else "Optimized Product"
-    fallback_meta = sanitize_plain_text(fallback_title)
-    if len(fallback_meta) > 155:
-        fallback_meta = fallback_meta[:152].rstrip() + "..."
-
-    fallback_keywords_parts = [title, vendor, product_type]
-    fallback_keywords_parts = [k.strip() for k in fallback_keywords_parts if k and k.strip()]
-    fallback_keywords = ", ".join(fallback_keywords_parts[:6])
-
-    return {
-        "title": fallback_title,
-        "description": fallback_description,
-        "meta_description": fallback_meta,
-        "keywords": fallback_keywords,
     }
 
 
@@ -974,25 +806,14 @@ def settings_page():
                 let html = `<div class="card"><h3>Optimization Results</h3>`;
 
                 data.results.forEach((item, index) => {
-                    const variants = Array.isArray(item.title_variants) ? item.title_variants : [];
-                    const variantsHtml = variants.length
-                        ? `<div style="margin-top:10px; border-left:3px solid #2563eb; padding-left:12px;">
-                            <strong>Title Variants:</strong>
-                            <ul style="margin:8px 0 0 18px; padding:0;">
-                                ${variants.map((variant, i) => `<li><strong>Variant ${i + 1}:</strong> ${variant ?? ""}</li>`).join("")}
-                            </ul>
-                        </div>`
-                        : "";
-
                     html += `
                         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
                             <div><strong>#${index + 1}</strong></div>
                             <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
                             <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
-                            <div><strong>New Title (Selected):</strong> ${item.new_title ?? ""}</div>
-                            ${variantsHtml}
+                            <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
+                            <div><strong>Source:</strong> ${item.source_used ?? ""}</div>
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
-                            <div><strong>Status Code:</strong> ${item.status_code ?? ""}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
                             <div><strong>Description:</strong><br>${item.new_description ?? ""}</div>
                             <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
@@ -1047,19 +868,54 @@ def optimize_all_products():
         },
         timeout=30,
     )
-    products_data = products_response.json()
+
+    try:
+        products_data = products_response.json()
+    except Exception:
+        return jsonify({"error": "Failed to parse Shopify products response"}), 500
+
     products = products_data.get("products", [])
     results = []
+
     for product in products[:5]:
         try:
+            optimized = build_title_and_description_with_ai(product, lang=lang)
 
-            existing_metafields = metafields_check.json().get("metafields", [])
+            results.append({
+                "product_id": product.get("id"),
+                "old_title": product.get("title", ""),
+                "new_title": optimized.get("title", ""),
+                "new_description": optimized.get("description", ""),
+                "meta_description_preview": optimized.get("meta_description", ""),
+                "keywords": optimized.get("keywords", ""),
+                "source_used": optimized.get("source_used", "unknown"),
+                "success": True,
+                "status_code": 200,
+                "language_used": lang,
+                "error": "",
+                "title_variants": [],
+            })
+        except Exception as e:
+            results.append({
+                "product_id": product.get("id"),
+                "old_title": product.get("title", ""),
+                "new_title": product.get("title", ""),
+                "new_description": "",
+                "meta_description_preview": "",
+                "keywords": "",
+                "source_used": "error",
+                "success": False,
+                "status_code": 500,
+                "language_used": lang,
+                "error": str(e),
+                "title_variants": [],
+            })
 
-            def find_metafield(key):
-                for mf in existing_metafields:
-                    if mf.get("namespace") == "custom" and mf.get("key") == key:
-                        return mf
-                return 
+    return jsonify({
+        "message": "Optimization completed",
+        "language_used": lang,
+        "results": results,
+    })
 
 
 @app.errorhandler(500)
@@ -1075,3 +931,4 @@ with app.app_context():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+            
