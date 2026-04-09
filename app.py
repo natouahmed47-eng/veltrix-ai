@@ -1097,24 +1097,6 @@ def optimize_all_products():
                     timeout=30,
                 )
 
-        except Exception as e:
-            print("ERROR:", str(e))
-            print(traceback.format_exc())
-
-            "language": language,
-"title": title,
-"description": description,
-"suggested_fix": suggested_fix,
-"language_used": lang,
-"status": status,
-
-    return jsonify({
-        "shop": shop,
-        "language_used": lang,
-        "total_processed": len(results),
-        "results": results,
-    })
-
 
 @app.route("/run-migration", methods=["GET"])
 def run_migration():
