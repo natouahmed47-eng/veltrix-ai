@@ -1005,16 +1005,6 @@ def optimize_all_products():
     for product in products[:5]:
         try:
 
-            # Fetch existing metafields
-            metafields_check = requests.get(
-                f"https://{shop}/admin/api/2024-01/products/{product['id']}/metafields.json",
-                headers={
-                    "X-Shopify-Access-Token": store.access_token,
-                    "Content-Type": "application/json",
-                },
-                timeout=30,
-            )
-
             existing_metafields = metafields_check.json().get("metafields", [])
 
             def find_metafield(key):
