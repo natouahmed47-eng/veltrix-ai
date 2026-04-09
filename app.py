@@ -447,9 +447,15 @@ Description: {description}
         candidate_description = str(ai_result.get("description") or "").strip()
         candidate_meta = str(ai_result.get("meta_description") or "").strip()
         candidate_keywords = str(ai_result.get("keywords") or "").strip()
+      
+        
+        
         if not _is_valid_ai_description(candidate_description):
     candidate_description = ""
     continue
+       
+    
+       
         new_title = candidate_title
         new_description = candidate_description
         new_meta_description = candidate_meta
