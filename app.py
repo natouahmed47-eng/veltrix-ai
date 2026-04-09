@@ -451,8 +451,8 @@ Description: {description}
         
         
         if not _is_valid_ai_description(candidate_description):
-    candidate_description = ""
-    continue
+    
+    
 
 
 
