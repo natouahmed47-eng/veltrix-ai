@@ -317,7 +317,7 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     language_name = language_map.get(lang, "English")
 
     prompt = f"""
-You are an expert Shopify SEO copywriter.
+You are an SEO expert specialized in e-commerce product listings.
 
 Your job is to generate SEO-OPTIMIZED, HIGH-CONVERTING product copy.
 
