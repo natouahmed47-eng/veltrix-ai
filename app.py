@@ -316,28 +316,124 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     }
     language_name = language_map.get(lang, "English")
 
-    prompt = f"""You are a top 1% Shopify conversion copywriter and CRO expert.
+    prompt = f"""
+You are an expert Shopify SEO copywriter.
 
-Your job is to generate SEO-OPTIMIZED, HIGH-CONVERTING product listings.
-
-IMPORTANT SEO REQUIREMENTS:
-- Include primary keyword: {product_type} shaver
-- Start description with keyword-rich sentence
-- Use natural, human-friendly English
-- Include long-tail keywords naturally
-- Optimize for Google ranking (SEO)
-- Keep description between 120–180 words
-- Focus on benefits + search intent
+Your job is to generate SEO-OPTIMIZED, HIGH-CONVERTING product copy.
 
 OUTPUT FORMAT (STRICT JSON ONLY)
-Return ONLY valid JSON. No explanations. No extra text.
-
+Return ONLY valid JSON:
 {{
   "title": "...",
   "description": "...",
   "meta_description": "...",
   "keywords": "..."
 }}
+
+LANGUAGE RULE
+- Write ONLY in {language_name}
+
+PRIMARY SEO KEYWORD
+- {product_type}
+- If the product is a shaver, use terms like: precision shaver, electric shaver, men's shaver, sensitive skin shaver when natural
+
+TITLE REQUIREMENTS
+- Must be SEO-friendly
+- Must contain a real search keyword
+- Must NOT use vague words like "premium product", "ultimate solution", "our product"
+- Must be clear, specific, and clickable
+- Keep it natural and benefit-driven
+- Max 60 characters if possible
+
+DESCRIPTION REQUIREMENTS
+- Return VALID HTML ONLY
+- First sentence MUST contain the main SEO keyword
+- Write for both SEO and conversion
+- Include practical benefits, not fluff
+- Use natural search phrases shoppers may type into Google
+- Avoid generic marketing language
+- Include a short intro paragraph + bullet points + short closing paragraph
+- Keep it around 120-180 words
+
+META DESCRIPTION REQUIREMENTS
+- 140 to 155 characters
+- Must contain the main keyword
+- Make it click-worthy and natural
+
+KEYWORDS REQUIREMENTS
+- Comma-separated
+- Include primary + secondary + long-tail keywords
+- No generic filler keywords
+
+PRODUCT DATA
+- Original title: {title}
+- Brand: {vendor}
+- Product type: {product_type}
+- Existing description: {description}
+
+IMPORTANT
+- Do NOT use generic phrases like:
+  "premium shaver"
+  "ultimate grooming solution"
+  "redefines your grooming routine"
+  "our product"
+- Use specific search-intent keywords instead.
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+OUTPUT FORMAT (STRICT JSON ONLY)
+Return ONLY valid JSON:
+
+{
+  "title": "...",
+  "description": "...",
+  "meta_description": "...",
+  "keywords": "..."
+}
+
+TITLE REQUIREMENTS:
+- Must include a real search keyword
+- Avoid generic words like "premium", "ultimate"
+- Keep it clear and clickable
+
+DESCRIPTION REQUIREMENTS:
+- First sentence MUST include main keyword
+- Write 120-180 words
+- Include benefits in bullet points
+- Focus on real search intent
+- Avoid generic marketing phrases
+
+META DESCRIPTION:
+- 140-155 characters
+- Include main keyword
+
+KEYWORDS:
+- Comma-separated
+- Include real SEO keywords (not generic)
+
+PRODUCT DATA:
+Title: {title}
+Brand: {vendor}
+Category: {product_type}
+Description: {description}
+
+
+
+  
+  
+  
+  
+
 
 TITLE REQUIREMENTS
 - Must be DIFFERENT from the original title
