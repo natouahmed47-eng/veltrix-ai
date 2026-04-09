@@ -349,12 +349,11 @@ TITLE REQUIREMENTS
 - Write ONLY in {language_name}
 
 DESCRIPTION REQUIREMENTS (CRITICAL)
-You MUST return VALID HTML ONLY.
+Return VALID HTML ONLY for "description". Do NOT return plain text bullets.
 - First sentence MUST include primary keyword
-- Include bullet points with benefits
 - Use SEO-friendly structure
 - Avoid generic phrases
-Structure EXACTLY like this:
+Structure MUST be EXACTLY:
 
 <p>Hook paragraph that grabs attention and highlights the main benefit.</p>
 <p>Second paragraph addressing pain points and positioning the product as the solution.</p>
@@ -362,22 +361,19 @@ Structure EXACTLY like this:
 <li><strong>Benefit 1:</strong> Clear outcome-focused benefit.</li>
 <li><strong>Benefit 2:</strong> Clear outcome-focused benefit.</li>
 <li><strong>Benefit 3:</strong> Clear outcome-focused benefit.</li>
-<li><strong>Benefit 4:</strong> Clear outcome-focused benefit.</li>
-<li><strong>Benefit 5:</strong> Clear outcome-focused benefit.</li>
 </ul>
-<p>Close with urgency and action.</p>
 
 STRICT RULES:
-- ONLY use <p>, <ul>, <li>, <strong>
+- ONLY use <p>, <ul>, <li>, <strong> tags — no other HTML tags
 - DO NOT use "•" or "-" or "*" or any plain text bullets
-- Each bullet MUST be inside <li>
-- MUST include between 5 to 7 <li> items
+- Each bullet MUST be inside <li><strong>Benefit:</strong> explanation</li>
+- MUST include between 3 to 5 <li> items — no more, no less
+- NO closing <p> paragraph after the <ul>
 - No broken HTML
-- No short or incomplete bullets
 - Each bullet must be a full persuasive sentence
 - DO NOT escape HTML
 - DO NOT return plain text
-- DO NOT wrap output in markdown
+- DO NOT wrap output in markdown or code fences
 - If you output bullet points using "•" or "-" instead of <li>, your answer is INVALID
 - You MUST use <ul> and <li> or the response will be rejected
 
