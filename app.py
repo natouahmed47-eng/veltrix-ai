@@ -319,7 +319,13 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     prompt = f"""
 You are an SEO expert specialized in e-commerce product listings.
 
-Your job is to generate SEO-OPTIMIZED, HIGH-CONVERTING product copy.
+PRIMARY SEO KEYWORD:
+- {product_type}
+- If product is a shaver, use: precision shaver, electric shaver, men's shaver, sensitive skin shaver
+
+STRICT RULE:
+- DO NOT use vague words like "ultimate", "premium", "our product"
+- ALWAYS use real search keywords
 
 OUTPUT FORMAT (STRICT JSON ONLY)
 Return ONLY valid JSON:
