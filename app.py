@@ -1121,12 +1121,12 @@ def optimize_all_products():
             print("ERROR:", str(e))
             print(traceback.format_exc())
 
-            results.append({
-                "product_id": product.get("id"),
-                "old_title": product.get("title"),
-                "success": False,
-                "error": str(e),
-            })
+            "language": language,
+"title": title,
+"description": description,
+"suggested_fix": suggested_fix,
+"language_used": lang,
+"status": status,
 
     return jsonify({
         "shop": shop,
