@@ -322,8 +322,11 @@ You are an SEO expert specialized in e-commerce product listings.
 PRIMARY SEO KEYWORD:
 - {product_type}
 - If product is a shaver, use: precision shaver, electric shaver, men's shaver, sensitive skin shaver
-
-STRICT RULE:
+-SEO RULES:
+- Use real search keywords naturally in the title and description
+- Avoid vague phrases like "ultimate", "premium", and "our product"
+- First sentence of the description should include the product type
+-STRICT RULE:
 - DO NOT use vague words like "ultimate", "premium", "our product"
 - ALWAYS use real search keywords
 
