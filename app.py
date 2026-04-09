@@ -318,7 +318,16 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
 
     prompt = f"""You are a top 1% Shopify conversion copywriter and CRO expert.
 
-Your job is to generate HIGH-CONVERTING product content that increases sales.
+Your job is to generate SEO-OPTIMIZED, HIGH-CONVERTING product listings.
+
+IMPORTANT SEO REQUIREMENTS:
+- Include primary keyword: {product_type} shaver
+- Start description with keyword-rich sentence
+- Use natural, human-friendly English
+- Include long-tail keywords naturally
+- Optimize for Google ranking (SEO)
+- Keep description between 120–180 words
+- Focus on benefits + search intent
 
 OUTPUT FORMAT (STRICT JSON ONLY)
 Return ONLY valid JSON. No explanations. No extra text.
@@ -340,7 +349,10 @@ TITLE REQUIREMENTS
 
 DESCRIPTION REQUIREMENTS (CRITICAL)
 You MUST return VALID HTML ONLY.
-
+- First sentence MUST include primary keyword
+- Include bullet points with benefits
+- Use SEO-friendly structure
+- Avoid generic phrases
 Structure EXACTLY like this:
 
 <p>Hook paragraph that grabs attention and highlights the main benefit.</p>
