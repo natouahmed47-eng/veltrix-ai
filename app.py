@@ -340,30 +340,6 @@ Return ONLY valid JSON:
   "keywords": "..."
 }}
 
-TITLE REQUIREMENTS:
-- Must include a real search keyword
-- Keep it clear and clickable
-
-DESCRIPTION REQUIREMENTS:
-- First sentence MUST include main keyword
-- Write 120-180 words
-- Include bullet points
-
-META DESCRIPTION:
-- 140-155 characters
-
-KEYWORDS:
-- Comma-separated SEO keywords
-
-PRODUCT DATA:
-Title: {title}
-Brand: {vendor}
-Category: {product_type}
-Description: {description}
-"""
-
-
-
 TITLE REQUIREMENTS
 - Must be DIFFERENT from the original title
 - Must be more compelling and benefit-driven
