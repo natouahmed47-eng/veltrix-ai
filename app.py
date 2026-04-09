@@ -376,7 +376,8 @@ STRICT RULES:
 - DO NOT escape HTML
 - DO NOT return plain text
 - DO NOT wrap output in markdown
-
+   - If you output bullet points using "•" or "-" instead of <li>, your answer is INVALID
+- You MUST use <ul> and <li> or the response will be rejected
 SEO:
 - Meta description under 155 chars
 - Keywords = buyer intent keywords
@@ -448,7 +449,9 @@ Description: {description}
         candidate_keywords = str(ai_result.get("keywords") or "").strip()
 
         if not _is_valid_ai_description(candidate_description):
-            continue
+    candidate_description = ""
+    continue
+            
 
         new_title = candidate_title
         new_description = candidate_description
@@ -458,9 +461,14 @@ Description: {description}
         break
 
     if not new_description or not _is_valid_ai_description(new_description):
-        new_description = fallback_description
-        new_title = title
-        source_used = "generated_fallback"
+    new_description = fallback_description
+    new_title = title
+    new_meta_description = sanitize_plain_text(title)[:155]
+    new_keywords = f"{title}, {vendor}, {product_type}"
+    source_used = "generated_fallback"
+        
+        
+        
 
     if not new_meta_description:
         fallback_meta = sanitize_plain_text(new_title)
