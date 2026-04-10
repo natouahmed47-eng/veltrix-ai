@@ -898,6 +898,45 @@ def settings_page():
     return render_template_string(template, shop=shop, current_lang=current_lang)
 
 
+@app.route("/api/optimize-product", methods=["POST"])
+def optimize_product():
+    if not client:
+        return jsonify({"error": "OpenAI not configured"}), 500
+
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+    title = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+    vendor = (data.get("vendor") or "").strip()
+    product_type = (data.get("product_type") or "").strip()
+
+    if not any([title, description, vendor, product_type]):
+        return jsonify({"error": "At least one of title, description, vendor, or product_type is required"}), 400
+
+    product = {
+        "title": title,
+        "body_html": description,
+        "vendor": vendor,
+        "product_type": product_type,
+        "tags": "",
+    }
+
+    result = build_title_and_description_with_ai(product)
+
+    return jsonify({
+        "title": result.get("title"),
+        "description": result.get("description"),
+        "meta_description": result.get("meta_description"),
+        "keywords": result.get("keywords"),
+        "source_used": result.get("source_used"),
+        "has_ul": "<ul>" in result.get("description", "").lower(),
+        "li_count": result.get("description", "").lower().count("<li>"),
+        "contains_bullet_symbol": "•" in result.get("description", ""),
+    })
+
+
 @app.route("/optimize-all-products", methods=["GET", "POST"])
 def optimize_all_products():
     if not client:
