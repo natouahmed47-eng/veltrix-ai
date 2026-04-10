@@ -871,6 +871,12 @@ def settings_page():
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
                             <div><strong>Description:</strong><br>${item.new_description ?? ""}</div>
+                            <div style="margin-top:6px; font-size:12px; color:#555; background:#f3f4f6; padding:6px 10px; border-radius:6px;">
+                                <strong>🔍 Diagnostics:</strong>
+                                has_ul = <strong>${item.has_ul}</strong> &nbsp;|&nbsp;
+                                li_count = <strong>${item.li_count}</strong> &nbsp;|&nbsp;
+                                contains_bullet_symbol = <strong>${item.contains_bullet_symbol}</strong>
+                            </div>
                             <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
                             <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
                             ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
@@ -949,6 +955,9 @@ def optimize_all_products():
                 "language_used": lang,
                 "error": "",
                 "title_variants": [],
+                "has_ul": optimized.get("has_ul"),
+                "li_count": optimized.get("li_count"),
+                "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
             })
         except Exception as e:
             results.append({
