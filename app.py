@@ -903,12 +903,17 @@ def optimize_product():
     if not client:
         return jsonify({"error": "OpenAI not configured"}), 500
 
-    data = request.get_json(force=True, silent=True) or {}
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
 
     title = (data.get("title") or "").strip()
     description = (data.get("description") or "").strip()
     vendor = (data.get("vendor") or "").strip()
     product_type = (data.get("product_type") or "").strip()
+
+    if not any([title, description, vendor, product_type]):
+        return jsonify({"error": "At least one of title, description, vendor, or product_type is required"}), 400
 
     product = {
         "title": title,
