@@ -492,7 +492,9 @@ Description: {description}
             continue
 
         new_title = candidate_title
-        new_description = candidate_description
+        new_description = _convert_bullets_to_html(candidate_description)
+        if "<ul>" not in new_description:
+            new_description = _convert_bullets_to_html(new_description)
         new_meta_description = candidate_meta
         new_keywords = candidate_keywords or new_keywords
         source_used = "ai"
