@@ -302,7 +302,7 @@ def _convert_bullets_to_html(text: str) -> str:
         return text
 
     lines = text.splitlines()
-    bullet_pattern = re.compile(r"^\s*[-•]\s+(\S[^\r\n]*)$")
+    bullet_pattern = re.compile(r"^\s*[-•*]\s+(\S[^\r\n]*)$")
     result = []
     ul_items = []
 
