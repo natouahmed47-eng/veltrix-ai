@@ -522,9 +522,8 @@ Description: {description}
         new_keywords = ", ".join(fallback_keywords_parts[:6])
 
     # ضمان التحويل النهائي
-if "<ul>" not in new_description:
-    new_description = _convert_bullets_to_html(new_description)
-        
+    if "<ul>" not in new_description:
+        new_description = _convert_bullets_to_html(new_description)
 
     return {
         "title": new_title,
