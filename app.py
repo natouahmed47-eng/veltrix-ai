@@ -521,8 +521,10 @@ Description: {description}
         fallback_keywords_parts = [k.strip() for k in fallback_keywords_parts if k and k.strip()]
         new_keywords = ", ".join(fallback_keywords_parts[:6])
 
-    if "<ul>" not in new_description:
-        new_description = _convert_bullets_to_html(new_description)
+    # ضمان التحويل النهائي
+if "<ul>" not in new_description:
+    new_description = _convert_bullets_to_html(new_description)
+        
 
     return {
         "title": new_title,
