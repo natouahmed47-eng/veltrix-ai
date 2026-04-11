@@ -607,6 +607,133 @@ Description: {description}
     }
 
 
+def analyze_product_with_ai(idea: str) -> dict:
+    """Analyze a product concept and return structured high-end product content.
+
+    Handles perfumes / fragrances with dedicated note inference, and falls back
+    to general ecommerce analysis for all other product categories.
+    """
+    if not client:
+        raise RuntimeError("OpenAI is not configured")
+
+    prompt = f"""
+You are a senior product expert, fragrance specialist, and ecommerce strategist.
+
+Analyze this product deeply and generate a HIGH-END professional result.
+
+Product: {idea}
+
+Instructions:
+
+1. First identify the product category (e.g. perfume / fragrance, skincare, grooming, electronics, fashion, supplement, or general ecommerce product).
+
+2. If it's a perfume or fragrance:
+   - Identify the scent family (oriental, woody, fresh, floral, gourmand, etc.)
+   - Infer fragrance notes intelligently based on the product name, description, or any available cues
+   - Provide:
+     - Top notes
+     - Heart notes
+     - Base notes
+   - Describe mood, season, and occasion
+   - Explain why people would buy it
+
+3. Output MUST include ALL of the following fields:
+   - category
+   - title
+   - short_summary (2-3 sentence persuasive hook)
+   - technical_analysis (expert-level, ingredient/sensory/mechanism analysis)
+   - target_audience (specific buyer persona)
+   - fragrance_notes (object with top, heart, and base arrays — use empty arrays for non-fragrance products)
+   - key_benefits (array of 5 specific benefit strings)
+   - selling_points (array of 3 conversion-angle strings)
+   - long_description (valid HTML using only <p>, <ul>, <li>, <strong> — exactly 5 <li> items)
+   - meta_description (under 155 characters, buyer-intent focused)
+   - keywords (comma-separated buyer-intent keywords)
+
+4. Be specific, not generic.
+5. Think like a luxury brand (Dior, Chanel level).
+6. If notes are not given, infer them realistically and prefix uncertain items with "Likely:".
+
+Return ONLY valid JSON. No markdown, no code fences, no extra text.
+
+JSON format:
+{{
+  "category": "...",
+  "title": "...",
+  "short_summary": "...",
+  "technical_analysis": "...",
+  "target_audience": "...",
+  "fragrance_notes": {{
+    "top": ["note 1", "note 2"],
+    "heart": ["note 1", "note 2"],
+    "base": ["note 1", "note 2"]
+  }},
+  "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
+  "selling_points": ["angle 1", "angle 2", "angle 3"],
+  "long_description": "<p>...</p><ul><li><strong>Label:</strong> explanation</li>...</ul><p>...</p>",
+  "meta_description": "...",
+  "keywords": "..."
+}}
+"""
+
+    for _ in range(MAX_AI_GENERATION_RETRIES):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a senior product expert and ecommerce strategist. "
+                        "You return clean, structured JSON only — no markdown, no code fences, no extra text."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            temperature=0.6,
+        )
+
+        raw_text = response.choices[0].message.content if response.choices else ""
+        if not raw_text:
+            continue
+
+        cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
+
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        elif cleaned.startswith("```"):
+            cleaned = cleaned[3:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        cleaned = cleaned.strip()
+
+        try:
+            data = json.loads(cleaned)
+        except (ValueError, json.JSONDecodeError):
+            continue
+
+        if not isinstance(data, dict):
+            continue
+
+        return data
+
+    return {
+        "category": "",
+        "title": idea,
+        "short_summary": "",
+        "technical_analysis": "",
+        "target_audience": "",
+        "fragrance_notes": {"top": [], "heart": [], "base": []},
+        "key_benefits": [],
+        "selling_points": [],
+        "long_description": f"<p>{idea}</p>",
+        "meta_description": "",
+        "keywords": idea,
+    }
+
+
 @app.route("/")
 def home():
     return jsonify({"message": "Veltrix AI is running"})
@@ -1022,6 +1149,39 @@ def optimize_product():
         "has_ul": "<ul>" in long_desc.lower(),
         "li_count": long_desc.lower().count("<li>"),
         "contains_bullet_symbol": "•" in long_desc,
+    })
+
+
+@app.route("/api/analyze-product", methods=["POST"])
+def analyze_product():
+    if not client:
+        return jsonify({"error": "OpenAI not configured"}), 500
+
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+    idea = (data.get("idea") or "").strip()
+    if not idea:
+        return jsonify({"error": "Field 'idea' is required"}), 400
+
+    result = analyze_product_with_ai(idea)
+
+    long_desc = result.get("long_description", "")
+    return jsonify({
+        "category": result.get("category", ""),
+        "title": result.get("title", idea),
+        "short_summary": result.get("short_summary", ""),
+        "technical_analysis": result.get("technical_analysis", ""),
+        "target_audience": result.get("target_audience", ""),
+        "fragrance_notes": result.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+        "key_benefits": result.get("key_benefits", []),
+        "selling_points": result.get("selling_points", []),
+        "long_description": long_desc,
+        "meta_description": result.get("meta_description", ""),
+        "keywords": result.get("keywords", ""),
+        "has_ul": "<ul>" in long_desc.lower(),
+        "li_count": long_desc.lower().count("<li>"),
     })
 
 
