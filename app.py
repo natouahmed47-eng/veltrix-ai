@@ -645,9 +645,12 @@ If it is a perfume / fragrance, you MUST identify:
 - Top Notes: opening notes perceived in the first 15 minutes
 - Heart Notes: the core character of the fragrance
 - Base Notes: the lasting impression — depth and longevity
+- Scent Evolution: how the fragrance transforms on skin over time — from the bright opening through the heart development to the warm dry-down
 - Projection: strong / moderate / soft
 - Longevity: short / moderate / long-lasting
-- Usage: day / night / both, season, occasion
+- Best Season: spring / summer / autumn / winter / year-round
+- Best Occasions: specific occasions where this fragrance excels (e.g., evening galas, date nights, office wear, casual outings)
+- Emotional Triggers: the emotions and impressions this scent evokes (e.g., confidence, seduction, elegance, power, mystery, warmth, sophistication)
 
 For all other categories:
 - Identify key ingredients, materials, or components (prefix uncertain inferences with "Likely:")
@@ -672,12 +675,15 @@ The JSON must have EXACTLY these fields:
     "heart": ["note 1", "note 2"],
     "base": ["note 1", "note 2"]
   }},
+  "scent_evolution": "narrative description of how the fragrance transforms on skin over time — empty string for non-fragrance",
   "projection": "strong / moderate / soft — empty string for non-fragrance",
   "longevity": "short / moderate / long-lasting — empty string for non-fragrance",
-  "usage": "day / night / both, season, occasion — empty string for non-fragrance",
+  "best_season": "spring / summer / autumn / winter / year-round — empty string for non-fragrance",
+  "best_occasions": ["occasion 1", "occasion 2", "occasion 3"],
+  "emotional_triggers": ["emotion 1", "emotion 2", "emotion 3"],
   "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
   "selling_points": ["conversion angle 1", "conversion angle 2", "conversion angle 3"],
-  "luxury_description": "high-end persuasive copy at the level of Dior or Chanel",
+  "luxury_description": "high-end persuasive copy at the level of Dior or Chanel — must read like a Tom Ford or Dior product page with sensory language, emotional depth, and brand-level polish",
   "long_description": "<p>...</p><ul><li><strong>Label:</strong> explanation</li>...</ul><p>...</p>",
   "meta_description": "under 155 characters, buyer-intent focused",
   "keywords": "comma-separated buyer-intent keywords"
@@ -701,6 +707,10 @@ RULES:
 - Do NOT use vague filler words like "ultimate", "premium", "amazing"
 - long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
 - fragrance_notes must use empty arrays for non-fragrance products
+- best_occasions and emotional_triggers must use empty arrays for non-fragrance products
+- scent_evolution, best_season must use empty strings for non-fragrance products
+- luxury_description must include sensory language, emotional depth, and read like a world-class fragrance brand page
+- emotional_triggers must cite specific emotions (e.g., confidence, seduction, power) — not generic adjectives
 - Return ONLY valid JSON — no markdown, no code fences, no extra text
 """
 
@@ -755,9 +765,12 @@ RULES:
         "target_audience": "",
         "scent_family": "",
         "fragrance_notes": {"top": [], "heart": [], "base": []},
+        "scent_evolution": "",
         "projection": "",
         "longevity": "",
-        "usage": "",
+        "best_season": "",
+        "best_occasions": [],
+        "emotional_triggers": [],
         "key_benefits": [],
         "selling_points": [],
         "luxury_description": "",
@@ -1209,9 +1222,12 @@ def analyze_product():
         "target_audience": result.get("target_audience", ""),
         "scent_family": result.get("scent_family", ""),
         "fragrance_notes": result.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+        "scent_evolution": result.get("scent_evolution", ""),
         "projection": result.get("projection", ""),
         "longevity": result.get("longevity", ""),
-        "usage": result.get("usage", ""),
+        "best_season": result.get("best_season", ""),
+        "best_occasions": result.get("best_occasions", []),
+        "emotional_triggers": result.get("emotional_triggers", []),
         "key_benefits": result.get("key_benefits", []),
         "selling_points": result.get("selling_points", []),
         "luxury_description": result.get("luxury_description", ""),
