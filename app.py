@@ -617,40 +617,56 @@ def analyze_product_with_ai(idea: str) -> dict:
         raise RuntimeError("OpenAI is not configured")
 
     prompt = f"""
-You are a world-class fragrance expert, product strategist, and luxury brand copywriter.
+You are a professional fragrance chemist, luxury perfume expert, and ecommerce strategist.
 
-Your job is NOT to write generic text.
-Your job is to ANALYZE the product like an expert, then generate a high-end commercial output.
+You MUST follow the structure exactly. No free writing.
 
 Product: {idea}
 
-STEP 1: Identify the product category (perfume / fragrance, skincare / beauty, grooming, electronics, fashion, supplement, or general ecommerce product).
+Analyze the product deeply.
 
-STEP 2: If it is a perfume or fragrance, you MUST:
-- Identify the scent family (e.g., oriental, woody, gourmand, fresh, floral)
-- Infer a realistic fragrance composition based on the product name and any available cues
-- Determine top notes, heart notes, and base notes
-- Describe projection (strong / moderate / soft)
-- Describe longevity (short / moderate / long-lasting)
-- Suggest ideal usage (day / night / both, season, occasion)
+---
+STEP 1 — IDENTIFY CATEGORY
+Classify the product into exactly one of:
+- perfume / fragrance
+- skincare / beauty
+- grooming
+- electronics
+- fashion
+- home product
+- supplement
+- general ecommerce product
 
-STEP 3: For ALL product categories provide a complete expert analysis:
-- technical_analysis: explain the structure, mechanism, ingredients, or sensory profile that makes this product distinctive
-- target_audience: specific buyer persona with real context
-- key_benefits: 5 specific, outcome-focused benefit strings (no vague adjectives)
-- selling_points: 3 conversion-angle strings that drive purchase intent
-- luxury_description: a high-end persuasive description written at the level of Dior or Chanel
+---
+STEP 2 — CATEGORY-SPECIFIC ANALYSIS
 
-Return ONLY valid JSON. No markdown, no code fences, no extra text.
+If it is a perfume / fragrance, you MUST identify:
+- Scent Family: floral, oriental, woody, fresh, citrus, gourmand, aquatic, chypre, fougère, etc.
+- Top Notes: opening notes perceived in the first 15 minutes
+- Heart Notes: the core character of the fragrance
+- Base Notes: the lasting impression — depth and longevity
+- Projection: strong / moderate / soft
+- Longevity: short / moderate / long-lasting
+- Usage: day / night / both, season, occasion
 
-JSON format:
+For all other categories:
+- Identify key ingredients, materials, or components (prefix uncertain inferences with "Likely:")
+- Describe the function, use case, and key differentiators
+- Identify the specific target buyer persona
+
+---
+STEP 3 — OUTPUT
+Return ONLY valid JSON. No markdown. No code fences. No extra text.
+
+The JSON must have EXACTLY these fields:
+
 {{
-  "category": "detected category",
+  "category": "detected category from the list above",
   "title": "compelling, benefit-driven SEO title",
   "short_summary": "2–3 sentence persuasive hook",
-  "technical_analysis": "expert-level analysis of what makes this product distinctive",
-  "target_audience": "specific buyer persona description",
-  "scent_family": "scent family for fragrances, empty string for other categories",
+  "technical_analysis": "expert-level analysis of the structure, mechanism, ingredients, or sensory profile that makes this product distinctive",
+  "target_audience": "specific buyer persona with real context",
+  "scent_family": "scent family — empty string for non-fragrance",
   "fragrance_notes": {{
     "top": ["note 1", "note 2"],
     "heart": ["note 1", "note 2"],
@@ -660,19 +676,32 @@ JSON format:
   "longevity": "short / moderate / long-lasting — empty string for non-fragrance",
   "usage": "day / night / both, season, occasion — empty string for non-fragrance",
   "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
-  "selling_points": ["angle 1", "angle 2", "angle 3"],
+  "selling_points": ["conversion angle 1", "conversion angle 2", "conversion angle 3"],
   "luxury_description": "high-end persuasive copy at the level of Dior or Chanel",
   "long_description": "<p>...</p><ul><li><strong>Label:</strong> explanation</li>...</ul><p>...</p>",
   "meta_description": "under 155 characters, buyer-intent focused",
   "keywords": "comma-separated buyer-intent keywords"
 }}
 
+long_description HTML structure (STRICT):
+<p>Opening hook paragraph that grabs attention and highlights the primary benefit or sensory appeal.</p>
+<p>Second paragraph that addresses the buyer's desire and positions this product as the ideal solution.</p>
+<ul>
+<li><strong>Benefit 1:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 2:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 3:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 4:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 5:</strong> Specific, outcome-focused explanation.</li>
+</ul>
+<p>Closing persuasive call to action that creates urgency or desire.</p>
+
 RULES:
 - Be specific, not generic
-- If notes or ingredients are not given, infer intelligently and prefix uncertain items with "Likely:"
+- If notes or ingredients are not provided, infer intelligently and prefix uncertain items with "Likely:"
 - Do NOT use vague filler words like "ultimate", "premium", "amazing"
 - long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
 - fragrance_notes must use empty arrays for non-fragrance products
+- Return ONLY valid JSON — no markdown, no code fences, no extra text
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
