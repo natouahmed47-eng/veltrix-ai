@@ -238,8 +238,6 @@ def detect_product_angle(title: str, product_type: str, tags: str, description: 
 
 
 def _is_valid_ai_description(description: str) -> bool:
-    import re
-
     if not description or not isinstance(description, str):
         return False
 
@@ -357,70 +355,101 @@ def build_title_and_description_with_ai(product: dict, lang: str = "en") -> dict
     language_name = language_map.get(lang, "English")
 
     prompt = f"""
-You are an SEO expert specialized in e-commerce product listings.
+You are a senior ecommerce product strategist, technical product analyst, and conversion copywriter.
+You write expert-level, highly specific, conversion-focused product content — NOT generic marketing text.
 
-PRIMARY SEO KEYWORD:
-- {product_type}
-- If product is a shaver, use: precision shaver, electric shaver, men's shaver, sensitive skin shaver
-SEO RULES:
-- Use real search keywords naturally in the title and description
-- Avoid vague phrases like "ultimate", "premium", and "our product"
-- First sentence of the description should include the product type
-STRICT RULE:
-- DO NOT use vague words like "ultimate", "premium", "our product"
-- ALWAYS use real search keywords
+---
+STEP 1 — IDENTIFY PRODUCT CATEGORY
+Classify the product into exactly one of these categories:
+- perfume / fragrance
+- skincare / beauty
+- grooming
+- electronics
+- fashion
+- home product
+- supplement
+- general ecommerce product
 
-OUTPUT FORMAT (STRICT JSON ONLY)
-Return ONLY valid JSON:
+---
+STEP 2 — DEEP PRODUCT ANALYSIS (based on category)
+
+For "perfume / fragrance":
+- Identify the scent family (floral, oriental, woody, fresh, citrus, gourmand, etc.)
+- Infer top notes, heart notes, and base notes when the input supports it
+- Describe mood, occasion, season, and target audience
+- Highlight luxury selling angles that drive conversion
+
+For "skincare / beauty":
+- Identify likely active ingredients when the input supports it
+- Describe skin type fit, benefits, usage instructions, and concerns addressed
+- Avoid unsafe medical claims — use phrases like "may help", "formulated to", "designed to"
+
+For "grooming" or "electronics":
+- Explain function, use case, target customer, pain points solved, and key differentiators
+
+For "supplement":
+- Describe the intended benefit, key ingredients or compounds (if supported), usage, and target user
+- Avoid guaranteed health claims — use "formulated to support", "may aid", etc.
+
+For "fashion":
+- Describe style, material hints, fit, occasions, and target buyer persona
+
+For "home product":
+- Explain practical function, daily use case, convenience benefits, and who it is for
+
+For any category:
+- If ingredients, notes, or components are NOT in the input, infer carefully and prefix uncertain details with "Likely:"
+- Never present inferred details as guaranteed facts
+
+---
+STEP 3 — OUTPUT
+Return ONLY valid JSON. No markdown. No code fences. No extra text.
+
+The JSON must have EXACTLY these fields:
 
 {{
-  "title": "...",
-  "description": "...",
-  "meta_description": "...",
-  "keywords": "..."
+  "category": "detected category from the list above",
+  "title": "optimized SEO title — must be compelling, benefit-driven, and different from the original",
+  "short_summary": "2–3 sentence persuasive hook for the product",
+  "technical_analysis": "expert-level analysis of what makes this product distinctive — ingredients, mechanism, design, or sensory profile",
+  "target_audience": "specific description of who this product is for and why it fits their needs",
+  "ingredients_or_notes": "ingredients, fragrance notes, or key components — infer carefully when not in the input and prefix uncertain items with Likely:",
+  "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
+  "selling_points": ["conversion angle 1", "conversion angle 2", "conversion angle 3"],
+  "long_description": "<valid HTML — see structure below>",
+  "meta_description": "under 155 characters, buyer-intent focused",
+  "keywords": "comma-separated buyer-intent keywords"
 }}
 
-TITLE REQUIREMENTS
-- Must be DIFFERENT from the original title
-- Must be more compelling and benefit-driven
-- Use power words and emotional triggers
-- Keep it clear and readable
-- Do NOT repeat the original title wording
-- Write ONLY in {language_name}
-
-DESCRIPTION REQUIREMENTS (CRITICAL)
-Return VALID HTML ONLY for "description". Do NOT return plain text bullets.
-- First sentence MUST include primary keyword
-- Use SEO-friendly structure
-- Avoid generic phrases
-Structure MUST be EXACTLY:
-
-<p>Hook paragraph that grabs attention and highlights the main benefit.</p>
-<p>Second paragraph addressing pain points and positioning the product as the solution.</p>
+long_description HTML structure (STRICT):
+<p>Opening hook paragraph that grabs attention and highlights the primary benefit or sensory appeal.</p>
+<p>Second paragraph that addresses the buyer's pain point or desire and positions this product as the ideal solution.</p>
 <ul>
-<li><strong>Benefit 1:</strong> Clear outcome-focused benefit.</li>
-<li><strong>Benefit 2:</strong> Clear outcome-focused benefit.</li>
-<li><strong>Benefit 3:</strong> Clear outcome-focused benefit.</li>
+<li><strong>Benefit 1:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 2:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 3:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 4:</strong> Specific, outcome-focused explanation.</li>
+<li><strong>Benefit 5:</strong> Specific, outcome-focused explanation.</li>
 </ul>
+<p>Closing persuasive call to action that creates urgency or desire.</p>
 
-STRICT RULES:
-- ONLY use <p>, <ul>, <li>, <strong> tags — no other HTML tags
-- DO NOT use "•" or "-" or "*" or any plain text bullets
-- Each bullet MUST be inside <li><strong>Benefit:</strong> explanation</li>
-- MUST include between 3 to 5 <li> items — no more, no less
-- NO closing <p> paragraph after the <ul>
-- No broken HTML
-- Each bullet must be a full persuasive sentence
-- DO NOT escape HTML
-- DO NOT return plain text
+STRICT RULES for long_description:
+- Use ONLY <p>, <ul>, <li>, <strong> tags
+- MUST have exactly 5 <li> items
+- Each <li> MUST follow the format <li><strong>Label:</strong> explanation</li>
+- DO NOT use "•" or "-" or "*" or plain text bullets
+- DO NOT escape HTML characters
+- DO NOT break the HTML structure
+
+GLOBAL RULES:
+- DO NOT use vague words like "ultimate", "premium", "our product", "amazing"
+- Use real, specific search keywords naturally throughout
+- All text content must be written entirely in {language_name}
+- key_benefits and selling_points must be JSON arrays
+- meta_description must be under 155 characters
 - DO NOT wrap output in markdown or code fences
-- If you output bullet points using "•" or "-" instead of <li>, your answer is INVALID
-- You MUST use <ul> and <li> or the response will be rejected
 
-SEO:
-- Meta description under 155 chars
-- Keywords = buyer intent keywords
-
+---
 PRODUCT DATA
 Title: {title}
 Brand: {vendor}
@@ -436,9 +465,16 @@ Description: {description}
     )
 
     new_title = title or "Optimized Product"
-    new_description = ""
+    new_long_description = ""
     new_meta_description = ""
     new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
+    new_category = ""
+    new_short_summary = ""
+    new_technical_analysis = ""
+    new_target_audience = ""
+    new_ingredients_or_notes = ""
+    new_key_benefits = []
+    new_selling_points = []
     source_used = "initial_fallback"
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
@@ -447,14 +483,17 @@ Description: {description}
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an elite Shopify conversion copywriter. Return clean JSON only.",
+                    "content": (
+                        "You are a senior ecommerce product strategist and conversion copywriter. "
+                        "You return clean, structured JSON only — no markdown, no code fences, no extra text."
+                    ),
                 },
                 {
                     "role": "user",
                     "content": prompt,
                 },
             ],
-            temperature=0.55,
+            temperature=0.6,
         )
 
         raw_text = response.choices[0].message.content if response.choices else ""
@@ -484,31 +523,55 @@ Description: {description}
             continue
 
         candidate_title = str(ai_result.get("title") or title).strip() or title
-        candidate_description = str(ai_result.get("description") or "").strip()
+        candidate_long_description = str(ai_result.get("long_description") or "").strip()
         candidate_meta = str(ai_result.get("meta_description") or "").strip()
         candidate_keywords = str(ai_result.get("keywords") or "").strip()
+        candidate_category = str(ai_result.get("category") or "").strip()
+        candidate_short_summary = str(ai_result.get("short_summary") or "").strip()
+        candidate_technical_analysis = str(ai_result.get("technical_analysis") or "").strip()
+        candidate_target_audience = str(ai_result.get("target_audience") or "").strip()
+        candidate_ingredients_or_notes = str(ai_result.get("ingredients_or_notes") or "").strip()
 
-        if not _is_valid_ai_description(candidate_description):
+        raw_benefits = ai_result.get("key_benefits") or []
+        candidate_key_benefits = (
+            list(raw_benefits) if isinstance(raw_benefits, list)
+            else [str(raw_benefits)]
+        )
+
+        raw_selling = ai_result.get("selling_points") or []
+        candidate_selling_points = (
+            list(raw_selling) if isinstance(raw_selling, list)
+            else [str(raw_selling)]
+        )
+
+        if not _is_valid_ai_description(candidate_long_description):
             continue
 
         new_title = candidate_title
-        new_description = _convert_bullets_to_html(candidate_description)
-        if "<ul>" not in new_description:
-            new_description = _convert_bullets_to_html(new_description)
+        new_long_description = _convert_bullets_to_html(candidate_long_description)
+        if "<ul>" not in new_long_description:
+            new_long_description = _convert_bullets_to_html(new_long_description)
         new_meta_description = candidate_meta
         new_keywords = candidate_keywords or new_keywords
+        new_category = candidate_category
+        new_short_summary = candidate_short_summary
+        new_technical_analysis = candidate_technical_analysis
+        new_target_audience = candidate_target_audience
+        new_ingredients_or_notes = candidate_ingredients_or_notes
+        new_key_benefits = candidate_key_benefits
+        new_selling_points = candidate_selling_points
         source_used = "ai"
         break
 
-    if not new_description or not _is_valid_ai_description(new_description):
-        new_description = fallback_description
+    if not new_long_description or not _is_valid_ai_description(new_long_description):
+        new_long_description = fallback_description
         new_title = title or "Optimized Product"
-        new_meta_description = sanitize_plain_text(new_description)
+        new_meta_description = sanitize_plain_text(new_long_description)
         new_keywords = f"{title}, {vendor}, {product_type}" if product_type else f"{title}, {vendor}"
         source_used = "generated_fallback"
 
     if not new_meta_description:
-        fallback_meta = sanitize_plain_text(new_description or fallback_description or new_title)
+        fallback_meta = sanitize_plain_text(new_long_description or fallback_description or new_title)
         if len(fallback_meta) > 155:
             fallback_meta = fallback_meta[:152].rstrip() + "..."
         new_meta_description = fallback_meta
@@ -521,19 +584,26 @@ Description: {description}
         fallback_keywords_parts = [k.strip() for k in fallback_keywords_parts if k and k.strip()]
         new_keywords = ", ".join(fallback_keywords_parts[:6])
 
-    # ضمان التحويل النهائي
-    if "<ul>" not in new_description:
-        new_description = _convert_bullets_to_html(new_description)
+    if "<ul>" not in new_long_description:
+        new_long_description = _convert_bullets_to_html(new_long_description)
 
     return {
+        "category": new_category,
         "title": new_title,
-        "description": new_description,
+        "short_summary": new_short_summary,
+        "technical_analysis": new_technical_analysis,
+        "target_audience": new_target_audience,
+        "ingredients_or_notes": new_ingredients_or_notes,
+        "key_benefits": new_key_benefits,
+        "selling_points": new_selling_points,
+        "long_description": new_long_description,
+        "description": new_long_description,
         "meta_description": new_meta_description,
         "keywords": new_keywords,
         "source_used": source_used,
-        "has_ul": "<ul>" in new_description.lower(),
-        "li_count": new_description.lower().count("<li>"),
-        "contains_bullet_symbol": "•" in new_description,
+        "has_ul": "<ul>" in new_long_description.lower(),
+        "li_count": new_long_description.lower().count("<li>"),
+        "contains_bullet_symbol": "•" in new_long_description,
     }
 
 
@@ -861,12 +931,21 @@ def settings_page():
                 let html = `<div class="card"><h3>Optimization Results</h3>`;
 
                 data.results.forEach((item, index) => {
+                    const benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(b => `<li>${b}</li>`).join("") : "";
+                    const sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(s => `<li>${s}</li>`).join("") : "";
                     html += `
                         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
                             <div><strong>#${index + 1}</strong></div>
                             <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
                             <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
                             <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
+                            <div><strong>Category:</strong> ${item.category ?? ""}</div>
+                            <div><strong>Short Summary:</strong> ${item.short_summary ?? ""}</div>
+                            <div><strong>Technical Analysis:</strong> ${item.technical_analysis ?? ""}</div>
+                            <div><strong>Target Audience:</strong> ${item.target_audience ?? ""}</div>
+                            <div><strong>Ingredients / Notes:</strong> ${item.ingredients_or_notes ?? ""}</div>
+                            ${benefits ? `<div><strong>Key Benefits:</strong><ul>${benefits}</ul></div>` : ""}
+                            ${sellingPts ? `<div><strong>Selling Points:</strong><ul>${sellingPts}</ul></div>` : ""}
                             <div><strong>Source:</strong> ${item.source_used ?? ""}</div>
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
@@ -925,15 +1004,24 @@ def optimize_product():
 
     result = build_title_and_description_with_ai(product)
 
+    long_desc = result.get("long_description") or result.get("description", "")
     return jsonify({
+        "category": result.get("category", ""),
         "title": result.get("title"),
-        "description": result.get("description"),
+        "short_summary": result.get("short_summary", ""),
+        "technical_analysis": result.get("technical_analysis", ""),
+        "target_audience": result.get("target_audience", ""),
+        "ingredients_or_notes": result.get("ingredients_or_notes", ""),
+        "key_benefits": result.get("key_benefits", []),
+        "selling_points": result.get("selling_points", []),
+        "long_description": long_desc,
+        "description": long_desc,
         "meta_description": result.get("meta_description"),
         "keywords": result.get("keywords"),
         "source_used": result.get("source_used"),
-        "has_ul": "<ul>" in result.get("description", "").lower(),
-        "li_count": result.get("description", "").lower().count("<li>"),
-        "contains_bullet_symbol": "•" in result.get("description", ""),
+        "has_ul": "<ul>" in long_desc.lower(),
+        "li_count": long_desc.lower().count("<li>"),
+        "contains_bullet_symbol": "•" in long_desc,
     })
 
 
@@ -980,12 +1068,20 @@ def optimize_all_products():
     for product in products[:5]:
         try:
             optimized = build_title_and_description_with_ai(product, lang=lang)
+            long_desc = optimized.get("long_description") or optimized.get("description", "")
 
             results.append({
                 "product_id": product.get("id"),
                 "old_title": product.get("title", ""),
                 "new_title": optimized.get("title", ""),
-                "new_description": optimized.get("description", ""),
+                "category": optimized.get("category", ""),
+                "short_summary": optimized.get("short_summary", ""),
+                "technical_analysis": optimized.get("technical_analysis", ""),
+                "target_audience": optimized.get("target_audience", ""),
+                "ingredients_or_notes": optimized.get("ingredients_or_notes", ""),
+                "key_benefits": optimized.get("key_benefits", []),
+                "selling_points": optimized.get("selling_points", []),
+                "new_description": long_desc,
                 "meta_description_preview": optimized.get("meta_description", ""),
                 "keywords": optimized.get("keywords", ""),
                 "source_used": optimized.get("source_used", "unknown"),
