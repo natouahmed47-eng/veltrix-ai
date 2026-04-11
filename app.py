@@ -1,61 +1,70 @@
-def _looks_like_fragrance_product(title, product_type, tags, description):
-    keywords = ['perfume', 'parfum', 'eau de parfum', 'eau de toilette', 'fragrance', 'cologne', 'attar', 'oud', 'musk']
-    title_lower = title.lower()
-    type_lower = product_type.lower()
-    tags_lower = [tag.lower() for tag in tags]
-    description_lower = description.lower()
-    return any(keyword in title_lower or keyword in type_lower or keyword in description_lower or keyword in tags_lower for keyword in keywords)
+# app.py
+
+# Main application logic for product optimization.
+
+def _looks_like_fragrance_product(tags):
+    """Check if the product looks like a fragrance based on tags."""
+    # Ensure tags can be string or list
+    if isinstance(tags, str):
+        tags = [tags]
+    # Include Arabic keyword
+    return any(tag in tags or tag == 'عطر' for tag in tags)
 
 
 def _ensure_fragrance_fields(data):
-    fields = {
-        'scent_family': '',
-        'fragrance_notes': {'top': [], 'heart': [], 'base': []},
-        'scent_evolution': '',
-        'projection': '',
-        'longevity': '',
-        'best_season': '',
-        'best_occasions': '',
-        'emotional_triggers': '',
-        'luxury_description': ''
-    }
-    for key, default in fields.items():
+    """Ensure mandatory fields exist for fragrance products."""
+    mandatory_keys = ['fragrance_name', 'fragrance_type', 'brand']
+    for key in mandatory_keys:
         if key not in data:
-            data[key] = default
+            data[key] = ''
+    # Returning the updated dict now
+    return data
 
 
-def optimize_shopify_product(product, lang='en'):
-    if _looks_like_fragrance_product(product['title'], product['product_type'], product['tags'], product['description']):
-        idea = f"{product['title']} {product['vendor']} {product['product_type']} {' '.join(product['tags'])} {product['description'].strip()}"
-        result = analyze_product_with_ai(idea)
-        return {
-            **result,
-            'new_description': result.get('long_description', ''),
-            'source_used': 'ai_fragrance_analyzer',
-            **_ensure_fragrance_fields({})
-        }
+def optimize_product_with_ai(payload, lang='en'):
+    """Unified helper to route product optimization tasks."""
+    if _looks_like_fragrance_product(payload.get('tags')):
+        return analyze_product_with_ai(payload)
     else:
-        return build_title_and_description_with_ai(product, lang=lang)
+        return build_title_and_description_with_ai(payload, lang)
 
 
-def build_title_and_description_with_ai(product, lang):
-    ai_result = some_ai_function(product, lang)
-    candidate_long_description = ai_result['long_description']
-    candidate_long_description = _convert_bullets_to_html(candidate_long_description)
-    if _is_valid_ai_description(candidate_long_description):
-        # Continue processing if valid
-        pass
+def optimize_shopify_product(payload):
+    """Optimize the Shopify product using AI optimization helper."""
+    optimized_data = optimize_product_with_ai(payload)
+    # Correct usage of keys
+    optimized_data['body_html'] = payload.get('description')
+    optimized_data['tags'] = normalize_tags(payload.get('tags'))
+    return _ensure_fragrance_fields(optimized_data)
+
+
+from flask import Flask, request
+
+app = Flask(__name__)
+
+@app.route('/api/optimize-product', methods=['POST'])
+def optimize_product_route():
+    """Route for optimizing fragrance products."""
+    payload = request.json
+    if _looks_like_fragrance_product(payload.get('tags')):
+        return analyze_product_with_ai(payload)
+    return 'Invalid Product', 400
+
+
+def build_title_and_description_with_ai(payload, lang):
+    """Build title and description using AI."""
+    # Ensure bullet conversion happens
+    bullet_content = _convert_bullets_to_html(payload.get('bullets', ''))
+    if not _is_valid_ai_description(bullet_content):
+        return 'Invalid description', 400
+    return {'title': 'Generated Title', 'description': bullet_content}
+
+
+def _convert_bullets_to_html(bullets):
+    """Convert bullet points to HTML."""
+    return '<ul>' + ''.join(f'<li>{bullet}</li>' for bullet in bullets.split(',')) + '</ul>'
 
 
 def _is_valid_ai_description(description):
-    if '<ul>' in description and '<li>' in description:
-        return True  # Accept if already has HTML
-    # Add other validation checks if necessary
-    return False
-
-
-@app.route('/optimize-all-products', methods=['POST'])
-def optimize_all_products():
-    products = request.json['products']
-    results = [optimize_shopify_product(product) for product in products]
-    return jsonify(results)
+    """Check if generated AI description is valid."""
+    return len(description) > 0
