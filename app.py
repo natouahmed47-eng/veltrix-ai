@@ -479,7 +479,7 @@ Description: {description}
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
             messages=[
                 {
                     "role": "system",
@@ -493,7 +493,7 @@ Description: {description}
                     "content": prompt,
                 },
             ],
-            temperature=0.6,
+            temperature=0.7,
         )
 
         raw_text = response.choices[0].message.content if response.choices else ""
@@ -716,7 +716,7 @@ RULES:
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-mini",
             messages=[
                 {
                     "role": "system",
@@ -730,7 +730,7 @@ RULES:
                     "content": prompt,
                 },
             ],
-            temperature=0.6,
+            temperature=0.7,
         )
 
         raw_text = response.choices[0].message.content if response.choices else ""
