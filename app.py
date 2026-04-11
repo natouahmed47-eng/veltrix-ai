@@ -617,63 +617,62 @@ def analyze_product_with_ai(idea: str) -> dict:
         raise RuntimeError("OpenAI is not configured")
 
     prompt = f"""
-You are a senior product expert, fragrance specialist, and ecommerce strategist.
+You are a world-class fragrance expert, product strategist, and luxury brand copywriter.
 
-Analyze this product deeply and generate a HIGH-END professional result.
+Your job is NOT to write generic text.
+Your job is to ANALYZE the product like an expert, then generate a high-end commercial output.
 
 Product: {idea}
 
-Instructions:
+STEP 1: Identify the product category (perfume / fragrance, skincare / beauty, grooming, electronics, fashion, supplement, or general ecommerce product).
 
-1. First identify the product category (e.g. perfume / fragrance, skincare, grooming, electronics, fashion, supplement, or general ecommerce product).
+STEP 2: If it is a perfume or fragrance, you MUST:
+- Identify the scent family (e.g., oriental, woody, gourmand, fresh, floral)
+- Infer a realistic fragrance composition based on the product name and any available cues
+- Determine top notes, heart notes, and base notes
+- Describe projection (strong / moderate / soft)
+- Describe longevity (short / moderate / long-lasting)
+- Suggest ideal usage (day / night / both, season, occasion)
 
-2. If it's a perfume or fragrance:
-   - Identify the scent family (oriental, woody, fresh, floral, gourmand, etc.)
-   - Infer fragrance notes intelligently based on the product name, description, or any available cues
-   - Provide:
-     - Top notes
-     - Heart notes
-     - Base notes
-   - Describe mood, season, and occasion
-   - Explain why people would buy it
-
-3. Output MUST include ALL of the following fields:
-   - category
-   - title
-   - short_summary (2-3 sentence persuasive hook)
-   - technical_analysis (expert-level, ingredient/sensory/mechanism analysis)
-   - target_audience (specific buyer persona)
-   - fragrance_notes (object with top, heart, and base arrays — use empty arrays for non-fragrance products)
-   - key_benefits (array of 5 specific benefit strings)
-   - selling_points (array of 3 conversion-angle strings)
-   - long_description (valid HTML using only <p>, <ul>, <li>, <strong> — exactly 5 <li> items)
-   - meta_description (under 155 characters, buyer-intent focused)
-   - keywords (comma-separated buyer-intent keywords)
-
-4. Be specific, not generic.
-5. Think like a luxury brand (Dior, Chanel level).
-6. If notes are not given, infer them realistically and prefix uncertain items with "Likely:".
+STEP 3: For ALL product categories provide a complete expert analysis:
+- technical_analysis: explain the structure, mechanism, ingredients, or sensory profile that makes this product distinctive
+- target_audience: specific buyer persona with real context
+- key_benefits: 5 specific, outcome-focused benefit strings (no vague adjectives)
+- selling_points: 3 conversion-angle strings that drive purchase intent
+- luxury_description: a high-end persuasive description written at the level of Dior or Chanel
 
 Return ONLY valid JSON. No markdown, no code fences, no extra text.
 
 JSON format:
 {{
-  "category": "...",
-  "title": "...",
-  "short_summary": "...",
-  "technical_analysis": "...",
-  "target_audience": "...",
+  "category": "detected category",
+  "title": "compelling, benefit-driven SEO title",
+  "short_summary": "2–3 sentence persuasive hook",
+  "technical_analysis": "expert-level analysis of what makes this product distinctive",
+  "target_audience": "specific buyer persona description",
+  "scent_family": "scent family for fragrances, empty string for other categories",
   "fragrance_notes": {{
     "top": ["note 1", "note 2"],
     "heart": ["note 1", "note 2"],
     "base": ["note 1", "note 2"]
   }},
+  "projection": "strong / moderate / soft — empty string for non-fragrance",
+  "longevity": "short / moderate / long-lasting — empty string for non-fragrance",
+  "usage": "day / night / both, season, occasion — empty string for non-fragrance",
   "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
   "selling_points": ["angle 1", "angle 2", "angle 3"],
+  "luxury_description": "high-end persuasive copy at the level of Dior or Chanel",
   "long_description": "<p>...</p><ul><li><strong>Label:</strong> explanation</li>...</ul><p>...</p>",
-  "meta_description": "...",
-  "keywords": "..."
+  "meta_description": "under 155 characters, buyer-intent focused",
+  "keywords": "comma-separated buyer-intent keywords"
 }}
+
+RULES:
+- Be specific, not generic
+- If notes or ingredients are not given, infer intelligently and prefix uncertain items with "Likely:"
+- Do NOT use vague filler words like "ultimate", "premium", "amazing"
+- long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
+- fragrance_notes must use empty arrays for non-fragrance products
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
@@ -725,9 +724,14 @@ JSON format:
         "short_summary": "",
         "technical_analysis": "",
         "target_audience": "",
+        "scent_family": "",
         "fragrance_notes": {"top": [], "heart": [], "base": []},
+        "projection": "",
+        "longevity": "",
+        "usage": "",
         "key_benefits": [],
         "selling_points": [],
+        "luxury_description": "",
         "long_description": f"<p>{idea}</p>",
         "meta_description": "",
         "keywords": idea,
@@ -1174,9 +1178,14 @@ def analyze_product():
         "short_summary": result.get("short_summary", ""),
         "technical_analysis": result.get("technical_analysis", ""),
         "target_audience": result.get("target_audience", ""),
+        "scent_family": result.get("scent_family", ""),
         "fragrance_notes": result.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+        "projection": result.get("projection", ""),
+        "longevity": result.get("longevity", ""),
+        "usage": result.get("usage", ""),
         "key_benefits": result.get("key_benefits", []),
         "selling_points": result.get("selling_points", []),
+        "luxury_description": result.get("luxury_description", ""),
         "long_description": long_desc,
         "meta_description": result.get("meta_description", ""),
         "keywords": result.get("keywords", ""),
