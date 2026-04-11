@@ -253,7 +253,7 @@ def _is_valid_ai_description(description: str) -> bool:
         return False
 
     li_tags = re.findall(r"<li\b[^>]*>.*?</li>", description, re.DOTALL | re.IGNORECASE)
-    if len(li_tags) < 4 or len(li_tags) > 8:
+    if len(li_tags) < 5 or len(li_tags) > 7:
         return False
 
     return True
