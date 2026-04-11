@@ -679,7 +679,7 @@ The JSON must have EXACTLY these fields:
   "projection": "strong / moderate / soft — empty string for non-fragrance",
   "longevity": "short / moderate / long-lasting — empty string for non-fragrance",
   "best_season": "spring / summer / autumn / winter / year-round — empty string for non-fragrance",
-  "best_occasions": ["occasion 1", "occasion 2", "occasion 3"] ,
+  "best_occasions": ["occasion 1", "occasion 2", "occasion 3"],
   "emotional_triggers": ["emotion 1", "emotion 2", "emotion 3"],
   "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
   "selling_points": ["conversion angle 1", "conversion angle 2", "conversion angle 3"],
