@@ -249,9 +249,6 @@ def _is_valid_ai_description(description: str) -> bool:
     if "<p>" not in text or "</p>" not in text:
         return False
 
-    if "•" in description or re.search(r"(^|\n)\s*[-*]\s+", description):
-        return False
-
     li_tags = re.findall(r"<li\b[^>]*>.*?</li>", description, re.DOTALL | re.IGNORECASE)
     if len(li_tags) < 5 or len(li_tags) > 7:
         return False
@@ -792,19 +789,26 @@ def looks_like_fragrance_product(product: dict) -> bool:
 
     keywords = [
         "perfume", "parfum", "fragrance", "cologne",
-        "oud", "eau de parfum", "eau de toilette", "\u0639\u0637\u0631"
+        "oud", "eau de parfum", "eau de toilette",
+        "tom ford", "dior", "chanel",
+        "\u0639\u0637\u0631", "\u0628\u0627\u0631\u0641\u0627\u0646",
     ]
 
-    return any(k in text for k in keywords)
+    matched = [k for k in keywords if k in text]
+    is_frag = len(matched) > 0
+    print(f"[FRAGRANCE DEBUG] title={product.get('title')!r} | is_fragrance={is_frag} | matched_keywords={matched}")
+    return is_frag
 
 
 def optimize_product_router(product: dict, lang: str):
     if looks_like_fragrance_product(product):
         idea = product.get("title") or product.get("body_html") or ""
+        print(f"[ROUTER DEBUG] Routing to analyze_product_with_ai for: {idea!r}")
         result = analyze_product_with_ai(idea)
         result["is_fragrance"] = True
         return result
 
+    print(f"[ROUTER DEBUG] Routing to build_title_and_description_with_ai for: {product.get('title')!r}")
     result = build_title_and_description_with_ai(product, lang=lang)
     result["is_fragrance"] = False
     return result
@@ -1136,9 +1140,37 @@ def settings_page():
                 data.results.forEach((item, index) => {
                     const benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(b => `<li>${b}</li>`).join("") : "";
                     const sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(s => `<li>${s}</li>`).join("") : "";
+
+                    let fragranceHtml = "";
+                    if (item.is_fragrance) {
+                        const notes = item.fragrance_notes || {};
+                        const topNotes = Array.isArray(notes.top) ? notes.top.join(", ") : "";
+                        const heartNotes = Array.isArray(notes.heart) ? notes.heart.join(", ") : "";
+                        const baseNotes = Array.isArray(notes.base) ? notes.base.join(", ") : "";
+                        const occasions = Array.isArray(item.best_occasions) ? item.best_occasions.join(", ") : "";
+                        const emotions = Array.isArray(item.emotional_triggers) ? item.emotional_triggers.join(", ") : "";
+
+                        fragranceHtml = `
+                            <div style="margin-top:10px; padding:12px; background:#fdf6ec; border:1px solid #f5d89a; border-radius:10px;">
+                                <div style="font-weight:bold; font-size:15px; margin-bottom:8px;">🌸 Fragrance Profile</div>
+                                <div><strong>Scent Family:</strong> ${item.scent_family ?? ""}</div>
+                                <div><strong>Top Notes:</strong> ${topNotes}</div>
+                                <div><strong>Heart Notes:</strong> ${heartNotes}</div>
+                                <div><strong>Base Notes:</strong> ${baseNotes}</div>
+                                <div><strong>Projection:</strong> ${item.projection ?? ""}</div>
+                                <div><strong>Longevity:</strong> ${item.longevity ?? ""}</div>
+                                <div><strong>Best Season:</strong> ${item.best_season ?? ""}</div>
+                                <div><strong>Best Occasions:</strong> ${occasions}</div>
+                                <div><strong>Emotional Triggers:</strong> ${emotions}</div>
+                                <div><strong>Scent Evolution:</strong> ${item.scent_evolution ?? ""}</div>
+                                <div style="margin-top:8px;"><strong>Luxury Description:</strong><br>${item.luxury_description ?? ""}</div>
+                            </div>
+                        `;
+                    }
+
                     html += `
                         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
-                            <div><strong>#${index + 1}</strong></div>
+                            <div><strong>#${index + 1}</strong> ${item.is_fragrance ? '<span style="background:#fbbf24;color:#000;padding:2px 8px;border-radius:6px;font-size:12px;">🌸 Fragrance</span>' : ''}</div>
                             <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
                             <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
                             <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
@@ -1149,12 +1181,14 @@ def settings_page():
                             <div><strong>Ingredients / Notes:</strong> ${item.ingredients_or_notes ?? ""}</div>
                             ${benefits ? `<div><strong>Key Benefits:</strong><ul>${benefits}</ul></div>` : ""}
                             ${sellingPts ? `<div><strong>Selling Points:</strong><ul>${sellingPts}</ul></div>` : ""}
+                            ${fragranceHtml}
                             <div><strong>Source:</strong> ${item.source_used ?? ""}</div>
                             <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
                             <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
                             <div><strong>Description:</strong><br>${item.new_description ?? ""}</div>
                             <div style="margin-top:6px; font-size:12px; color:#555; background:#f3f4f6; padding:6px 10px; border-radius:6px;">
                                 <strong>🔍 Diagnostics:</strong>
+                                is_fragrance = <strong>${item.is_fragrance ?? false}</strong> &nbsp;|&nbsp;
                                 has_ul = <strong>${item.has_ul}</strong> &nbsp;|&nbsp;
                                 li_count = <strong>${item.li_count}</strong> &nbsp;|&nbsp;
                                 contains_bullet_symbol = <strong>${item.contains_bullet_symbol}</strong>
@@ -1208,7 +1242,7 @@ def optimize_product():
     result = optimize_product_router(product, lang="en")
 
     long_desc = result.get("long_description") or result.get("description", "")
-    return jsonify({
+    response_data = {
         "category": result.get("category", ""),
         "title": result.get("title"),
         "short_summary": result.get("short_summary", ""),
@@ -1222,10 +1256,26 @@ def optimize_product():
         "meta_description": result.get("meta_description"),
         "keywords": result.get("keywords"),
         "source_used": result.get("source_used"),
+        "is_fragrance": result.get("is_fragrance", False),
         "has_ul": "<ul>" in long_desc.lower(),
         "li_count": long_desc.lower().count("<li>"),
         "contains_bullet_symbol": "•" in long_desc,
-    })
+    }
+
+    if result.get("is_fragrance"):
+        response_data.update({
+            "scent_family": result.get("scent_family", ""),
+            "fragrance_notes": result.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+            "scent_evolution": result.get("scent_evolution", ""),
+            "projection": result.get("projection", ""),
+            "longevity": result.get("longevity", ""),
+            "best_season": result.get("best_season", ""),
+            "best_occasions": result.get("best_occasions", []),
+            "emotional_triggers": result.get("emotional_triggers", []),
+            "luxury_description": result.get("luxury_description", ""),
+        })
+
+    return jsonify(response_data)
 
 
 @app.route("/api/analyze-product", methods=["POST"])
@@ -1334,6 +1384,7 @@ def optimize_all_products():
                 "language_used": lang,
                 "error": "",
                 "title_variants": [],
+                "is_fragrance": optimized.get("is_fragrance", False),
                 "has_ul": optimized.get("has_ul"),
                 "li_count": optimized.get("li_count"),
                 "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
