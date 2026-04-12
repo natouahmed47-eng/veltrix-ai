@@ -2,14 +2,17 @@ import html
 import os
 import re
 import json
+import uuid
 import requests
 from datetime import datetime
+from functools import wraps
 from urllib.parse import urlencode
 
 from flask import Flask, jsonify, redirect, request, render_template_string, send_file
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI, OpenAIError
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -37,6 +40,7 @@ SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products"
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 MAX_AI_GENERATION_RETRIES = 3
+FREE_ANALYSIS_LIMIT = 5
 
 # Category-specific fields that may be present in AI analysis results.
 # Used by API endpoints to dynamically pass through category data.
@@ -73,6 +77,50 @@ class ShopifyStore(db.Model):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+
+
+class User(db.Model):
+    __tablename__ = "users"
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.Text, nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=True, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    analyses = db.relationship("SavedAnalysis", backref="user", lazy=True)
+
+
+class SavedAnalysis(db.Model):
+    __tablename__ = "saved_analyses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    idea = db.Column(db.Text, nullable=False)
+    result_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+def get_current_user():
+    """Extract user from Authorization header (Bearer token)."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[7:]
+    if not token:
+        return None
+    return User.query.filter_by(token=token).first()
+
+
+def login_required(f):
+    """Decorator that requires a valid auth token."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        user = get_current_user()
+        if user is None:
+            return jsonify({"error": "Authentication required"}), 401
+        return f(user, *args, **kwargs)
+    return decorated
 
 
 def sanitize_plain_text(text_value: str) -> str:
@@ -1396,6 +1444,141 @@ def serve_script():
     return send_file("script.js")
 
 
+@app.route("/dashboard")
+def dashboard():
+    return send_file("dashboard.html")
+
+
+# ── Auth & SaaS Endpoints ──
+
+@app.route("/api/register", methods=["POST"])
+def api_register():
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+    if len(username) < 3:
+        return jsonify({"error": "Username must be at least 3 characters"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    existing = User.query.filter_by(username=username).first()
+    if existing:
+        return jsonify({"error": "Username already taken"}), 409
+
+    token = uuid.uuid4().hex
+    user = User(
+        username=username,
+        password_hash=generate_password_hash(password),
+        token=token,
+    )
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({"token": token, "username": user.username}), 201
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not check_password_hash(user.password_hash, password):
+        return jsonify({"error": "Invalid username or password"}), 401
+
+    token = uuid.uuid4().hex
+    user.token = token
+    db.session.commit()
+
+    return jsonify({"token": token, "username": user.username})
+
+
+@app.route("/api/me", methods=["GET"])
+@login_required
+def api_me(user):
+    analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
+    return jsonify({
+        "username": user.username,
+        "analysis_count": analysis_count,
+        "analysis_limit": FREE_ANALYSIS_LIMIT,
+    })
+
+
+@app.route("/api/save-analysis", methods=["POST"])
+@login_required
+def api_save_analysis(user):
+    analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
+    if analysis_count >= FREE_ANALYSIS_LIMIT:
+        return jsonify({
+            "error": f"Free plan limit reached ({FREE_ANALYSIS_LIMIT} analyses). Upgrade to save more.",
+        }), 403
+
+    data = request.get_json(force=True, silent=True)
+    if data is None:
+        return jsonify({"error": "Invalid or missing JSON body"}), 400
+
+    idea = (data.get("idea") or "").strip()
+    result = data.get("result")
+
+    if not idea or result is None:
+        return jsonify({"error": "Fields 'idea' and 'result' are required"}), 400
+
+    saved = SavedAnalysis(
+        user_id=user.id,
+        idea=idea,
+        result_json=json.dumps(result),
+    )
+    db.session.add(saved)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Analysis saved",
+        "id": saved.id,
+        "analysis_count": analysis_count + 1,
+        "analysis_limit": FREE_ANALYSIS_LIMIT,
+    }), 201
+
+
+@app.route("/api/my-analyses", methods=["GET"])
+@login_required
+def api_my_analyses(user):
+    analyses = (
+        SavedAnalysis.query
+        .filter_by(user_id=user.id)
+        .order_by(SavedAnalysis.created_at.desc())
+        .all()
+    )
+    items = []
+    for a in analyses:
+        result_data = json.loads(a.result_json)
+        items.append({
+            "id": a.id,
+            "idea": a.idea,
+            "title": result_data.get("title", a.idea),
+            "category": result_data.get("category", "general"),
+            "short_summary": result_data.get("short_summary", ""),
+            "created_at": a.created_at.isoformat() + "Z",
+        })
+    return jsonify({
+        "analyses": items,
+        "count": len(items),
+        "limit": FREE_ANALYSIS_LIMIT,
+    })
+
+
 @app.route("/health")
 def health():
     latest_store = get_latest_store()
@@ -2206,6 +2389,16 @@ def analyze_product():
     idea = (data.get("idea") or "").strip()
     if not idea:
         return jsonify({"error": "Field 'idea' is required"}), 400
+
+    # Usage limit for logged-in users
+    current_user = get_current_user()
+    if current_user:
+        analysis_count = SavedAnalysis.query.filter_by(user_id=current_user.id).count()
+        if analysis_count >= FREE_ANALYSIS_LIMIT:
+            return jsonify({
+                "error": f"Free plan limit reached ({FREE_ANALYSIS_LIMIT} analyses). Upgrade for unlimited access.",
+                "limit_reached": True,
+            }), 403
 
     if not client:
         # Fallback: return static demo data when OpenAI is not configured

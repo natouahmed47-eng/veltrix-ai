@@ -2,6 +2,124 @@ document.addEventListener("DOMContentLoaded", function () {
     var analyzeBtn = document.getElementById("analyzeBtn");
     var productInput = document.getElementById("productIdea");
 
+    /* ── Auth State ── */
+    var authToken = localStorage.getItem("veltrix_token") || "";
+    var authUsername = localStorage.getItem("veltrix_username") || "";
+    var lastAnalysisIdea = "";
+    var lastAnalysisResult = null;
+
+    function updateAuthUI() {
+        var authArea = document.getElementById("authArea");
+        var userArea = document.getElementById("userArea");
+        if (authToken && authUsername) {
+            authArea.style.display = "none";
+            userArea.style.display = "flex";
+            document.getElementById("usernameDisplay").textContent = authUsername;
+            fetchUsage();
+        } else {
+            authArea.style.display = "flex";
+            userArea.style.display = "none";
+        }
+    }
+
+    function fetchUsage() {
+        fetch("/api/me", { headers: { "Authorization": "Bearer " + authToken } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.analysis_count !== undefined) {
+                    document.getElementById("usageInfo").textContent = d.analysis_count + "/" + d.analysis_limit + " analyses";
+                }
+            })
+            .catch(function () { /* ignore */ });
+    }
+
+    function logout() {
+        authToken = "";
+        authUsername = "";
+        localStorage.removeItem("veltrix_token");
+        localStorage.removeItem("veltrix_username");
+        updateAuthUI();
+    }
+
+    /* ── Auth Modal ── */
+    var authModal = document.getElementById("authModal");
+    var authMode = "login"; // "login" or "register"
+
+    function openAuthModal(mode) {
+        authMode = mode;
+        document.getElementById("authModalTitle").textContent = mode === "login" ? "Log In" : "Create Account";
+        document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
+        document.getElementById("authSwitch").innerHTML = mode === "login"
+            ? 'Don\'t have an account? <a href="#" id="switchToRegister" style="color:#4f46e5;font-weight:600;">Sign Up</a>'
+            : 'Already have an account? <a href="#" id="switchToLogin" style="color:#4f46e5;font-weight:600;">Log In</a>';
+        document.getElementById("authUsername").value = "";
+        document.getElementById("authPassword").value = "";
+        document.getElementById("authError").style.display = "none";
+        authModal.style.display = "flex";
+
+        setTimeout(function () {
+            var switchLink = document.getElementById("switchToRegister") || document.getElementById("switchToLogin");
+            if (switchLink) {
+                switchLink.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    openAuthModal(mode === "login" ? "register" : "login");
+                });
+            }
+        }, 0);
+    }
+
+    document.getElementById("showLoginBtn").addEventListener("click", function () { openAuthModal("login"); });
+    document.getElementById("showRegisterBtn").addEventListener("click", function () { openAuthModal("register"); });
+    document.getElementById("closeAuthModal").addEventListener("click", function () { authModal.style.display = "none"; });
+    document.getElementById("logoutBtn").addEventListener("click", logout);
+
+    authModal.addEventListener("click", function (e) {
+        if (e.target === authModal) authModal.style.display = "none";
+    });
+
+    document.getElementById("authSubmitBtn").addEventListener("click", async function () {
+        var username = document.getElementById("authUsername").value.trim();
+        var password = document.getElementById("authPassword").value;
+        var errorEl = document.getElementById("authError");
+
+        if (!username || !password) {
+            errorEl.textContent = "Please fill in both fields.";
+            errorEl.style.display = "block";
+            return;
+        }
+
+        var url = authMode === "login" ? "/api/login" : "/api/register";
+        try {
+            var resp = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: username, password: password })
+            });
+            var data = await resp.json();
+            if (!resp.ok) {
+                errorEl.textContent = data.error || "Something went wrong";
+                errorEl.style.display = "block";
+                return;
+            }
+            authToken = data.token;
+            authUsername = data.username;
+            localStorage.setItem("veltrix_token", authToken);
+            localStorage.setItem("veltrix_username", authUsername);
+            authModal.style.display = "none";
+            updateAuthUI();
+        } catch (err) {
+            errorEl.textContent = "Connection error";
+            errorEl.style.display = "block";
+        }
+    });
+
+    document.getElementById("authPassword").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") document.getElementById("authSubmitBtn").click();
+    });
+
+    updateAuthUI();
+
+    /* ── Analyze Product ── */
     analyzeBtn.addEventListener("click", analyzeProduct);
 
     productInput.addEventListener("keydown", function (e) {
@@ -24,10 +142,15 @@ document.addEventListener("DOMContentLoaded", function () {
         resultsEl.innerHTML = "";
         analyzeBtn.disabled = true;
 
+        var headers = { "Content-Type": "application/json" };
+        if (authToken) {
+            headers["Authorization"] = "Bearer " + authToken;
+        }
+
         try {
             var response = await fetch("/api/analyze-product", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: headers,
                 body: JSON.stringify({ idea: idea })
             });
 
@@ -40,13 +163,75 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
+            lastAnalysisIdea = idea;
+            lastAnalysisResult = data;
+
             messageEl.innerHTML = '<div class="success">\u2705 Analysis completed successfully!</div>';
-            resultsEl.innerHTML = buildResultCard(data);
+            resultsEl.innerHTML = buildResultCard(data) + buildSaveButton();
         } catch (error) {
             messageEl.innerHTML = '<div class="error">Connection error: ' + error.message + '</div>';
             console.error("Fetch error:", error);
         } finally {
             analyzeBtn.disabled = false;
+        }
+    }
+
+    /* ── Save Button ── */
+    function buildSaveButton() {
+        if (!authToken) {
+            return '<div style="text-align:center;margin:20px 0;"><span style="color:#64748b;font-size:14px;"><a href="#" id="loginToSave" style="color:#4f46e5;font-weight:600;">Log in</a> to save this analysis to your dashboard.</span></div>';
+        }
+        return (
+            '<div style="text-align:center;margin:20px 0;">' +
+                '<button id="saveAnalysisBtn" style="padding:12px 32px;border-radius:10px;border:none;font-size:15px;font-weight:600;background:linear-gradient(135deg,#059669,#10b981);color:#fff;cursor:pointer;font-family:inherit;transition:transform 0.15s,box-shadow 0.15s;">' +
+                    '\uD83D\uDCBE Save Analysis' +
+                '</button>' +
+                '<div id="saveMessage" style="margin-top:10px;font-size:14px;"></div>' +
+            '</div>'
+        );
+    }
+
+    document.addEventListener("click", function (e) {
+        if (e.target && e.target.id === "loginToSave") {
+            e.preventDefault();
+            openAuthModal("login");
+        }
+        if (e.target && e.target.id === "saveAnalysisBtn") {
+            saveAnalysis();
+        }
+    });
+
+    async function saveAnalysis() {
+        var btn = document.getElementById("saveAnalysisBtn");
+        var msg = document.getElementById("saveMessage");
+        if (!btn || !lastAnalysisResult) return;
+
+        btn.disabled = true;
+        btn.textContent = "Saving...";
+
+        try {
+            var resp = await fetch("/api/save-analysis", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + authToken,
+                },
+                body: JSON.stringify({ idea: lastAnalysisIdea, result: lastAnalysisResult })
+            });
+            var data = await resp.json();
+            if (!resp.ok) {
+                msg.innerHTML = '<span style="color:#dc2626;">' + esc(data.error || "Failed to save") + '</span>';
+                btn.disabled = false;
+                btn.textContent = "\uD83D\uDCBE Save Analysis";
+                return;
+            }
+            msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4f46e5;font-weight:600;">Dashboard</a></span>';
+            btn.style.display = "none";
+            fetchUsage();
+        } catch (err) {
+            msg.innerHTML = '<span style="color:#dc2626;">Connection error</span>';
+            btn.disabled = false;
+            btn.textContent = "\uD83D\uDCBE Save Analysis";
         }
     }
 
