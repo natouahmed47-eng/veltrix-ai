@@ -544,11 +544,13 @@ Description: {description}
             else [str(raw_selling)]
         )
 
+        candidate_long_description = _convert_bullets_to_html(candidate_long_description)
+
         if not _is_valid_ai_description(candidate_long_description):
             continue
 
         new_title = candidate_title
-        new_long_description = _convert_bullets_to_html(candidate_long_description)
+        new_long_description = candidate_long_description
         if "<ul>" not in new_long_description:
             new_long_description = _convert_bullets_to_html(new_long_description)
         new_meta_description = candidate_meta
@@ -778,6 +780,34 @@ RULES:
         "meta_description": "",
         "keywords": idea,
     }
+
+
+def looks_like_fragrance_product(product: dict) -> bool:
+    text = " ".join([
+        (product.get("title") or "").lower(),
+        (product.get("product_type") or "").lower(),
+        (product.get("tags") or "").lower(),
+        (product.get("body_html") or "").lower(),
+    ])
+
+    keywords = [
+        "perfume", "parfum", "fragrance", "cologne",
+        "oud", "eau de parfum", "eau de toilette", "\u0639\u0637\u0631"
+    ]
+
+    return any(k in text for k in keywords)
+
+
+def optimize_product_router(product: dict, lang: str):
+    if looks_like_fragrance_product(product):
+        idea = product.get("title") or product.get("body_html") or ""
+        result = analyze_product_with_ai(idea)
+        result["is_fragrance"] = True
+        return result
+
+    result = build_title_and_description_with_ai(product, lang=lang)
+    result["is_fragrance"] = False
+    return result
 
 
 @app.route("/")
@@ -1175,7 +1205,7 @@ def optimize_product():
         "tags": "",
     }
 
-    result = build_title_and_description_with_ai(product)
+    result = optimize_product_router(product, lang="en")
 
     long_desc = result.get("long_description") or result.get("description", "")
     return jsonify({
@@ -1281,7 +1311,7 @@ def optimize_all_products():
 
     for product in products[:5]:
         try:
-            optimized = build_title_and_description_with_ai(product, lang=lang)
+            optimized = optimize_product_router(product, lang)
             long_desc = optimized.get("long_description") or optimized.get("description", "")
 
             results.append({
@@ -1307,6 +1337,21 @@ def optimize_all_products():
                 "has_ul": optimized.get("has_ul"),
                 "li_count": optimized.get("li_count"),
                 "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
+                **(
+                    {
+                        "scent_family": optimized.get("scent_family", ""),
+                        "fragrance_notes": optimized.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+                        "scent_evolution": optimized.get("scent_evolution", ""),
+                        "projection": optimized.get("projection", ""),
+                        "longevity": optimized.get("longevity", ""),
+                        "best_season": optimized.get("best_season", ""),
+                        "best_occasions": optimized.get("best_occasions", []),
+                        "emotional_triggers": optimized.get("emotional_triggers", []),
+                        "luxury_description": optimized.get("luxury_description", ""),
+                    }
+                    if optimized.get("is_fragrance")
+                    else {}
+                ),
             })
         except Exception as e:
             results.append({
