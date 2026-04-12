@@ -6,7 +6,7 @@ import requests
 from datetime import datetime
 from urllib.parse import urlencode
 
-from flask import Flask, jsonify, redirect, request, render_template_string
+from flask import Flask, jsonify, redirect, request, render_template_string, send_file
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI, OpenAIError
@@ -1217,7 +1217,12 @@ def optimize_product_router(product, lang="en"):
 
 @app.route("/")
 def home():
-    return jsonify({"message": "Veltrix AI is running"})
+    return send_file("index.html")
+
+
+@app.route("/script.js")
+def serve_script():
+    return send_file("script.js")
 
 
 @app.route("/health")
@@ -2023,9 +2028,6 @@ def optimize_product():
 
 @app.route("/api/analyze-product", methods=["POST"])
 def analyze_product():
-    if not client:
-        return jsonify({"error": "OpenAI not configured"}), 500
-
     data = request.get_json(force=True, silent=True)
     if data is None:
         return jsonify({"error": "Invalid or missing JSON body"}), 400
@@ -2033,6 +2035,28 @@ def analyze_product():
     idea = (data.get("idea") or "").strip()
     if not idea:
         return jsonify({"error": "Field 'idea' is required"}), 400
+
+    if not client:
+        # Fallback: return static demo data when OpenAI is not configured
+        response_data = {
+            "category": "fragrance",
+            "title": idea,
+            "short_summary": f"AI analysis for \"{idea}\" is not available because OpenAI is not configured. This is a demo response.",
+            "technical_analysis": "",
+            "target_audience": "Fragrance enthusiasts",
+            "key_benefits": ["Premium quality", "Long-lasting scent", "Unique composition"],
+            "selling_points": ["Luxury positioning", "Distinctive character"],
+            "long_description": f"<p><strong>{html.escape(idea)}</strong> — demo analysis (OpenAI not configured).</p>",
+            "meta_description": f"Discover {html.escape(idea)} — a premium fragrance experience.",
+            "keywords": idea.lower(),
+            "scent_family": "Oriental",
+            "fragrance_notes": {"top": ["Bergamot"], "heart": ["Rose"], "base": ["Sandalwood"]},
+            "projection": "Moderate to strong",
+            "longevity": "6-8 hours",
+            "best_season": "Fall / Winter",
+            "best_occasions": ["Evening events", "Date night"],
+        }
+        return jsonify(response_data)
 
     result = analyze_product_with_ai(idea)
 
