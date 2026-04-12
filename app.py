@@ -767,47 +767,6 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
 import json
 
 def analyze_product_with_ai(idea: str):
-    ai_text = call_openai_somehow(idea)  # نفس الكود الحالي عندك
-
-    # 🔴 الخطوة المهمة: تحويل النص إلى JSON
-    try:
-        data = json.loads(ai_text)
-    except:
-        # fallback إذا AI رجع نص عادي
-        data = {
-            "title": idea,
-            "short_summary": ai_text[:200],
-            "scent_family": "Likely woody-oriental",
-            "fragrance_notes": {
-                "top": [],
-                "heart": [],
-                "base": []
-            },
-            "scent_evolution": ai_text,
-            "projection": "Likely medium to strong",
-            "longevity": "Likely long-lasting",
-            "best_season": "Evening / Fall",
-            "best_occasions": ["Formal", "Evening"],
-            "emotional_triggers": ["Confidence"],
-            "luxury_description": ai_text,
-            "long_description": ai_text,
-            "meta_description": ai_text[:150],
-            "keywords": idea
-        }
-
-    # ✅ ضمان عدم وجود فراغات
-    data = enforce_no_empty_fields(data, idea)
-
-    # ✅ الإرجاع الصحيح
-    return data
-    
-
-    
-    
-    
-    
-        
-
     prompt = f"""
 You are a fragrance chemist, perfumer, and luxury product analyst.
 You are also a domain expert with deep knowledge of perfumery, ingredients, accords, and scent composition.
@@ -1141,7 +1100,7 @@ RULES:
         except Exception as exc:
             # Processing failed — log and try next retry or fall through
             # to fallback dict.
-            print(f"analyze_product_with_ai: processing error, retrying: {exc}")
+            print("ANALYZE ERROR:", str(exc))
             continue
 
     fallback = {
@@ -1165,7 +1124,11 @@ RULES:
         "key_benefits": [],
         "selling_points": [],
     }
-    return enforce_no_empty_fields(fallback, idea)
+    try:
+        return enforce_no_empty_fields(fallback, idea)
+    except Exception as e:
+        print("ANALYZE ERROR:", str(e))
+        return fallback
 
 
 def looks_like_fragrance(product):
