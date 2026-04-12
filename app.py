@@ -38,6 +38,19 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 MAX_AI_GENERATION_RETRIES = 3
 
+# Category-specific fields that may be present in AI analysis results.
+# Used by API endpoints to dynamically pass through category data.
+CATEGORY_SPECIFIC_FIELDS = [
+    "scent_family", "fragrance_notes", "scent_evolution", "projection",
+    "longevity", "best_season", "best_occasions", "emotional_triggers",
+    "luxury_description",
+    "specs", "performance", "use_cases", "pros", "cons",
+    "style", "materials", "fit", "occasions", "care_instructions",
+    "platform", "features", "integrations", "pricing_model",
+    "problem", "solution", "monetization", "competitive_advantage", "market_size",
+    "specifications",
+]
+
 
 class ShopifyStore(db.Model):
     __tablename__ = "shopify_stores"
@@ -609,93 +622,28 @@ Description: {description}
 def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
     """Fill any missing, empty, or weak values with inferred expert-level content.
 
+    Category-aware: applies fragrance-specific defaults only when the detected
+    category is fragrance.  For all other categories the defaults are generic
+    and product-appropriate.
+
     Ensures zero empty strings, zero empty arrays, and zero forbidden phrases
     in the final output.
     """
     idea_lower = idea.lower()
+    category = (data.get("category") or "").lower()
 
-    # --- Detect fragrance signals for inference ---
-    has_parfum = "parfum" in idea_lower
-    has_oud = "oud" in idea_lower
-    has_spicy = "spicy" in idea_lower or "spice" in idea_lower
-    luxury_brands = [
-        "tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
-        "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
-        "initio", "parfums de marly", "nishane", "tiziana terenzi",
-    ]
-    is_luxury = any(b in idea_lower for b in luxury_brands)
+    # --- Detect whether this is a fragrance product ---
+    fragrance_keywords = ["perfume", "parfum", "fragrance", "cologne", "oud", "eau de"]
+    is_fragrance = category == "fragrance" or any(k in idea_lower for k in fragrance_keywords)
 
-    # --- Determine inferred defaults based on product signals ---
-    if has_oud:
-        default_family = "Likely woody-oriental"
-        default_top = ["Likely: saffron", "Likely: bergamot"]
-        default_heart = ["Likely: oud", "Likely: rose"]
-        default_base = ["Likely: sandalwood", "Likely: musk", "Likely: amber"]
-        default_evolution = "Likely opens with bright spiced accords, evolving into a deep oud-rose heart, settling into a warm woody-ambery base"
-        default_projection = "Likely strong projection given oud concentration"
-        default_longevity = "Likely long-lasting (8–12 hours) due to oud and resinous base"
-        default_season = "Likely fall/winter — ideal for cooler temperatures"
-        default_occasions = ["Likely evening events", "Likely formal occasions", "Likely special occasions"]
-        default_emotions = ["confidence", "sophistication", "mystique", "power"]
-    elif has_spicy:
-        default_family = "Likely warm spicy"
-        default_top = ["Likely: black pepper", "Likely: cardamom"]
-        default_heart = ["Likely: cinnamon", "Likely: nutmeg"]
-        default_base = ["Likely: vanilla", "Likely: tonka bean", "Likely: amber"]
-        default_evolution = "Likely opens with peppery spice, transitions into warm aromatic heart, dries down to sweet balsamic base"
-        default_projection = "Likely moderate to strong projection"
-        default_longevity = "Likely moderate to long-lasting (6–10 hours)"
-        default_season = "Likely fall/winter — warm spicy profiles suit cool weather"
-        default_occasions = ["Likely evening wear", "Likely date nights", "Likely social gatherings"]
-        default_emotions = ["warmth", "seduction", "boldness", "charisma"]
-    elif has_parfum:
-        default_family = "Likely a concentrated fragrance composition"
-        default_top = ["Likely: citrus accord", "Likely: aromatic opening"]
-        default_heart = ["Likely: floral or woody heart"]
-        default_base = ["Likely: musk", "Likely: amber", "Likely: woods"]
-        default_evolution = "Likely a rich, evolving composition with strong sillage due to parfum concentration"
-        default_projection = "Likely strong projection due to parfum concentration"
-        default_longevity = "Likely long-lasting (10+ hours) — parfum concentration ensures endurance"
-        default_season = "Likely versatile across seasons with parfum intensity"
-        default_occasions = ["Likely formal events", "Likely evening occasions", "Likely signature scent"]
-        default_emotions = ["luxury", "confidence", "presence", "elegance"]
-    elif is_luxury:
-        default_family = "Likely a complex, artisan fragrance composition"
-        default_top = ["Likely: refined citrus or spice opening"]
-        default_heart = ["Likely: rare florals or precious woods"]
-        default_base = ["Likely: ambergris", "Likely: musk", "Likely: precious woods"]
-        default_evolution = "Likely a multi-layered evolution reflecting luxury craftsmanship and rare ingredients"
-        default_projection = "Likely moderate to strong — crafted for presence"
-        default_longevity = "Likely long-lasting (8+ hours) — luxury formulation ensures endurance"
-        default_season = "Likely versatile — designed for year-round sophistication"
-        default_occasions = ["Likely exclusive events", "Likely fine dining", "Likely professional settings"]
-        default_emotions = ["prestige", "exclusivity", "refinement", "dominance"]
-    else:
-        default_family = "Likely a balanced fragrance composition"
-        default_top = ["Likely: fresh aromatic opening"]
-        default_heart = ["Likely: floral or woody heart accord"]
-        default_base = ["Likely: musk", "Likely: cedarwood"]
-        default_evolution = "Likely a balanced scent journey from fresh opening to warm, lasting dry-down"
-        default_projection = "Likely moderate projection"
-        default_longevity = "Likely moderate longevity (4–6 hours)"
-        default_season = "Likely spring/summer — suitable for warmer weather"
-        default_occasions = ["Likely daily wear", "Likely casual outings", "Likely office appropriate"]
-        default_emotions = ["freshness", "approachability", "confidence"]
-
-    # --- Enforce mandatory string fields ---
+    # --- Always-required string fields (universal) ---
     string_defaults = {
-        "scent_family": default_family,
-        "scent_evolution": default_evolution,
-        "projection": default_projection,
-        "longevity": default_longevity,
-        "best_season": default_season,
-        "luxury_description": f"Likely a distinguished composition crafted for the discerning individual — {idea[:80]}",
         "short_summary": f"Likely an expertly crafted product with distinctive character — {idea[:80]}",
-        "technical_analysis": f"Likely a well-structured composition balancing key accords — {idea[:80]}",
+        "technical_analysis": f"Likely a well-structured product with strong market positioning — {idea[:80]}",
         "target_audience": "Likely discerning individuals who value quality and distinction",
-        "meta_description": idea[:150] if idea else "Expertly crafted luxury product",
-        "keywords": idea[:100] if idea else "luxury, premium, quality",
-        "category": "fragrance" if any(k in idea_lower for k in ["perfume", "parfum", "fragrance", "cologne", "oud", "eau de"]) else "general ecommerce product",
+        "meta_description": idea[:150] if idea else "Expertly crafted product",
+        "keywords": idea[:100] if idea else "quality, premium, product",
+        "category": category or ("fragrance" if is_fragrance else "generic_product"),
     }
 
     for field, fallback in string_defaults.items():
@@ -703,12 +651,10 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         if not val or (isinstance(val, str) and not val.strip()):
             data[field] = fallback
 
-    # --- Enforce mandatory list fields ---
+    # --- Always-required list fields (universal) ---
     list_defaults = {
-        "best_occasions": default_occasions,
-        "emotional_triggers": default_emotions,
-        "key_benefits": ["Likely premium quality formulation", "Likely distinctive character", "Likely lasting impression"],
-        "selling_points": ["Likely expert craftsmanship", "Likely unique composition", "Likely luxurious experience"],
+        "key_benefits": ["Likely premium quality", "Likely distinctive character", "Likely strong value proposition"],
+        "selling_points": ["Likely expert craftsmanship", "Likely unique positioning", "Likely compelling value"],
     }
 
     for field, fallback in list_defaults.items():
@@ -716,19 +662,75 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         if not val or (isinstance(val, list) and len(val) == 0):
             data[field] = fallback
 
-    # --- Enforce fragrance_notes (nested dict with top/heart/base) ---
-    notes = data.get("fragrance_notes")
-    if not isinstance(notes, dict):
-        notes = {"top": [], "heart": [], "base": []}
-        data["fragrance_notes"] = notes
+    # --- Fragrance-specific defaults (only when category is fragrance) ---
+    if is_fragrance:
+        has_oud = "oud" in idea_lower
+        has_spicy = "spicy" in idea_lower or "spice" in idea_lower
+        has_parfum = "parfum" in idea_lower
+        luxury_brands = [
+            "tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
+            "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
+            "initio", "parfums de marly", "nishane", "tiziana terenzi",
+        ]
+        is_luxury = any(b in idea_lower for b in luxury_brands)
 
-    if not notes.get("top"):
-        notes["top"] = default_top
-    if not notes.get("heart"):
-        notes["heart"] = default_heart
-    if not notes.get("base"):
-        notes["base"] = default_base
-    data["fragrance_notes"] = notes
+        if has_oud:
+            default_family = "Likely woody-oriental"
+            default_top = ["Likely: saffron", "Likely: bergamot"]
+            default_heart = ["Likely: oud", "Likely: rose"]
+            default_base = ["Likely: sandalwood", "Likely: musk", "Likely: amber"]
+            default_projection = "Likely strong projection given oud concentration"
+            default_longevity = "Likely long-lasting (8–12 hours) due to oud and resinous base"
+        elif has_spicy:
+            default_family = "Likely warm spicy"
+            default_top = ["Likely: black pepper", "Likely: cardamom"]
+            default_heart = ["Likely: cinnamon", "Likely: nutmeg"]
+            default_base = ["Likely: vanilla", "Likely: tonka bean", "Likely: amber"]
+            default_projection = "Likely moderate to strong projection"
+            default_longevity = "Likely moderate to long-lasting (6–10 hours)"
+        elif has_parfum:
+            default_family = "Likely a concentrated fragrance composition"
+            default_top = ["Likely: citrus accord", "Likely: aromatic opening"]
+            default_heart = ["Likely: floral or woody heart"]
+            default_base = ["Likely: musk", "Likely: amber", "Likely: woods"]
+            default_projection = "Likely strong projection due to parfum concentration"
+            default_longevity = "Likely long-lasting (10+ hours) — parfum concentration ensures endurance"
+        elif is_luxury:
+            default_family = "Likely a complex, artisan fragrance composition"
+            default_top = ["Likely: refined citrus or spice opening"]
+            default_heart = ["Likely: rare florals or precious woods"]
+            default_base = ["Likely: ambergris", "Likely: musk", "Likely: precious woods"]
+            default_projection = "Likely moderate to strong — crafted for presence"
+            default_longevity = "Likely long-lasting (8+ hours) — luxury formulation ensures endurance"
+        else:
+            default_family = "Likely a balanced fragrance composition"
+            default_top = ["Likely: fresh aromatic opening"]
+            default_heart = ["Likely: floral or woody heart accord"]
+            default_base = ["Likely: musk", "Likely: cedarwood"]
+            default_projection = "Likely moderate projection"
+            default_longevity = "Likely moderate longevity (4–6 hours)"
+
+        frag_string_defaults = {
+            "scent_family": default_family,
+            "projection": default_projection,
+            "longevity": default_longevity,
+        }
+        for field, fallback in frag_string_defaults.items():
+            val = data.get(field)
+            if not val or (isinstance(val, str) and not val.strip()):
+                data[field] = fallback
+
+        notes = data.get("fragrance_notes")
+        if not isinstance(notes, dict):
+            notes = {"top": [], "heart": [], "base": []}
+            data["fragrance_notes"] = notes
+        if not notes.get("top"):
+            notes["top"] = default_top
+        if not notes.get("heart"):
+            notes["heart"] = default_heart
+        if not notes.get("base"):
+            notes["base"] = default_base
+        data["fragrance_notes"] = notes
 
     # --- Ensure long_description is non-empty ---
     if not data.get("long_description") or not data["long_description"].strip():
@@ -764,16 +766,12 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
     return data
 
 
-import json
-
 def analyze_product_with_ai(idea: str):
     prompt = f"""
-You are a fragrance chemist, perfumer, and luxury product analyst.
-You are also a domain expert with deep knowledge of perfumery, ingredients, accords, and scent composition.
+You are a universal product intelligence analyst and domain expert.
+You analyze ANY type of product or business idea with professional expertise.
 
 You must strictly respect the provided product content.
-However, you are also a domain expert.
-
 If information is explicitly present, use it exactly.
 If information is missing, infer only when there is a strong logical signal.
 Use realistic domain knowledge, not fantasy.
@@ -781,7 +779,7 @@ NEVER say "not specified", "not provided", "unavailable", "cannot be determined"
 If something is unknown, infer it with domain expertise and prefix with "Likely".
 
 ---
-INPUT PRODUCT:
+INPUT:
 {idea}
 
 ---
@@ -796,149 +794,105 @@ CRITICAL RULES:
    - upgrade language to premium level
    - extract structured data
    - use explicit product information exactly as given
-   - infer missing details only when there is a strong logical signal from the input or domain expertise
-   - prefix inferred values with "Likely" (e.g. "Likely woody-oriental", "Likely moderate to strong projection")
+   - infer missing details only when there is a strong logical signal
+   - prefix inferred values with "Likely"
 5) You MUST NOT:
-   - EVER use the phrases "not specified", "not provided", "unavailable", "cannot be determined", or "no data" — use domain inference with "Likely" prefix instead
-   - produce empty or placeholder analysis — every field should contain useful expert insight
-   - use generic marketing filler (e.g. "luxurious fragrance", "captivating scent", "timeless elegance")
-   - produce output that contains zero insight — that is wrong
-   - produce output that is fully invented — that is wrong
+   - EVER use "not specified", "not provided", "unavailable", "cannot be determined", or "no data"
+   - produce empty or placeholder analysis
+   - use generic marketing filler
 6) Balance accuracy with expert reasoning.
 
 ---
-STEP 1 — IDENTIFY CATEGORY
-Classify the product into exactly one of:
-- perfume / fragrance
-- skincare / beauty
-- grooming
+STEP 1 — DETECT CATEGORY
+Classify the input into EXACTLY ONE of these categories:
+- fragrance
 - electronics
 - fashion
-- home product
-- supplement
-- general ecommerce product
+- software
+- business_idea
+- generic_product
 
 ---
-STEP 2 — CATEGORY-SPECIFIC EXTRACTION
+STEP 2 — GENERATE CATEGORY-SPECIFIC ANALYSIS
 
-IF the product is a perfume / fragrance:
+ALWAYS include these universal fields:
+- title
+- short_summary (2–3 sentence expert summary)
+- category (from Step 1)
+- key_benefits (array of 3–5 benefits)
+- target_audience (specific description of who this is for)
+- technical_analysis (expert-level analysis)
+- long_description (HTML)
+- meta_description (under 155 chars)
+- keywords (comma-separated)
+- selling_points (array of 3 conversion angles)
 
-For fragrance products you MUST fill every field with useful content:
-- scent_family: use explicit clues first; if absent, infer from product name, brand positioning, concentration type, or any descriptive words. Prefix with "Likely" if inferred (e.g. "Likely woody-oriental").
-- top_notes: use notes mentioned in input; if none, infer from scent family and product clues using domain expertise. Prefix inferred notes with "Likely:".
-- heart_notes: same approach as top_notes.
-- base_notes: same approach as top_notes.
-- scent_evolution: describe how the scent would evolve based on known or inferred notes. Use domain knowledge of volatility and molecular weight.
-- projection: infer from concentration keywords (parfum = strong, eau de toilette = moderate, etc.), descriptors like "intense", "powerful", "soft". Use "Likely moderate to strong projection" style.
-- longevity: infer from concentration type (parfum > EDP > EDT > EDC), keywords like "long-lasting", "enduring". Use "Likely" prefix if inferred.
-- best_season: infer from composition weight and character — heavier orientals for fall/winter, lighter citrus/aquatic for spring/summer.
-- best_occasions: infer from brand positioning, scent character, and product context.
-- emotional_triggers: infer from scent profile, brand positioning, and product language.
+ADDITIONALLY, include category-specific fields:
 
-For all other categories:
-- Identify key ingredients, materials, or components from the input (prefix uncertain items with "Likely:")
-- Describe function, use case, and key differentiators based on the input
-- Identify the target buyer persona from context in the input
-- Use domain expertise to fill gaps when there is a strong logical signal
+IF category is "fragrance":
+- scent_family: the fragrance family (e.g. "woody-oriental", "fresh citrus")
+- fragrance_notes: {{ "top": [...], "heart": [...], "base": [...] }}
+- projection: "soft" / "moderate" / "strong"
+- longevity: "short" / "moderate" / "long-lasting" with hour estimates
+
+IF category is "electronics":
+- specs: key technical specifications as an object (e.g. {{"processor": "...", "ram": "...", "storage": "..."}})
+- performance: performance analysis string
+- use_cases: array of ideal use cases
+- pros: array of advantages
+- cons: array of disadvantages or limitations
+
+IF category is "fashion":
+- style: style description (e.g. "casual streetwear", "formal business")
+- materials: array of materials or fabrics
+- fit: fit description
+- occasions: array of suitable occasions
+- care_instructions: care/maintenance tips
+
+IF category is "software":
+- platform: target platform(s)
+- features: array of key features
+- integrations: array of integrations or compatible tools
+- pricing_model: pricing structure description
+- use_cases: array of ideal use cases
+
+IF category is "business_idea":
+- problem: the problem being solved
+- solution: the proposed solution
+- monetization: how it makes money
+- competitive_advantage: what sets it apart
+- market_size: estimated market opportunity
+
+IF category is "generic_product":
+- specifications: key product specs as an object
+- use_cases: array of use cases
+- pros: array of advantages
+- cons: array of limitations
 
 ---
 STEP 3 — OUTPUT
 Return ONLY valid JSON. No markdown. No code fences. No extra text.
 
-The JSON must have EXACTLY these fields:
-
-{{
-  "category": "detected from content",
-  "title": "refined version of original title — must reference the actual product, not a generic phrase",
-  "clean_summary": "rewritten version of original text — NOT new ideas. 2–3 sentence expert-level summary that references specific elements from the input",
-  "extracted_insights": {{
-    "key_features": ["feature 1 from input", "feature 2 from input", "feature 3 from input"],
-    "benefits": ["benefit 1 from input", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
-    "positioning": "precise target audience and market positioning — based on input context, not generic"
-  }},
-  "fragrance_analysis": {{
-    "scent_family": "accurate scent family — empty string for non-fragrance",
-    "top_notes": ["only notes mentioned or strongly implied by the input"],
-    "heart_notes": ["only notes mentioned or strongly implied by the input"],
-    "base_notes": ["only notes mentioned or strongly implied by the input"],
-    "scent_evolution": "how the scent evolves — empty string for non-fragrance or if not supported by input",
-    "projection": "soft / moderate / strong based on input clues — empty string for non-fragrance",
-    "longevity": "short / moderate / long-lasting based on input clues — empty string for non-fragrance",
-    "best_season": "based on composition clues — empty string for non-fragrance",
-    "best_occasions": ["occasions based on input context — empty array for non-fragrance"],
-    "emotional_triggers": ["specific emotions from input — empty array for non-fragrance"]
-  }},
-  "technical_analysis": "expert explanation of composition or product structure — based on input content, not invented. Must read like an analyst's breakdown, not marketing copy",
-  "luxury_upgrade_text": "same meaning as the input, but elevated to high-end brand level — Tom Ford / Dior caliber. Must reference actual elements from the input. NO generic marketing filler.",
-  "long_description": "<p>...</p><ul><li><strong>Label:</strong> explanation</li>...</ul><p>...</p>",
-  "meta_description": "under 155 characters, buyer-intent focused, based on input content",
-  "keywords": "comma-separated buyer-intent keywords derived from input"
-}}
-
 long_description HTML structure (STRICT):
-<p>Opening hook paragraph — must reference specific product elements from the input, not generic praise.</p>
-<p>Second paragraph that addresses the buyer's desire and positions this product using content from the input.</p>
+<p>Opening hook paragraph referencing specific product elements.</p>
+<p>Second paragraph addressing the buyer's need and positioning this product.</p>
 <ul>
-<li><strong>Composition:</strong> Description of product structure / note structure based on input.</li>
-<li><strong>Projection & Longevity:</strong> Performance characteristics based on input clues.</li>
-<li><strong>Best For:</strong> Specific occasions and seasons based on input context.</li>
-<li><strong>Scent Character:</strong> The emotional and sensory signature based on input.</li>
-<li><strong>Who Wears This:</strong> The target persona based on input context.</li>
+<li><strong>Label:</strong> Specific explanation.</li>
+<li><strong>Label:</strong> Specific explanation.</li>
+<li><strong>Label:</strong> Specific explanation.</li>
+<li><strong>Label:</strong> Specific explanation.</li>
+<li><strong>Label:</strong> Specific explanation.</li>
 </ul>
-<p>Closing paragraph — expert recommendation, not generic call to action.</p>
+<p>Closing paragraph — expert recommendation.</p>
 
 RULES:
-- You are an analyst and domain expert — extract, elevate, and infer with expertise
-- Be specific to THIS product — never produce content that could apply to any product
-- DO NOT fully invent details with no basis — but DO use domain expertise to fill gaps when logically supported
-- Prefix inferred items with "Likely" or "Likely:" (e.g. "Likely woody-oriental", "Likely: bergamot")
-- Do NOT use vague filler words or generic phrases: "luxurious fragrance", "captivating scent", "timeless elegance", "ultimate", "premium", "amazing"
-- NEVER use "not specified", "not provided", "unavailable", "cannot be determined", "no data", or similar phrases — always provide expert inference with "Likely" prefix instead
-- If output contains zero insight, it is wrong
-- If output is fully invented, it is wrong
-- Balance accuracy with expert reasoning
+- Detect the correct category FIRST, then include the matching category-specific fields
+- Be specific to THIS product — never produce generic content
+- DO NOT include category-specific fields that don't match the detected category
+- Prefix inferred items with "Likely" or "Likely:"
+- NEVER use "not specified", "not provided", "unavailable", "cannot be determined", "no data"
 - long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
-- fragrance_analysis notes must use empty arrays for non-fragrance products
-- fragrance_analysis occasions and emotional_triggers must use empty arrays for non-fragrance products
-- fragrance_analysis scent_evolution, best_season must use empty strings for non-fragrance products
-- luxury_upgrade_text must reference actual elements from the input — not generic marketing text
-- emotional_triggers must cite specific emotions (e.g., dominance, seduction, power, confidence) — not generic adjectives
-- technical_analysis must discuss actual materials, accords, or product details from the input — not vague descriptions
 - Return ONLY valid JSON — no markdown, no code fences, no extra text
-
----
-Return ONLY valid JSON.
-Do not include any explanations, text, or formatting outside JSON.
-
-The JSON must follow exactly this structure:
-
-{{
-  "title": "",
-  "short_summary": "",
-  "scent_family": "",
-  "fragrance_notes": {{
-    "top": [],
-    "heart": [],
-    "base": []
-  }},
-  "scent_evolution": "",
-  "projection": "",
-  "longevity": "",
-  "best_season": "",
-  "best_occasions": [],
-  "emotional_triggers": [],
-  "luxury_description": "",
-  "long_description": "",
-  "meta_description": "",
-  "keywords": ""
-}}
-
-Rules:
-
-- Use real data if present
-- If missing, use "Likely" inference
-- Never leave arrays empty
-- Never return text outside JSON
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
@@ -949,8 +903,9 @@ Rules:
                     {
                         "role": "system",
                         "content": (
-                            "You are a fragrance chemist, perfumer, and luxury product analyst — also a domain expert. "
-                            "You must strictly respect the provided product content. "
+                            "You are a universal product intelligence analyst and domain expert. "
+                            "You analyze ANY product or business idea — fragrances, electronics, fashion, software, business ideas, and more. "
+                            "You must strictly respect the provided content. "
                             "If information is explicitly present, use it exactly. "
                             "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
                             "NEVER output 'not specified', 'not provided', 'unavailable', 'cannot be determined', or 'no data' — always infer with 'Likely' prefix instead. "
@@ -990,27 +945,20 @@ Rules:
             data = {
                 "title": idea,
                 "short_summary": cleaned[:200],
-                "scent_family": "Likely woody-oriental",
-                "fragrance_notes": {"top": [], "heart": [], "base": []},
-                "scent_evolution": cleaned,
-                "projection": "Likely medium to strong",
-                "longevity": "Likely long-lasting",
-                "best_season": "Evening",
-                "best_occasions": ["Formal"],
-                "emotional_triggers": ["Confidence"],
-                "luxury_description": cleaned,
+                "category": "generic_product",
+                "key_benefits": [],
+                "selling_points": [],
+                "target_audience": "",
+                "technical_analysis": "",
                 "long_description": cleaned,
                 "meta_description": cleaned[:150],
-                "keywords": idea
+                "keywords": idea,
             }
 
         if not isinstance(data, dict):
             continue
 
         # --- Process the parsed dict and build the structured output --------
-        # Wrapped in try/except so that any unexpected error during
-        # scrubbing / flattening falls through to the next retry (or the
-        # post-loop fallback) instead of propagating an exception.
         try:
             # --- Bullet handling: convert dash/bullet lines in
             # long_description to proper <ul><li> HTML. ---
@@ -1049,26 +997,9 @@ Rules:
                 re.IGNORECASE,
             )
 
-            _idea_lower = idea.lower()
-            _has_parfum = "parfum" in _idea_lower
-            _has_oud = "oud" in _idea_lower
-            _has_spicy = "spicy" in _idea_lower or "spice" in _idea_lower
-            _luxury_brands = ["tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
-                              "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
-                              "initio", "parfums de marly", "nishane", "tiziana terenzi"]
-            _is_luxury = any(b in _idea_lower for b in _luxury_brands)
-
             def _infer_replacement(field_context: str = "") -> str:
-                """Generate an intelligent inference replacement based on fragrance signals."""
-                if _has_oud:
-                    return "Likely a rich woody-oriental composition with oud prominence"
-                if _has_spicy:
-                    return "Likely a warm spicy profile with aromatic depth"
-                if _has_parfum:
-                    return "Likely a concentrated composition with strong sillage and longevity"
-                if _is_luxury:
-                    return "Likely a complex, multi-layered composition reflecting luxury craftsmanship"
-                return "Likely a balanced, well-crafted composition based on fragrance positioning"
+                """Generate an intelligent inference replacement based on product context."""
+                return "Likely a well-crafted product based on market positioning"
 
             def _scrub(value, field_name=""):
                 """Recursively replace banned phrases with intelligent inferences."""
@@ -1090,8 +1021,8 @@ Rules:
 
             data = _scrub(data)
 
-            # Flatten nested AI response to the flat field names used by
-            # downstream consumers (API routes, frontend template, router).
+            # Flatten nested AI response fields that may have been returned
+            # under alternate keys.
             insights = data.pop("extracted_insights", None) or {}
             frag = data.pop("fragrance_analysis", None) or {}
 
@@ -1108,71 +1039,90 @@ Rules:
             data.setdefault("selling_points", insights.get("key_features", []))
             data.setdefault("target_audience", insights.get("positioning", ""))
 
-            # fragrance_analysis → flat fields
-            data.setdefault("scent_family", frag.get("scent_family", ""))
-            data.setdefault("fragrance_notes", {
-                "top": frag.get("top_notes", []),
-                "heart": frag.get("heart_notes", []),
-                "base": frag.get("base_notes", []),
-            })
-            data.setdefault("scent_evolution", frag.get("scent_evolution", ""))
-            data.setdefault("projection", frag.get("projection", ""))
-            data.setdefault("longevity", frag.get("longevity", ""))
-            data.setdefault("best_season", frag.get("best_season", ""))
-            data.setdefault("best_occasions", frag.get("best_occasions", []))
-            data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
+            # fragrance_analysis → flat fields (only if present)
+            if frag:
+                data.setdefault("scent_family", frag.get("scent_family", ""))
+                data.setdefault("fragrance_notes", {
+                    "top": frag.get("top_notes", []),
+                    "heart": frag.get("heart_notes", []),
+                    "base": frag.get("base_notes", []),
+                })
+                data.setdefault("projection", frag.get("projection", ""))
+                data.setdefault("longevity", frag.get("longevity", ""))
 
-            # --- Construct the mandatory structured output dict ---
-            # Guarantees every required field is present with the correct
-            # type, regardless of what the AI actually returned.
+            # --- Build the output dict with universal + category fields ---
             output = {
                 "title": data.get("title", idea),
                 "short_summary": data.get("short_summary", ""),
-                "scent_family": data.get("scent_family", ""),
-                "fragrance_notes": data.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
-                "scent_evolution": data.get("scent_evolution", ""),
-                "projection": data.get("projection", ""),
-                "longevity": data.get("longevity", ""),
-                "best_season": data.get("best_season", ""),
-                "best_occasions": data.get("best_occasions", []),
-                "emotional_triggers": data.get("emotional_triggers", []),
-                "luxury_description": data.get("luxury_description", ""),
+                "category": data.get("category", "generic_product"),
+                "key_benefits": data.get("key_benefits", []),
+                "target_audience": data.get("target_audience", ""),
+                "technical_analysis": data.get("technical_analysis", ""),
+                "selling_points": data.get("selling_points", []),
                 "long_description": data.get("long_description", ""),
                 "meta_description": data.get("meta_description", ""),
                 "keywords": data.get("keywords", ""),
-                "category": data.get("category", ""),
-                "technical_analysis": data.get("technical_analysis", ""),
-                "target_audience": data.get("target_audience", ""),
-                "key_benefits": data.get("key_benefits", []),
-                "selling_points": data.get("selling_points", []),
             }
+
+            # Include any category-specific fields the AI returned
+            category = (data.get("category") or "generic_product").lower()
+
+            if category == "fragrance":
+                output["scent_family"] = data.get("scent_family", "")
+                output["fragrance_notes"] = data.get("fragrance_notes", {"top": [], "heart": [], "base": []})
+                output["projection"] = data.get("projection", "")
+                output["longevity"] = data.get("longevity", "")
+                output["scent_evolution"] = data.get("scent_evolution", "")
+                output["best_season"] = data.get("best_season", "")
+                output["best_occasions"] = data.get("best_occasions", [])
+                output["emotional_triggers"] = data.get("emotional_triggers", [])
+                output["luxury_description"] = data.get("luxury_description", "")
+            elif category == "electronics":
+                output["specs"] = data.get("specs", {})
+                output["performance"] = data.get("performance", "")
+                output["use_cases"] = data.get("use_cases", [])
+                output["pros"] = data.get("pros", [])
+                output["cons"] = data.get("cons", [])
+            elif category == "fashion":
+                output["style"] = data.get("style", "")
+                output["materials"] = data.get("materials", [])
+                output["fit"] = data.get("fit", "")
+                output["occasions"] = data.get("occasions", [])
+                output["care_instructions"] = data.get("care_instructions", "")
+            elif category == "software":
+                output["platform"] = data.get("platform", "")
+                output["features"] = data.get("features", [])
+                output["integrations"] = data.get("integrations", [])
+                output["pricing_model"] = data.get("pricing_model", "")
+                output["use_cases"] = data.get("use_cases", [])
+            elif category == "business_idea":
+                output["problem"] = data.get("problem", "")
+                output["solution"] = data.get("solution", "")
+                output["monetization"] = data.get("monetization", "")
+                output["competitive_advantage"] = data.get("competitive_advantage", "")
+                output["market_size"] = data.get("market_size", "")
+            else:  # generic_product
+                output["specifications"] = data.get("specifications", {})
+                output["use_cases"] = data.get("use_cases", [])
+                output["pros"] = data.get("pros", [])
+                output["cons"] = data.get("cons", [])
+
             return enforce_no_empty_fields(output, idea)
         except Exception as exc:
-            # Processing failed — log and try next retry or fall through
-            # to fallback dict.
             print("ANALYZE ERROR:", str(exc))
             continue
 
     fallback = {
         "title": idea,
         "short_summary": "",
-        "scent_family": "",
-        "fragrance_notes": {"top": [], "heart": [], "base": []},
-        "scent_evolution": "",
-        "projection": "",
-        "longevity": "",
-        "best_season": "",
-        "best_occasions": [],
-        "emotional_triggers": [],
-        "luxury_description": "",
+        "category": "generic_product",
+        "key_benefits": [],
+        "target_audience": "",
+        "technical_analysis": "",
+        "selling_points": [],
         "long_description": f"<p>{idea}</p>",
         "meta_description": "",
         "keywords": idea,
-        "category": "",
-        "technical_analysis": "",
-        "target_audience": "",
-        "key_benefits": [],
-        "selling_points": [],
     }
     try:
         return enforce_no_empty_fields(fallback, idea)
@@ -1221,55 +1171,47 @@ def looks_like_fragrance_product(product: dict) -> bool:
 
 
 def optimize_product_router(product, lang="en"):
-    is_fragrance = looks_like_fragrance(product)
-    print("FRAGRANCE DETECTED:", is_fragrance, product.get("title", ""))
+    """Route any product through the universal product intelligence engine.
 
-    if is_fragrance:
-        title = product.get("title", "")
-        brand = product.get("vendor", "")
-        product_type = product.get("product_type", "")
-        tags = product.get("tags", "")
-        body_html = product.get("body_html", "")
+    Builds a rich input string from the product's fields and sends it through
+    analyze_product_with_ai() which auto-detects the category and returns
+    category-specific structured data.
+    """
+    title = product.get("title", "")
+    brand = product.get("vendor", "")
+    product_type = product.get("product_type", "")
+    tags = product.get("tags", "")
+    body_html = product.get("body_html", "")
 
-        idea = (
-            f"[SPECIFIC FRAGRANCE PRODUCT — NOT A GENERIC IDEA]\n"
-            f"This is a real fragrance product currently listed for sale. "
-            f"Analyze it as a specific, existing product — do NOT generate generic perfume content.\n"
-            f"\n"
-            f"Full Product Title: {title}\n"
-            f"Brand / House: {brand}\n"
-            f"Product Type: {product_type}\n"
-            f"Tags: {tags}\n"
-            f"Product Description / Body HTML:\n{body_html}"
-        ).strip()
+    idea = (
+        f"[PRODUCT TO ANALYZE]\n"
+        f"This is a real product currently listed for sale. "
+        f"Analyze it as a specific, existing product — do NOT generate generic content.\n"
+        f"\n"
+        f"Full Product Title: {title}\n"
+        f"Brand / Vendor: {brand}\n"
+        f"Product Type: {product_type}\n"
+        f"Tags: {tags}\n"
+        f"Product Description / Body HTML:\n{body_html}"
+    ).strip()
 
-        result = analyze_product_with_ai(idea)
-        print("FRAGRANCE ROUTER RESULT:", result)
+    result = analyze_product_with_ai(idea)
+    print("PRODUCT ROUTER RESULT:", result.get("category"), result.get("title"))
 
-        result.setdefault("category", "perfume / fragrance")
-        result.setdefault("title", product.get("title", ""))
-        result.setdefault("short_summary", "")
-        result.setdefault("technical_analysis", "")
-        result.setdefault("target_audience", "")
-        result.setdefault("scent_family", "")
-        result.setdefault("fragrance_notes", {"top": [], "heart": [], "base": []})
-        result.setdefault("scent_evolution", "")
-        result.setdefault("projection", "")
-        result.setdefault("longevity", "")
-        result.setdefault("best_season", "")
-        result.setdefault("best_occasions", [])
-        result.setdefault("emotional_triggers", [])
-        result.setdefault("key_benefits", [])
-        result.setdefault("selling_points", [])
-        result.setdefault("luxury_description", "")
-        result.setdefault("long_description", "")
-        result.setdefault("meta_description", "")
-        result.setdefault("keywords", "")
-        result["is_fragrance"] = True
-        return result
+    result.setdefault("title", product.get("title", ""))
+    result.setdefault("category", "generic_product")
+    result.setdefault("short_summary", "")
+    result.setdefault("technical_analysis", "")
+    result.setdefault("target_audience", "")
+    result.setdefault("key_benefits", [])
+    result.setdefault("selling_points", [])
+    result.setdefault("long_description", "")
+    result.setdefault("meta_description", "")
+    result.setdefault("keywords", "")
 
-    result = build_title_and_description_with_ai(product, lang=lang)
-    result["is_fragrance"] = False
+    # Backward compatibility: set is_fragrance flag
+    result["is_fragrance"] = (result.get("category", "").lower() == "fragrance")
+
     return result
 
 
@@ -1748,8 +1690,21 @@ def settings_page():
                 data.results.forEach((item, index) => {
                     const benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(b => `<li>${b}</li>`).join("") : "";
                     const sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(s => `<li>${s}</li>`).join("") : "";
+                    const category = (item.category || "").toLowerCase();
 
-                    /* ── SCENT FAMILY section ── */
+                    /* ── Category badge ── */
+                    const categoryBadgeColors = {
+                        fragrance: { bg: "#fbbf24", icon: "🌸" },
+                        electronics: { bg: "#60a5fa", icon: "💻" },
+                        fashion: { bg: "#f472b6", icon: "👗" },
+                        software: { bg: "#a78bfa", icon: "🖥️" },
+                        business_idea: { bg: "#34d399", icon: "💡" },
+                        generic_product: { bg: "#9ca3af", icon: "📦" },
+                    };
+                    const badgeInfo = categoryBadgeColors[category] || categoryBadgeColors.generic_product;
+                    const categoryBadge = `<span class="badge" style="background:${badgeInfo.bg};">${badgeInfo.icon} ${item.category || "Product"}</span>`;
+
+                    /* ── FRAGRANCE sections (only if category is fragrance) ── */
                     let scentFamilyHtml = "";
                     if (item.scent_family) {
                         scentFamilyHtml = `
@@ -1760,7 +1715,6 @@ def settings_page():
                         `;
                     }
 
-                    /* ── FRAGRANCE NOTES section ── */
                     let fragranceNotesHtml = "";
                     const notes = item.fragrance_notes || {};
                     const hasNotes = (Array.isArray(notes.top) && notes.top.length) ||
@@ -1783,10 +1737,9 @@ def settings_page():
                         `;
                     }
 
-                    /* ── PERFORMANCE section ── */
-                    let performanceHtml = "";
+                    let fragrancePerformanceHtml = "";
                     if (item.projection || item.longevity) {
-                        performanceHtml = `
+                        fragrancePerformanceHtml = `
                             <div class="section-box fragrance-box">
                                 <h4>📊 Performance</h4>
                                 <div class="detail-row">
@@ -1797,7 +1750,6 @@ def settings_page():
                         `;
                     }
 
-                    /* ── USAGE section ── */
                     let usageHtml = "";
                     if (item.best_season || (Array.isArray(item.best_occasions) && item.best_occasions.length)) {
                         usageHtml = `
@@ -1809,7 +1761,6 @@ def settings_page():
                         `;
                     }
 
-                    /* ── EMOTIONAL PROFILE section ── */
                     let emotionalHtml = "";
                     if (Array.isArray(item.emotional_triggers) && item.emotional_triggers.length) {
                         emotionalHtml = `
@@ -1820,10 +1771,110 @@ def settings_page():
                         `;
                     }
 
-                    /* ── LUXURY DESCRIPTION ── */
                     let luxuryHtml = "";
                     if (item.luxury_description) {
                         luxuryHtml = `<div style="margin-top:10px;font-size:13px;font-style:italic;color:#78350f;padding:10px 14px;background:#fffbeb;border-radius:8px;border:1px solid #fde68a;">${item.luxury_description}</div>`;
+                    }
+
+                    /* ── ELECTRONICS sections ── */
+                    let specsHtml = "";
+                    if (item.specs && typeof item.specs === "object" && Object.keys(item.specs).length) {
+                        const specRows = Object.entries(item.specs).map(([k, v]) => `<div class="detail-chip"><span class="chip-label">${k}</span>${v}</div>`).join("");
+                        specsHtml = `
+                            <div class="section-box" style="background:#eff6ff;border:1px solid #bfdbfe;">
+                                <h4 style="color:#1e40af;">⚙️ Specifications</h4>
+                                <div class="detail-row">${specRows}</div>
+                            </div>
+                        `;
+                    }
+
+                    let electronicsPerformanceHtml = "";
+                    if (item.performance && category === "electronics") {
+                        electronicsPerformanceHtml = `<div class="meta-row"><strong>Performance:</strong> ${item.performance}</div>`;
+                    }
+
+                    let prosHtml = "";
+                    if (Array.isArray(item.pros) && item.pros.length) {
+                        prosHtml = `<div style="margin-top:8px;"><strong style="font-size:13px;color:#166534;">✅ Pros</strong><ul style="margin:4px 0 0;padding-left:20px;">${item.pros.map(p => `<li>${p}</li>`).join("")}</ul></div>`;
+                    }
+
+                    let consHtml = "";
+                    if (Array.isArray(item.cons) && item.cons.length) {
+                        consHtml = `<div style="margin-top:8px;"><strong style="font-size:13px;color:#991b1b;">⚠️ Cons</strong><ul style="margin:4px 0 0;padding-left:20px;">${item.cons.map(c => `<li>${c}</li>`).join("")}</ul></div>`;
+                    }
+
+                    /* ── FASHION sections ── */
+                    let fashionHtml = "";
+                    if (item.style || item.fit || (Array.isArray(item.materials) && item.materials.length)) {
+                        fashionHtml = `
+                            <div class="section-box" style="background:#fdf2f8;border:1px solid #fbcfe8;">
+                                <h4 style="color:#9d174d;">👗 Fashion Details</h4>
+                                ${item.style ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Style:</strong> ${item.style}</div>` : ""}
+                                ${item.fit ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Fit:</strong> ${item.fit}</div>` : ""}
+                                ${Array.isArray(item.materials) && item.materials.length ? `<div style="font-size:13px;"><strong>Materials:</strong> ${item.materials.join(", ")}</div>` : ""}
+                            </div>
+                        `;
+                    }
+
+                    let fashionOccasionsHtml = "";
+                    if (Array.isArray(item.occasions) && item.occasions.length) {
+                        fashionOccasionsHtml = `<div style="margin-top:8px;"><strong style="font-size:13px;">Occasions</strong><ul class="tag-list">${item.occasions.map(o => `<li>${o}</li>`).join("")}</ul></div>`;
+                    }
+
+                    let careHtml = "";
+                    if (item.care_instructions) {
+                        careHtml = `<div class="meta-row"><strong>Care:</strong> ${item.care_instructions}</div>`;
+                    }
+
+                    /* ── SOFTWARE sections ── */
+                    let softwareHtml = "";
+                    if (item.platform || (Array.isArray(item.features) && item.features.length)) {
+                        softwareHtml = `
+                            <div class="section-box" style="background:#f5f3ff;border:1px solid #ddd6fe;">
+                                <h4 style="color:#5b21b6;">🖥️ Software Details</h4>
+                                ${item.platform ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Platform:</strong> ${item.platform}</div>` : ""}
+                                ${item.pricing_model ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Pricing:</strong> ${item.pricing_model}</div>` : ""}
+                                ${Array.isArray(item.features) && item.features.length ? `<div style="font-size:13px;"><strong>Features:</strong><ul style="margin:4px 0 0;padding-left:20px;">${item.features.map(f => `<li>${f}</li>`).join("")}</ul></div>` : ""}
+                            </div>
+                        `;
+                    }
+
+                    let integrationsHtml = "";
+                    if (Array.isArray(item.integrations) && item.integrations.length) {
+                        integrationsHtml = `<div style="margin-top:8px;"><strong style="font-size:13px;">Integrations</strong><ul class="tag-list">${item.integrations.map(i => `<li>${i}</li>`).join("")}</ul></div>`;
+                    }
+
+                    /* ── BUSINESS IDEA sections ── */
+                    let businessHtml = "";
+                    if (item.problem || item.solution || item.monetization) {
+                        businessHtml = `
+                            <div class="section-box" style="background:#ecfdf5;border:1px solid #a7f3d0;">
+                                <h4 style="color:#065f46;">💡 Business Analysis</h4>
+                                ${item.problem ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Problem:</strong> ${item.problem}</div>` : ""}
+                                ${item.solution ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Solution:</strong> ${item.solution}</div>` : ""}
+                                ${item.monetization ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Monetization:</strong> ${item.monetization}</div>` : ""}
+                                ${item.competitive_advantage ? `<div style="margin-bottom:6px;font-size:13px;"><strong>Competitive Advantage:</strong> ${item.competitive_advantage}</div>` : ""}
+                                ${item.market_size ? `<div style="font-size:13px;"><strong>Market Size:</strong> ${item.market_size}</div>` : ""}
+                            </div>
+                        `;
+                    }
+
+                    /* ── GENERIC PRODUCT specifications ── */
+                    let genericSpecsHtml = "";
+                    if (item.specifications && typeof item.specifications === "object" && Object.keys(item.specifications).length) {
+                        const rows = Object.entries(item.specifications).map(([k, v]) => `<div class="detail-chip"><span class="chip-label">${k}</span>${v}</div>`).join("");
+                        genericSpecsHtml = `
+                            <div class="section-box" style="background:#f9fafb;border:1px solid #e5e7eb;">
+                                <h4 style="color:#374151;">📋 Specifications</h4>
+                                <div class="detail-row">${rows}</div>
+                            </div>
+                        `;
+                    }
+
+                    /* ── USE CASES (shared by electronics, software, generic) ── */
+                    let useCasesHtml = "";
+                    if (Array.isArray(item.use_cases) && item.use_cases.length) {
+                        useCasesHtml = `<div style="margin-top:8px;"><strong style="font-size:13px;">Use Cases</strong><ul class="tag-list">${item.use_cases.map(u => `<li>${u}</li>`).join("")}</ul></div>`;
                     }
 
                     /* ── DESCRIPTION section (rendered as HTML) ── */
@@ -1853,7 +1904,7 @@ def settings_page():
                         <div class="result-card">
                             <div class="meta-row">
                                 <strong>#${index + 1}</strong>
-                                ${item.is_fragrance ? '<span class="badge">🌸 Fragrance</span>' : ''}
+                                ${categoryBadge}
                                 &nbsp;·&nbsp; Product ID: ${item.product_id ?? ""}
                                 &nbsp;·&nbsp; ${item.success ? "✅ Success" : "❌ Failed"}
                             </div>
@@ -1872,15 +1923,27 @@ def settings_page():
 
                             ${scentFamilyHtml}
                             ${fragranceNotesHtml}
-                            ${performanceHtml}
+                            ${fragrancePerformanceHtml}
                             ${usageHtml}
                             ${emotionalHtml}
                             ${luxuryHtml}
+                            ${specsHtml}
+                            ${electronicsPerformanceHtml}
+                            ${prosHtml}
+                            ${consHtml}
+                            ${fashionHtml}
+                            ${fashionOccasionsHtml}
+                            ${careHtml}
+                            ${softwareHtml}
+                            ${integrationsHtml}
+                            ${businessHtml}
+                            ${genericSpecsHtml}
+                            ${useCasesHtml}
                             ${descriptionHtml}
                             ${seoHtml}
 
                             <div class="diagnostics-row">
-                                🔍 is_fragrance=${item.is_fragrance ?? false} | has_ul=${item.has_ul} | li_count=${item.li_count} | bullet_symbol=${item.contains_bullet_symbol} | source=${item.source_used ?? ""} | lang=${item.language_used ?? ""}
+                                🔍 category=${item.category ?? "unknown"} | is_fragrance=${item.is_fragrance ?? false} | has_ul=${item.has_ul} | li_count=${item.li_count} | bullet_symbol=${item.contains_bullet_symbol} | source=${item.source_used ?? ""} | lang=${item.language_used ?? ""}
                             </div>
                             ${item.error ? `<div style="color:red;margin-top:8px;"><strong>Error:</strong> ${item.error}</div>` : ""}
                         </div>
@@ -1929,6 +1992,8 @@ def optimize_product():
     result = optimize_product_router(product, lang="en")
 
     long_desc = result.get("long_description") or result.get("description", "")
+
+    # Build response with universal fields
     response_data = {
         "category": result.get("category", ""),
         "title": result.get("title"),
@@ -1946,16 +2011,12 @@ def optimize_product():
         "has_ul": "<ul>" in long_desc.lower(),
         "li_count": long_desc.lower().count("<li>"),
         "contains_bullet_symbol": "•" in long_desc,
-        "scent_family": result.get("scent_family"),
-        "fragrance_notes": result.get("fragrance_notes"),
-        "scent_evolution": result.get("scent_evolution"),
-        "projection": result.get("projection"),
-        "longevity": result.get("longevity"),
-        "best_season": result.get("best_season"),
-        "best_occasions": result.get("best_occasions"),
-        "emotional_triggers": result.get("emotional_triggers"),
-        "luxury_description": result.get("luxury_description"),
     }
+
+    # Include all category-specific fields dynamically
+    for field in CATEGORY_SPECIFIC_FIELDS:
+        if field in result:
+            response_data[field] = result[field]
 
     return jsonify(response_data)
 
@@ -1976,29 +2037,29 @@ def analyze_product():
     result = analyze_product_with_ai(idea)
 
     long_desc = result.get("long_description", "")
-    return jsonify({
+
+    # Build response with universal fields
+    response_data = {
         "category": result.get("category", ""),
         "title": result.get("title", idea),
         "short_summary": result.get("short_summary", ""),
         "technical_analysis": result.get("technical_analysis", ""),
         "target_audience": result.get("target_audience", ""),
-        "scent_family": result.get("scent_family", ""),
-        "fragrance_notes": result.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
-        "scent_evolution": result.get("scent_evolution", ""),
-        "projection": result.get("projection", ""),
-        "longevity": result.get("longevity", ""),
-        "best_season": result.get("best_season", ""),
-        "best_occasions": result.get("best_occasions", []),
-        "emotional_triggers": result.get("emotional_triggers", []),
         "key_benefits": result.get("key_benefits", []),
         "selling_points": result.get("selling_points", []),
-        "luxury_description": result.get("luxury_description", ""),
         "long_description": long_desc,
         "meta_description": result.get("meta_description", ""),
         "keywords": result.get("keywords", ""),
         "has_ul": "<ul>" in long_desc.lower(),
         "li_count": long_desc.lower().count("<li>"),
-    })
+    }
+
+    # Include all category-specific fields dynamically
+    for field in CATEGORY_SPECIFIC_FIELDS:
+        if field in result:
+            response_data[field] = result[field]
+
+    return jsonify(response_data)
 
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])
@@ -2072,16 +2133,12 @@ def optimize_all_products():
                 "has_ul": optimized.get("has_ul"),
                 "li_count": optimized.get("li_count"),
                 "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
-                "scent_family": optimized.get("scent_family", ""),
-                "fragrance_notes": optimized.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
-                "scent_evolution": optimized.get("scent_evolution", ""),
-                "projection": optimized.get("projection", ""),
-                "longevity": optimized.get("longevity", ""),
-                "best_season": optimized.get("best_season", ""),
-                "best_occasions": optimized.get("best_occasions", []),
-                "emotional_triggers": optimized.get("emotional_triggers", []),
-                "luxury_description": optimized.get("luxury_description", ""),
             }
+
+            # Include all category-specific fields dynamically
+            for field in CATEGORY_SPECIFIC_FIELDS:
+                if field in optimized:
+                    result_item[field] = optimized[field]
 
             results.append(result_item)
         except Exception as e:
