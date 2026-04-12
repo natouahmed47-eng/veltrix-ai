@@ -905,6 +905,40 @@ RULES:
 - emotional_triggers must cite specific emotions (e.g., dominance, seduction, power, confidence) — not generic adjectives
 - technical_analysis must discuss actual materials, accords, or product details from the input — not vague descriptions
 - Return ONLY valid JSON — no markdown, no code fences, no extra text
+
+---
+Return ONLY valid JSON.
+Do not include any explanations, text, or formatting outside JSON.
+
+The JSON must follow exactly this structure:
+
+{{
+  "title": "",
+  "short_summary": "",
+  "scent_family": "",
+  "fragrance_notes": {{
+    "top": [],
+    "heart": [],
+    "base": []
+  }},
+  "scent_evolution": "",
+  "projection": "",
+  "longevity": "",
+  "best_season": "",
+  "best_occasions": [],
+  "emotional_triggers": [],
+  "luxury_description": "",
+  "long_description": "",
+  "meta_description": "",
+  "keywords": ""
+}}
+
+Rules:
+
+- Use real data if present
+- If missing, use "Likely" inference
+- Never leave arrays empty
+- Never return text outside JSON
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
