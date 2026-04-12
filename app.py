@@ -1572,6 +1572,11 @@ def settings_page():
             font-size: 13px;
             color: #78350f;
         }
+        .scent-family-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #78350f;
+        }
         .description-box {
             background: #f9fafb;
             border: 1px solid #e5e7eb;
@@ -1689,74 +1694,89 @@ def settings_page():
                     const benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(b => `<li>${b}</li>`).join("") : "";
                     const sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(s => `<li>${s}</li>`).join("") : "";
 
-                    /* ── Fragrance profile section ── */
-                    let fragranceHtml = "";
-                    const notes = item.fragrance_notes || {};
-                    const hasNotes = (Array.isArray(notes.top) && notes.top.length) ||
-                                     (Array.isArray(notes.heart) && notes.heart.length) ||
-                                     (Array.isArray(notes.base) && notes.base.length);
-                    const hasFragranceData = item.scent_family || hasNotes || item.projection || item.longevity || item.best_season;
-
-                    if (hasFragranceData) {
-                        const topNotes = Array.isArray(notes.top) ? notes.top.join(", ") : "";
-                        const heartNotes = Array.isArray(notes.heart) ? notes.heart.join(", ") : "";
-                        const baseNotes = Array.isArray(notes.base) ? notes.base.join(", ") : "";
-
-                        let notesGrid = "";
-                        if (hasNotes) {
-                            notesGrid = `<div class="notes-grid">
-                                ${topNotes ? `<div class="note-card"><div class="note-label">Top Notes</div><div class="note-value">${topNotes}</div></div>` : ""}
-                                ${heartNotes ? `<div class="note-card"><div class="note-label">Heart Notes</div><div class="note-value">${heartNotes}</div></div>` : ""}
-                                ${baseNotes ? `<div class="note-card"><div class="note-label">Base Notes</div><div class="note-value">${baseNotes}</div></div>` : ""}
-                            </div>`;
-                        }
-
-                        let detailChips = `<div class="detail-row">`;
-                        if (item.scent_family) detailChips += `<div class="detail-chip"><span class="chip-label">Scent Family</span>${item.scent_family}</div>`;
-                        if (item.projection) detailChips += `<div class="detail-chip"><span class="chip-label">Projection</span>${item.projection}</div>`;
-                        if (item.longevity) detailChips += `<div class="detail-chip"><span class="chip-label">Longevity</span>${item.longevity}</div>`;
-                        if (item.best_season) detailChips += `<div class="detail-chip"><span class="chip-label">Best Season</span>${item.best_season}</div>`;
-                        detailChips += `</div>`;
-
-                        let occasionsList = "";
-                        if (Array.isArray(item.best_occasions) && item.best_occasions.length) {
-                            occasionsList = `<div style="margin-top:10px;"><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">${item.best_occasions.map(o => `<li>${o}</li>`).join("")}</ul></div>`;
-                        }
-
-                        let emotionsList = "";
-                        if (Array.isArray(item.emotional_triggers) && item.emotional_triggers.length) {
-                            emotionsList = `<div style="margin-top:10px;"><strong style="font-size:13px;color:#92400e;">Emotional Triggers</strong><ul class="tag-list">${item.emotional_triggers.map(e => `<li>${e}</li>`).join("")}</ul></div>`;
-                        }
-
-                        let scentEvolution = "";
-                        if (item.scent_evolution) {
-                            scentEvolution = `<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Scent Evolution:</strong> ${item.scent_evolution}</div>`;
-                        }
-
-                        let luxuryDesc = "";
-                        if (item.luxury_description) {
-                            luxuryDesc = `<div style="margin-top:10px;font-size:13px;font-style:italic;color:#78350f;">${item.luxury_description}</div>`;
-                        }
-
-                        fragranceHtml = `
+                    /* ── SCENT FAMILY section ── */
+                    let scentFamilyHtml = "";
+                    if (item.scent_family) {
+                        scentFamilyHtml = `
                             <div class="section-box fragrance-box">
-                                <h4>🌸 Fragrance Analysis</h4>
-                                ${notesGrid}
-                                ${detailChips}
-                                ${occasionsList}
-                                ${emotionsList}
-                                ${scentEvolution}
-                                ${luxuryDesc}
+                                <h4>🌿 Scent Family</h4>
+                                <div class="scent-family-value">${item.scent_family}</div>
                             </div>
                         `;
                     }
 
-                    /* ── Description section (rendered as HTML) ── */
+                    /* ── FRAGRANCE NOTES section ── */
+                    let fragranceNotesHtml = "";
+                    const notes = item.fragrance_notes || {};
+                    const hasNotes = (Array.isArray(notes.top) && notes.top.length) ||
+                                     (Array.isArray(notes.heart) && notes.heart.length) ||
+                                     (Array.isArray(notes.base) && notes.base.length);
+                    if (hasNotes) {
+                        const topNotes = Array.isArray(notes.top) ? notes.top.join(", ") : "";
+                        const heartNotes = Array.isArray(notes.heart) ? notes.heart.join(", ") : "";
+                        const baseNotes = Array.isArray(notes.base) ? notes.base.join(", ") : "";
+                        fragranceNotesHtml = `
+                            <div class="section-box fragrance-box">
+                                <h4>🎵 Fragrance Notes</h4>
+                                <div class="notes-grid">
+                                    ${topNotes ? `<div class="note-card"><div class="note-label">Top Notes</div><div class="note-value">${topNotes}</div></div>` : ""}
+                                    ${heartNotes ? `<div class="note-card"><div class="note-label">Heart Notes</div><div class="note-value">${heartNotes}</div></div>` : ""}
+                                    ${baseNotes ? `<div class="note-card"><div class="note-label">Base Notes</div><div class="note-value">${baseNotes}</div></div>` : ""}
+                                </div>
+                                ${item.scent_evolution ? `<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Scent Evolution:</strong> ${item.scent_evolution}</div>` : ""}
+                            </div>
+                        `;
+                    }
+
+                    /* ── PERFORMANCE section ── */
+                    let performanceHtml = "";
+                    if (item.projection || item.longevity) {
+                        performanceHtml = `
+                            <div class="section-box fragrance-box">
+                                <h4>📊 Performance</h4>
+                                <div class="detail-row">
+                                    ${item.projection ? `<div class="detail-chip"><span class="chip-label">Projection</span>${item.projection}</div>` : ""}
+                                    ${item.longevity ? `<div class="detail-chip"><span class="chip-label">Longevity</span>${item.longevity}</div>` : ""}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    /* ── USAGE section ── */
+                    let usageHtml = "";
+                    if (item.best_season || (Array.isArray(item.best_occasions) && item.best_occasions.length)) {
+                        usageHtml = `
+                            <div class="section-box fragrance-box">
+                                <h4>🗓️ Usage</h4>
+                                ${item.best_season ? `<div style="margin-bottom:8px;"><strong style="font-size:13px;color:#92400e;">Best Season:</strong> <span style="font-size:13px;">${item.best_season}</span></div>` : ""}
+                                ${Array.isArray(item.best_occasions) && item.best_occasions.length ? `<div><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">${item.best_occasions.map(o => `<li>${o}</li>`).join("")}</ul></div>` : ""}
+                            </div>
+                        `;
+                    }
+
+                    /* ── EMOTIONAL PROFILE section ── */
+                    let emotionalHtml = "";
+                    if (Array.isArray(item.emotional_triggers) && item.emotional_triggers.length) {
+                        emotionalHtml = `
+                            <div class="section-box fragrance-box">
+                                <h4>💫 Emotional Profile</h4>
+                                <ul class="tag-list">${item.emotional_triggers.map(e => `<li>${e}</li>`).join("")}</ul>
+                            </div>
+                        `;
+                    }
+
+                    /* ── LUXURY DESCRIPTION ── */
+                    let luxuryHtml = "";
+                    if (item.luxury_description) {
+                        luxuryHtml = `<div style="margin-top:10px;font-size:13px;font-style:italic;color:#78350f;padding:10px 14px;background:#fffbeb;border-radius:8px;border:1px solid #fde68a;">${item.luxury_description}</div>`;
+                    }
+
+                    /* ── DESCRIPTION section (rendered as HTML) ── */
                     let descriptionHtml = "";
                     if (item.new_description) {
                         descriptionHtml = `
                             <div class="section-box description-box">
-                                <h4>📝 Product Description</h4>
+                                <h4>📝 Description</h4>
                                 <div class="description-html">${item.new_description}</div>
                             </div>
                         `;
@@ -1795,7 +1815,12 @@ def settings_page():
                             ${benefits ? `<div style="margin-top:8px;"><strong style="font-size:13px;">Key Benefits</strong><ul style="margin:4px 0 0;padding-left:20px;">${benefits}</ul></div>` : ""}
                             ${sellingPts ? `<div style="margin-top:8px;"><strong style="font-size:13px;">Selling Points</strong><ul style="margin:4px 0 0;padding-left:20px;">${sellingPts}</ul></div>` : ""}
 
-                            ${fragranceHtml}
+                            ${scentFamilyHtml}
+                            ${fragranceNotesHtml}
+                            ${performanceHtml}
+                            ${usageHtml}
+                            ${emotionalHtml}
+                            ${luxuryHtml}
                             ${descriptionHtml}
                             ${seoHtml}
 
