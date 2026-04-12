@@ -616,20 +616,16 @@ def analyze_product_with_ai(idea: str) -> dict:
         raise RuntimeError("OpenAI is not configured")
 
     prompt = f"""
-You are NOT a copywriter. You are NOT allowed to invent random product details.
-
 You are a fragrance chemist, perfumer, and luxury product analyst.
+You are also a domain expert with deep knowledge of perfumery, ingredients, accords, and scent composition.
 
-Your job is NOT to create a generic description.
-Your job is to:
-- analyze
-- structure
-- enhance
-- refine
-- elevate
-WITHOUT changing the factual meaning of the input.
+You must strictly respect the provided product content.
+However, you are also a domain expert.
 
-You MUST strictly use the EXACT content provided as input.
+If information is explicitly present, use it exactly.
+If information is missing, infer only when there is a strong logical signal.
+Use realistic domain knowledge, not fantasy.
+If something truly cannot be inferred, say so briefly once, not repeatedly.
 
 ---
 INPUT PRODUCT:
@@ -640,13 +636,22 @@ CRITICAL RULES:
 
 1) DO NOT ignore the input content.
 2) DO NOT replace it with generic marketing text.
-3) DO NOT hallucinate unknown ingredients, notes, or product details.
-4) You MAY:
+3) DO NOT fully invent product details with no basis in the input.
+4) You MUST:
    - reorganize the text
    - improve clarity
    - upgrade language to premium level
    - extract structured data
-   - infer ONLY when clearly supported by the input (prefix uncertain items with "Likely:")
+   - use explicit product information exactly as given
+   - infer missing details only when there is a strong logical signal from the input or domain expertise
+   - prefix inferred values with "Likely" (e.g. "Likely woody-oriental", "Likely moderate to strong projection")
+5) You MUST NOT:
+   - repeat "not specified", "unavailable", or "cannot be determined" more than once in the entire output
+   - produce empty or placeholder analysis — every field should contain useful expert insight
+   - use generic marketing filler (e.g. "luxurious fragrance", "captivating scent", "timeless elegance")
+   - produce output that contains zero insight — that is wrong
+   - produce output that is fully invented — that is wrong
+6) Balance accuracy with expert reasoning.
 
 ---
 STEP 1 — IDENTIFY CATEGORY
@@ -663,22 +668,25 @@ Classify the product into exactly one of:
 ---
 STEP 2 — CATEGORY-SPECIFIC EXTRACTION
 
-IF the product is a perfume / fragrance, you MUST extract (not invent):
-- scent_family: based on clues in text (floral, oriental, woody, fresh, citrus, gourmand, aquatic, chypre, fougère, etc.)
-- top_notes: only if mentioned or strongly implied by the input
-- heart_notes: only if mentioned or strongly implied by the input
-- base_notes: only if mentioned or strongly implied by the input
-- scent_evolution: how the scent evolves on skin — ONLY based on what the input supports
-- projection: based on words like "strong", "soft", "noticeable", "powerful" in the input
-- longevity: based on "long-lasting", "enduring", "hours" etc. in the input
-- best_season: based on composition weight and character clues in the input
-- best_occasions: based on context in the input (e.g., evening, formal, casual, date night)
-- emotional_triggers: based on emotional language in the input (confidence, elegance, seduction, power, etc.)
+IF the product is a perfume / fragrance:
+
+For fragrance products you MUST fill every field with useful content:
+- scent_family: use explicit clues first; if absent, infer from product name, brand positioning, concentration type, or any descriptive words. Prefix with "Likely" if inferred (e.g. "Likely woody-oriental").
+- top_notes: use notes mentioned in input; if none, infer from scent family and product clues using domain expertise. Prefix inferred notes with "Likely:".
+- heart_notes: same approach as top_notes.
+- base_notes: same approach as top_notes.
+- scent_evolution: describe how the scent would evolve based on known or inferred notes. Use domain knowledge of volatility and molecular weight.
+- projection: infer from concentration keywords (parfum = strong, eau de toilette = moderate, etc.), descriptors like "intense", "powerful", "soft". Use "Likely moderate to strong projection" style.
+- longevity: infer from concentration type (parfum > EDP > EDT > EDC), keywords like "long-lasting", "enduring". Use "Likely" prefix if inferred.
+- best_season: infer from composition weight and character — heavier orientals for fall/winter, lighter citrus/aquatic for spring/summer.
+- best_occasions: infer from brand positioning, scent character, and product context.
+- emotional_triggers: infer from scent profile, brand positioning, and product language.
 
 For all other categories:
-- Identify key ingredients, materials, or components ONLY from the input (prefix uncertain items with "Likely:")
+- Identify key ingredients, materials, or components from the input (prefix uncertain items with "Likely:")
 - Describe function, use case, and key differentiators based on the input
 - Identify the target buyer persona from context in the input
+- Use domain expertise to fill gaps when there is a strong logical signal
 
 ---
 STEP 3 — OUTPUT
@@ -727,11 +735,15 @@ long_description HTML structure (STRICT):
 <p>Closing paragraph — expert recommendation, not generic call to action.</p>
 
 RULES:
-- You are an analyst, NOT a copywriter — extract and elevate, never fabricate
+- You are an analyst and domain expert — extract, elevate, and infer with expertise
 - Be specific to THIS product — never produce content that could apply to any product
-- DO NOT invent notes, ingredients, or details not supported by the input
-- You MAY infer ONLY when clearly supported — prefix uncertain items with "Likely:"
+- DO NOT fully invent details with no basis — but DO use domain expertise to fill gaps when logically supported
+- Prefix inferred items with "Likely" or "Likely:" (e.g. "Likely woody-oriental", "Likely: bergamot")
 - Do NOT use vague filler words or generic phrases: "luxurious fragrance", "captivating scent", "timeless elegance", "ultimate", "premium", "amazing"
+- Do NOT repeat "not specified", "unavailable", "cannot be determined", or similar phrases more than once total — if something is truly unknown, mention it briefly once then move on
+- If output contains zero insight, it is wrong
+- If output is fully invented, it is wrong
+- Balance accuracy with expert reasoning
 - long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
 - fragrance_analysis notes must use empty arrays for non-fragrance products
 - fragrance_analysis occasions and emotional_triggers must use empty arrays for non-fragrance products
@@ -749,9 +761,12 @@ RULES:
                 {
                     "role": "system",
                     "content": (
-                        "You are a fragrance chemist, perfumer, and luxury product analyst — NOT a copywriter. "
-                        "You analyze real products with expert-level precision. "
-                        "You MUST strictly use the exact content provided as input — do NOT invent or hallucinate details. "
+                        "You are a fragrance chemist, perfumer, and luxury product analyst — also a domain expert. "
+                        "You must strictly respect the provided product content. "
+                        "If information is explicitly present, use it exactly. "
+                        "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
+                        "If something truly cannot be inferred, say so briefly once, not repeatedly. "
+                        "Produce useful expert analysis — zero-insight output is wrong, fully-invented output is wrong. "
                         "You return clean, structured JSON only — no markdown, no code fences, no extra text."
                     ),
                 },
