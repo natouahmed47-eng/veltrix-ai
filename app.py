@@ -41,15 +41,22 @@ MAX_AI_GENERATION_RETRIES = 3
 # Category-specific fields that may be present in AI analysis results.
 # Used by API endpoints to dynamically pass through category data.
 CATEGORY_SPECIFIC_FIELDS = [
+    # Universal fields present in every response
+    "use_cases", "performance", "specifications",
+    # Nested category-specific object
+    "category_specific",
+    # Legacy flat fields kept for backward compatibility
     "scent_family", "fragrance_notes", "scent_evolution", "projection",
     "longevity", "best_season", "best_occasions", "emotional_triggers",
     "luxury_description",
-    "specs", "performance", "battery", "use_cases", "pros", "cons",
+    "specs", "battery", "pros", "cons",
     "style", "materials", "fit", "occasions", "care_instructions",
     "platform", "features", "integrations", "pricing_model",
     "problem", "solution", "monetization", "competitive_advantage", "market_size",
-    "specifications",
 ]
+
+# Supported product categories
+SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home", "general"]
 
 
 class ShopifyStore(db.Model):
@@ -640,7 +647,7 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         "target_audience": "Quality-conscious consumers in the 25-45 age range",
         "meta_description": idea[:150] if idea else "Product analysis and specifications",
         "keywords": idea[:100] if idea else "product, analysis, specifications",
-        "category": category or ("fragrance" if is_fragrance else "generic_product"),
+        "category": category or ("fragrance" if is_fragrance else "general"),
     }
 
     for field, fallback in string_defaults.items():
@@ -652,6 +659,7 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
     list_defaults = {
         "key_benefits": ["High build quality", "Functional design", "Competitive value"],
         "selling_points": ["Verified product specifications", "Clear use-case fit", "Strong category positioning"],
+        "use_cases": ["Everyday use", "Gift option", "Personal upgrade"],
     }
 
     for field, fallback in list_defaults.items():
@@ -659,7 +667,17 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         if not val or (isinstance(val, list) and len(val) == 0):
             data[field] = fallback
 
-    # --- Fragrance-specific defaults (only when category is fragrance) ---
+    # --- Universal dict fields ---
+    if not data.get("performance") or not isinstance(data.get("performance"), dict):
+        data["performance"] = {}
+    if not data.get("specifications") or not isinstance(data.get("specifications"), dict):
+        data["specifications"] = {}
+    if not data.get("category_specific") or not isinstance(data.get("category_specific"), dict):
+        data["category_specific"] = {}
+
+    # --- Category-specific defaults (fill category_specific sub-fields) ---
+    cs = data.get("category_specific", {})
+
     if is_fragrance:
         has_oud = "oud" in idea_lower
         has_spicy = "spicy" in idea_lower or "spice" in idea_lower
@@ -707,27 +725,94 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
             default_projection = "Moderate"
             default_longevity = "4-6 hours"
 
-        frag_string_defaults = {
+        frag_defaults = {
             "scent_family": default_family,
             "projection": default_projection,
             "longevity": default_longevity,
+            "best_season": "Spring, Fall",
+            "best_occasions": ["Evening events", "Special occasions"],
         }
-        for field, fallback in frag_string_defaults.items():
-            val = data.get(field)
+        for field, fallback in frag_defaults.items():
+            val = cs.get(field) or data.get(field)
             if not val or (isinstance(val, str) and not val.strip()):
-                data[field] = fallback
+                cs[field] = fallback
+            elif field not in cs:
+                cs[field] = val
 
-        notes = data.get("fragrance_notes")
+        notes = cs.get("fragrance_notes") or data.get("fragrance_notes")
         if not isinstance(notes, dict):
             notes = {"top": [], "heart": [], "base": []}
-            data["fragrance_notes"] = notes
         if not notes.get("top"):
             notes["top"] = default_top
         if not notes.get("heart"):
             notes["heart"] = default_heart
         if not notes.get("base"):
             notes["base"] = default_base
-        data["fragrance_notes"] = notes
+        cs["fragrance_notes"] = notes
+
+        data["category_specific"] = cs
+
+        # Backward-compat: sync flat fields
+        data["scent_family"] = cs.get("scent_family", "")
+        data["fragrance_notes"] = cs.get("fragrance_notes", {"top": [], "heart": [], "base": []})
+        data["projection"] = cs.get("projection", "")
+        data["longevity"] = cs.get("longevity", "")
+        data["best_season"] = cs.get("best_season", "")
+        data["best_occasions"] = cs.get("best_occasions", [])
+
+    elif category == "electronics":
+        elec_defaults = {
+            "battery": "Standard capacity for category",
+            "connectivity": "Standard connectivity options",
+            "compatibility": "Cross-platform compatible",
+            "build_quality": "Standard build quality",
+            "performance_level": "Mid-range",
+        }
+        for field, fallback in elec_defaults.items():
+            val = cs.get(field)
+            if not val or (isinstance(val, str) and not val.strip()):
+                cs[field] = fallback
+        data["category_specific"] = cs
+
+    elif category == "fashion":
+        fashion_defaults = {
+            "style": "Contemporary",
+            "material": "Standard fabric blend",
+            "fit": "Regular fit",
+            "occasion": ["Casual", "Everyday"],
+            "season": "All seasons",
+        }
+        for field, fallback in fashion_defaults.items():
+            val = cs.get(field)
+            if not val or (isinstance(val, str) and not val.strip()) or (isinstance(val, list) and len(val) == 0):
+                cs[field] = fallback
+        data["category_specific"] = cs
+
+    elif category == "beauty":
+        beauty_defaults = {
+            "skin_type": "All skin types",
+            "key_ingredients": ["Active formula"],
+            "texture": "Smooth application",
+            "routine_fit": "Daily skincare routine",
+        }
+        for field, fallback in beauty_defaults.items():
+            val = cs.get(field)
+            if not val or (isinstance(val, str) and not val.strip()) or (isinstance(val, list) and len(val) == 0):
+                cs[field] = fallback
+        data["category_specific"] = cs
+
+    elif category == "home":
+        home_defaults = {
+            "room_fit": "Living room, bedroom",
+            "material": "Durable construction",
+            "practicality": "Functional design",
+            "maintenance": "Easy to maintain",
+        }
+        for field, fallback in home_defaults.items():
+            val = cs.get(field)
+            if not val or (isinstance(val, str) and not val.strip()):
+                cs[field] = fallback
+        data["category_specific"] = cs
 
     # --- Ensure long_description is non-empty ---
     if not data.get("long_description") or not data["long_description"].strip():
@@ -786,27 +871,25 @@ def analyze_product_with_ai(idea: str):
 
     if any(k in idea_lower for k in ["perfume", "parfum", "fragrance", "cologne", "oud", "eau de"]):
         detected_category = "fragrance"
-    elif any(k in idea_lower for k in ["phone", "laptop", "tablet", "headphone", "speaker", "camera", "tv", "monitor", "processor", "gpu"]):
+    elif any(k in idea_lower for k in ["phone", "laptop", "tablet", "headphone", "speaker", "camera", "tv", "monitor", "processor", "gpu", "charger", "keyboard", "mouse", "smartwatch", "earbuds"]):
         detected_category = "electronics"
-    elif any(k in idea_lower for k in ["watch", "shirt", "dress", "jacket", "sneaker", "shoe", "handbag", "sunglasses", "clothing"]):
+    elif any(k in idea_lower for k in ["watch", "shirt", "dress", "jacket", "sneaker", "shoe", "handbag", "sunglasses", "clothing", "hoodie", "jeans", "pants", "skirt", "coat"]):
         detected_category = "fashion"
-    elif any(k in idea_lower for k in ["app", "software", "saas", "platform", "api", "plugin", "extension"]):
-        detected_category = "software"
-    elif any(k in idea_lower for k in ["startup", "business model", "business idea", "venture", "marketplace"]):
-        detected_category = "business_idea"
+    elif any(k in idea_lower for k in ["skincare", "moisturizer", "serum", "cleanser", "makeup", "foundation", "lipstick", "mascara", "sunscreen", "cream", "lotion", "shampoo", "conditioner"]):
+        detected_category = "beauty"
+    elif any(k in idea_lower for k in ["lamp", "chair", "table", "sofa", "couch", "pillow", "blanket", "rug", "candle", "vase", "shelf", "curtain", "mattress", "desk", "organizer"]):
+        detected_category = "home"
     else:
-        detected_category = "generic_product"
+        detected_category = "general"
 
     # --- Build category-specific prompt sections ---
     if detected_category == "fragrance":
         category_instructions = """
-CATEGORY-SPECIFIC FIELDS (fragrance):
-You MUST return these fields with concrete data:
+CATEGORY-SPECIFIC FIELDS (fragrance) — return inside "category_specific" object:
 - scent_family: exact fragrance family (e.g. "woody-oriental", "fresh citrus", "floral-musk")
 - fragrance_notes: { "top": [...], "heart": [...], "base": [...] } — each array must have 2-4 specific ingredient names
 - projection: one of "weak", "moderate", "strong"
 - longevity: concrete hour range (e.g. "6-8 hours")
-- scent_evolution: how the scent changes over time (dry-down behavior)
 - best_season: specific seasons (e.g. "Fall, Winter")
 - best_occasions: array of 2-3 specific occasions
 
@@ -818,14 +901,12 @@ FRAGRANCE ANALYSIS RULES:
 """
     elif detected_category == "electronics":
         category_instructions = """
-CATEGORY-SPECIFIC FIELDS (electronics):
-You MUST return these fields with concrete data:
-- specs: object with real technical specifications (processor, RAM, storage, display, battery capacity, etc.)
-- performance: specific performance assessment with benchmark context
+CATEGORY-SPECIFIC FIELDS (electronics) — return inside "category_specific" object:
 - battery: battery life estimate with usage scenario (e.g. "8 hours mixed use")
-- use_cases: array of 3-5 specific use cases
-- pros: array of 3-5 concrete advantages
-- cons: array of 2-3 real limitations
+- connectivity: connectivity options (e.g. "Bluetooth 5.3, Wi-Fi 6E, USB-C")
+- compatibility: compatible systems/devices (e.g. "Windows, macOS, Android, iOS")
+- build_quality: build quality assessment (e.g. "aluminum unibody, IP68 rated")
+- performance_level: performance tier (e.g. "mid-range", "flagship", "entry-level")
 
 ELECTRONICS ANALYSIS RULES:
 - Use real spec numbers and units (GHz, GB, mAh, nits)
@@ -834,47 +915,48 @@ ELECTRONICS ANALYSIS RULES:
 """
     elif detected_category == "fashion":
         category_instructions = """
-CATEGORY-SPECIFIC FIELDS (fashion):
-You MUST return these fields with concrete data:
+CATEGORY-SPECIFIC FIELDS (fashion) — return inside "category_specific" object:
 - style: specific style category (e.g. "minimalist streetwear", "business casual")
-- materials: array of materials/fabrics used
+- material: primary materials/fabrics used (e.g. "100% organic cotton", "Italian leather")
 - fit: fit description (e.g. "slim fit", "relaxed", "true to size")
-- occasions: array of suitable occasions
-- care_instructions: specific care instructions
+- occasion: array of suitable occasions (e.g. ["casual", "office", "evening"])
+- season: best seasons (e.g. "Spring, Summer")
 
 FASHION ANALYSIS RULES:
 - Identify exact materials/fabrics when possible
 - Categorize style precisely, not generically
 - Note construction quality indicators
 """
-    elif detected_category == "software":
+    elif detected_category == "beauty":
         category_instructions = """
-CATEGORY-SPECIFIC FIELDS (software):
-You MUST return these fields:
-- platform: target platform(s) (e.g. "Web, iOS, Android")
-- features: array of key features with brief descriptions
-- integrations: array of compatible tools/platforms
-- pricing_model: pricing structure (e.g. "Freemium with $9/mo Pro tier")
-- use_cases: array of specific use cases
+CATEGORY-SPECIFIC FIELDS (beauty) — return inside "category_specific" object:
+- skin_type: suitable skin types (e.g. "oily, combination", "all skin types")
+- key_ingredients: array of active ingredients (e.g. ["hyaluronic acid", "niacinamide", "vitamin C"])
+- texture: product texture (e.g. "lightweight gel", "rich cream", "matte finish")
+- routine_fit: where it fits in a routine (e.g. "Step 3: Moisturizer — use after serum")
+
+BEAUTY ANALYSIS RULES:
+- Identify active ingredients and their concentrations when possible
+- Specify skin types and concerns addressed
+- Note any clinically-backed claims
 """
-    elif detected_category == "business_idea":
+    elif detected_category == "home":
         category_instructions = """
-CATEGORY-SPECIFIC FIELDS (business_idea):
-You MUST return these fields:
-- problem: specific problem being addressed
-- solution: concrete proposed solution
-- monetization: revenue model
-- competitive_advantage: specific differentiators
-- market_size: estimated market with data points
+CATEGORY-SPECIFIC FIELDS (home) — return inside "category_specific" object:
+- room_fit: suitable rooms (e.g. "living room, bedroom", "kitchen, bathroom")
+- material: primary materials (e.g. "solid oak wood", "ceramic", "stainless steel")
+- practicality: practical assessment (e.g. "space-saving", "multipurpose", "easy assembly")
+- maintenance: care requirements (e.g. "wipe with damp cloth", "machine washable")
+
+HOME PRODUCT ANALYSIS RULES:
+- Assess dimensions and space requirements
+- Note assembly complexity
+- Evaluate durability and material quality
 """
     else:
         category_instructions = """
-CATEGORY-SPECIFIC FIELDS (generic_product):
-You MUST return these fields:
-- specifications: object with key product specs
-- use_cases: array of specific use cases
-- pros: array of concrete advantages
-- cons: array of real limitations
+CATEGORY-SPECIFIC FIELDS (general) — return an empty "category_specific" object: {}
+No category-specific fields needed for general products.
 """
 
     prompt = f"""
@@ -888,6 +970,7 @@ INPUT:
 ---
 PRE-DETECTED CATEGORY: {detected_category}
 Use this category unless the input clearly belongs to a different one.
+Valid categories: fragrance, electronics, fashion, beauty, home, general
 
 ---
 STRICT RULES:
@@ -907,15 +990,19 @@ STRICT RULES:
 ---
 UNIVERSAL FIELDS (always required):
 - title: product name
-- short_summary: 2-3 sentence factual summary (no marketing fluff)
 - category: "{detected_category}" (or override if input clearly indicates otherwise)
-- key_benefits: array of 3-5 concrete, measurable benefits
-- target_audience: specific demographic/psychographic description
+- short_summary: 2-3 sentence factual summary (no marketing fluff)
 - technical_analysis: expert-level factual analysis (materials, construction, market position)
+- target_audience: specific demographic/psychographic description
+- key_benefits: array of 3-5 concrete, measurable benefits
+- selling_points: array of 3 data-backed conversion angles
+- use_cases: array of 3-5 specific use cases for this product
+- performance: object with relevant performance metrics (varies by category)
+- specifications: object with key product specifications (varies by category)
+- category_specific: object with category-specific fields (see below)
 - long_description: HTML with structure below
 - meta_description: under 155 characters, factual
 - keywords: comma-separated relevant search terms
-- selling_points: array of 3 data-backed conversion angles
 
 {category_instructions}
 
@@ -946,7 +1033,7 @@ long_description HTML structure:
                         "content": (
                             "You are an expert product analyst and domain specialist. "
                             "You produce structured, factual product intelligence — not marketing copy. "
-                            "You analyze products across all categories: fragrances, electronics, fashion, software, business ideas, and more. "
+                            "You analyze products across all categories: fragrances, electronics, fashion, beauty, home goods, and general products. "
                             "You always return concrete data: real specifications, measurable attributes, and specific details. "
                             "NEVER use vague hedging language like 'Likely', 'based on context', 'not specified'. "
                             "NEVER use marketing filler like 'luxurious', 'elegant', 'sophisticated'. "
@@ -1091,63 +1178,96 @@ long_description HTML structure:
                 data.setdefault("projection", frag.get("projection", ""))
                 data.setdefault("longevity", frag.get("longevity", ""))
 
-            # --- Build the output dict with universal + category fields ---
+            # --- Build the unified output dict ---
+            category = (data.get("category") or detected_category or "general").lower()
+            # Normalize legacy category names to supported set
+            if category not in SUPPORTED_CATEGORIES:
+                category = "general"
+
             output = {
                 "title": data.get("title", idea),
+                "category": category,
                 "short_summary": data.get("short_summary", ""),
-                "category": data.get("category", detected_category),
-                "key_benefits": data.get("key_benefits", []),
-                "target_audience": data.get("target_audience", ""),
                 "technical_analysis": data.get("technical_analysis", ""),
+                "target_audience": data.get("target_audience", ""),
+                "key_benefits": data.get("key_benefits", []),
                 "selling_points": data.get("selling_points", []),
+                "use_cases": data.get("use_cases", []),
+                "performance": data.get("performance", {}),
+                "specifications": data.get("specifications", data.get("specs", {})),
+                "category_specific": {},
                 "long_description": data.get("long_description", ""),
                 "meta_description": data.get("meta_description", ""),
                 "keywords": data.get("keywords", ""),
             }
 
-            # Include any category-specific fields the AI returned
-            category = (data.get("category") or detected_category or "generic_product").lower()
+            # Ensure performance and specifications are dicts
+            if isinstance(output["performance"], str):
+                output["performance"] = {"summary": output["performance"]}
+            if not isinstance(output["performance"], dict):
+                output["performance"] = {}
+            if not isinstance(output["specifications"], dict):
+                output["specifications"] = {}
+
+            # Build category_specific from AI response
+            cs = data.get("category_specific", {})
+            if not isinstance(cs, dict):
+                cs = {}
 
             if category == "fragrance":
-                output["scent_family"] = data.get("scent_family", "")
-                output["fragrance_notes"] = data.get("fragrance_notes", {"top": [], "heart": [], "base": []})
-                output["projection"] = data.get("projection", "")
-                output["longevity"] = data.get("longevity", "")
-                output["scent_evolution"] = data.get("scent_evolution", "")
-                output["best_season"] = data.get("best_season", "")
-                output["best_occasions"] = data.get("best_occasions", [])
-                output["emotional_triggers"] = data.get("emotional_triggers", [])
-                output["luxury_description"] = data.get("luxury_description", "")
+                output["category_specific"] = {
+                    "scent_family": cs.get("scent_family") or data.get("scent_family", ""),
+                    "fragrance_notes": cs.get("fragrance_notes") or data.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+                    "projection": cs.get("projection") or data.get("projection", ""),
+                    "longevity": cs.get("longevity") or data.get("longevity", ""),
+                    "best_season": cs.get("best_season") or data.get("best_season", ""),
+                    "best_occasions": cs.get("best_occasions") or data.get("best_occasions", []),
+                }
+                # Backward-compat: also set flat fields
+                output["scent_family"] = output["category_specific"]["scent_family"]
+                output["fragrance_notes"] = output["category_specific"]["fragrance_notes"]
+                output["projection"] = output["category_specific"]["projection"]
+                output["longevity"] = output["category_specific"]["longevity"]
+                output["best_season"] = output["category_specific"]["best_season"]
+                output["best_occasions"] = output["category_specific"]["best_occasions"]
             elif category == "electronics":
-                output["specs"] = data.get("specs", {})
-                output["performance"] = data.get("performance", "")
-                output["battery"] = data.get("battery", "")
-                output["use_cases"] = data.get("use_cases", [])
-                output["pros"] = data.get("pros", [])
-                output["cons"] = data.get("cons", [])
+                output["category_specific"] = {
+                    "battery": cs.get("battery") or data.get("battery", ""),
+                    "connectivity": cs.get("connectivity") or data.get("connectivity", ""),
+                    "compatibility": cs.get("compatibility") or data.get("compatibility", ""),
+                    "build_quality": cs.get("build_quality") or data.get("build_quality", ""),
+                    "performance_level": cs.get("performance_level") or data.get("performance_level", ""),
+                }
             elif category == "fashion":
-                output["style"] = data.get("style", "")
-                output["materials"] = data.get("materials", [])
-                output["fit"] = data.get("fit", "")
-                output["occasions"] = data.get("occasions", [])
-                output["care_instructions"] = data.get("care_instructions", "")
-            elif category == "software":
-                output["platform"] = data.get("platform", "")
-                output["features"] = data.get("features", [])
-                output["integrations"] = data.get("integrations", [])
-                output["pricing_model"] = data.get("pricing_model", "")
-                output["use_cases"] = data.get("use_cases", [])
-            elif category == "business_idea":
-                output["problem"] = data.get("problem", "")
-                output["solution"] = data.get("solution", "")
-                output["monetization"] = data.get("monetization", "")
-                output["competitive_advantage"] = data.get("competitive_advantage", "")
-                output["market_size"] = data.get("market_size", "")
-            else:  # generic_product
-                output["specifications"] = data.get("specifications", {})
-                output["use_cases"] = data.get("use_cases", [])
-                output["pros"] = data.get("pros", [])
-                output["cons"] = data.get("cons", [])
+                output["category_specific"] = {
+                    "style": cs.get("style") or data.get("style", ""),
+                    "material": cs.get("material") or data.get("material") or data.get("materials", ""),
+                    "fit": cs.get("fit") or data.get("fit", ""),
+                    "occasion": cs.get("occasion") or data.get("occasion") or data.get("occasions", []),
+                    "season": cs.get("season") or data.get("season", ""),
+                }
+                # Normalize material: if it's a list, join it
+                mat = output["category_specific"]["material"]
+                if isinstance(mat, list):
+                    output["category_specific"]["material"] = ", ".join(mat)
+                # Normalize occasion: ensure it's an array
+                occ = output["category_specific"]["occasion"]
+                if isinstance(occ, str):
+                    output["category_specific"]["occasion"] = [occ] if occ else []
+            elif category == "beauty":
+                output["category_specific"] = {
+                    "skin_type": cs.get("skin_type") or data.get("skin_type", ""),
+                    "key_ingredients": cs.get("key_ingredients") or data.get("key_ingredients", []),
+                    "texture": cs.get("texture") or data.get("texture", ""),
+                    "routine_fit": cs.get("routine_fit") or data.get("routine_fit", ""),
+                }
+            elif category == "home":
+                output["category_specific"] = {
+                    "room_fit": cs.get("room_fit") or data.get("room_fit", ""),
+                    "material": cs.get("material") or data.get("material", ""),
+                    "practicality": cs.get("practicality") or data.get("practicality", ""),
+                    "maintenance": cs.get("maintenance") or data.get("maintenance", ""),
+                }
 
             return enforce_no_empty_fields(output, idea)
         except Exception as exc:
@@ -1156,12 +1276,16 @@ long_description HTML structure:
 
     fallback = {
         "title": idea,
+        "category": detected_category if detected_category in SUPPORTED_CATEGORIES else "general",
         "short_summary": "",
-        "category": detected_category,
-        "key_benefits": [],
-        "target_audience": "",
         "technical_analysis": "",
+        "target_audience": "",
+        "key_benefits": [],
         "selling_points": [],
+        "use_cases": [],
+        "performance": {},
+        "specifications": {},
+        "category_specific": {},
         "long_description": f"<p>{idea}</p>",
         "meta_description": "",
         "keywords": idea,
@@ -1241,7 +1365,7 @@ def optimize_product_router(product, lang="en"):
     print("PRODUCT ROUTER RESULT:", result.get("category"), result.get("title"))
 
     result.setdefault("title", product.get("title", ""))
-    result.setdefault("category", "generic_product")
+    result.setdefault("category", "general")
     result.setdefault("short_summary", "")
     result.setdefault("technical_analysis", "")
     result.setdefault("target_audience", "")
@@ -1744,11 +1868,11 @@ def settings_page():
                         fragrance: { bg: "#fbbf24", icon: "🌸" },
                         electronics: { bg: "#60a5fa", icon: "💻" },
                         fashion: { bg: "#f472b6", icon: "👗" },
-                        software: { bg: "#a78bfa", icon: "🖥️" },
-                        business_idea: { bg: "#34d399", icon: "💡" },
-                        generic_product: { bg: "#9ca3af", icon: "📦" },
+                        beauty: { bg: "#c084fc", icon: "✨" },
+                        home: { bg: "#34d399", icon: "🏠" },
+                        general: { bg: "#9ca3af", icon: "📦" },
                     };
-                    const badgeInfo = categoryBadgeColors[category] || categoryBadgeColors.generic_product;
+                    const badgeInfo = categoryBadgeColors[category] || categoryBadgeColors.general;
                     const categoryBadge = `<span class="badge" style="background:${badgeInfo.bg};">${badgeInfo.icon} ${item.category || "Product"}</span>`;
 
                     /* ── FRAGRANCE sections (only if category is fragrance) ── */
@@ -2081,16 +2205,28 @@ def analyze_product():
     if not client:
         # Fallback: return static demo data when OpenAI is not configured
         response_data = {
-            "category": "fragrance",
             "title": idea,
+            "category": "fragrance",
             "short_summary": f"AI analysis for \"{idea}\" is not available because OpenAI is not configured. This is a demo response.",
             "technical_analysis": "",
             "target_audience": "Fragrance enthusiasts",
             "key_benefits": ["Premium quality", "Long-lasting scent", "Unique composition"],
             "selling_points": ["Luxury positioning", "Distinctive character"],
+            "use_cases": ["Evening wear", "Special occasions", "Signature scent"],
+            "performance": {"longevity": "6-8 hours", "projection": "Moderate to strong"},
+            "specifications": {"concentration": "Eau de Parfum", "volume": "100ml"},
+            "category_specific": {
+                "scent_family": "Oriental",
+                "fragrance_notes": {"top": ["Bergamot"], "heart": ["Rose"], "base": ["Sandalwood"]},
+                "projection": "Moderate to strong",
+                "longevity": "6-8 hours",
+                "best_season": "Fall / Winter",
+                "best_occasions": ["Evening events", "Date night"],
+            },
             "long_description": f"<p><strong>{html.escape(idea)}</strong> — demo analysis (OpenAI not configured).</p>",
             "meta_description": f"Discover {html.escape(idea)} — a premium fragrance experience.",
             "keywords": idea.lower(),
+            # Backward-compat flat fields
             "scent_family": "Oriental",
             "fragrance_notes": {"top": ["Bergamot"], "heart": ["Rose"], "base": ["Sandalwood"]},
             "projection": "Moderate to strong",
@@ -2104,15 +2240,19 @@ def analyze_product():
 
     long_desc = result.get("long_description", "")
 
-    # Build response with universal fields
+    # Build response with unified fields
     response_data = {
-        "category": result.get("category", ""),
         "title": result.get("title", idea),
+        "category": result.get("category", "general"),
         "short_summary": result.get("short_summary", ""),
         "technical_analysis": result.get("technical_analysis", ""),
         "target_audience": result.get("target_audience", ""),
         "key_benefits": result.get("key_benefits", []),
         "selling_points": result.get("selling_points", []),
+        "use_cases": result.get("use_cases", []),
+        "performance": result.get("performance", {}),
+        "specifications": result.get("specifications", {}),
+        "category_specific": result.get("category_specific", {}),
         "long_description": long_desc,
         "meta_description": result.get("meta_description", ""),
         "keywords": result.get("keywords", ""),
@@ -2120,9 +2260,9 @@ def analyze_product():
         "li_count": long_desc.lower().count("<li>"),
     }
 
-    # Include all category-specific fields dynamically
+    # Include all category-specific fields dynamically (backward compat)
     for field in CATEGORY_SPECIFIC_FIELDS:
-        if field in result:
+        if field in result and field not in response_data:
             response_data[field] = result[field]
 
     return jsonify(response_data)
