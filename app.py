@@ -832,7 +832,7 @@ Description: {product.get("body_html", "")}
 '''.strip()
 
         result = analyze_product_with_ai(idea)
-        print("ANALYZER OUTPUT:", result)
+        print("FRAGRANCE ROUTER RESULT:", result)
 
         result.setdefault("category", "perfume / fragrance")
         result.setdefault("title", product.get("title", ""))
