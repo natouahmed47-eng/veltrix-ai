@@ -2,7 +2,7 @@ import html
 import os
 import re
 import json
-import uuid
+import secrets
 import requests
 from datetime import datetime
 from functools import wraps
@@ -1471,7 +1471,7 @@ def api_register():
     if existing:
         return jsonify({"error": "Username already taken"}), 409
 
-    token = uuid.uuid4().hex
+    token = secrets.token_hex(32)
     user = User(
         username=username,
         password_hash=generate_password_hash(password),
@@ -1499,7 +1499,7 @@ def api_login():
     if not user or not check_password_hash(user.password_hash, password):
         return jsonify({"error": "Invalid username or password"}), 401
 
-    token = uuid.uuid4().hex
+    token = secrets.token_hex(32)
     user.token = token
     db.session.commit()
 

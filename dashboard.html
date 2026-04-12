@@ -226,18 +226,14 @@
             var analysis = allAnalyses[idx];
             if (!analysis) return;
 
-            /* Fetch full analysis from saved data */
-            fetch("/api/my-analyses", { headers: { "Authorization": "Bearer " + token } })
-                .then(function () {
-                    var content = document.getElementById("detailContent");
-                    content.innerHTML =
-                        '<h2 style="margin:0 0 8px;font-size:20px;font-weight:700;">' + esc(analysis.title || analysis.idea) + '</h2>' +
-                        '<span class="badge-sm" style="background:' + (badgeColors[analysis.category] || "#64748b") + ';margin-bottom:12px;display:inline-block;">' + esc(analysis.category || "general") + '</span>' +
-                        '<span style="color:#94a3b8;font-size:12px;margin-left:10px;">' + formatDate(analysis.created_at) + '</span>' +
-                        (analysis.short_summary ? '<p style="color:#475569;font-size:14px;line-height:1.7;margin:16px 0 0;">' + esc(analysis.short_summary) + '</p>' : '') +
-                        '<p style="color:#64748b;font-size:13px;margin:12px 0 0;"><strong>Original query:</strong> ' + esc(analysis.idea) + '</p>';
-                    overlay.style.display = "flex";
-                });
+            var content = document.getElementById("detailContent");
+            content.innerHTML =
+                '<h2 style="margin:0 0 8px;font-size:20px;font-weight:700;">' + esc(analysis.title || analysis.idea) + '</h2>' +
+                '<span class="badge-sm" style="background:' + (badgeColors[analysis.category] || "#64748b") + ';margin-bottom:12px;display:inline-block;">' + esc(analysis.category || "general") + '</span>' +
+                '<span style="color:#94a3b8;font-size:12px;margin-left:10px;">' + formatDate(analysis.created_at) + '</span>' +
+                (analysis.short_summary ? '<p style="color:#475569;font-size:14px;line-height:1.7;margin:16px 0 0;">' + esc(analysis.short_summary) + '</p>' : '') +
+                '<p style="color:#64748b;font-size:13px;margin:12px 0 0;"><strong>Original query:</strong> ' + esc(analysis.idea) + '</p>';
+            overlay.style.display = "flex";
         });
 
         document.getElementById("detailClose").addEventListener("click", function () { overlay.style.display = "none"; });
