@@ -808,19 +808,20 @@ RULES:
             # Detect lines starting with "- " or "• " that are NOT already
             # inside <li> tags and convert them to an HTML list.
             def _bullets_to_html(text: str) -> str:
+                _bullet_re = re.compile(r"^[-•–]\s+")
                 lines = text.split("\n")
                 result: list[str] = []
                 in_list = False
                 for line in lines:
                     stripped = line.strip()
                     is_bullet = bool(
-                        re.match(r"^[-•–]\s+", stripped)
+                        _bullet_re.match(stripped)
                     ) and "<li>" not in stripped
                     if is_bullet:
                         if not in_list:
                             result.append("<ul>")
                             in_list = True
-                        content = re.sub(r"^[-•–]\s+", "", stripped)
+                        content = _bullet_re.sub("", stripped)
                         result.append(f"<li>{content}</li>")
                     else:
                         if in_list:
@@ -842,7 +843,11 @@ RULES:
         def _scrub(value):
             """Recursively remove banned phrases from strings."""
             if isinstance(value, str):
-                return _banned_re.sub("", value).strip()
+                scrubbed = _banned_re.sub("", value)
+                # Collapse any double-spaces left after removal.
+                while "  " in scrubbed:
+                    scrubbed = scrubbed.replace("  ", " ")
+                return scrubbed.strip()
             if isinstance(value, list):
                 return [_scrub(v) for v in value]
             if isinstance(value, dict):
