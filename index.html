@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veltrix AI — Product Analyzer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f6f7fb;
+            margin: 0;
+            padding: 24px;
+            color: #111827;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 28px;
+        }
+        .muted {
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid #d1d5db;
+            font-size: 16px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            margin-bottom: 16px;
+            background: #111827;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1f2937;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .success {
+            color: green;
+            margin-top: 12px;
+        }
+        .error {
+            color: red;
+            margin-top: 12px;
+        }
+        /* ── Result card styles ── */
+        .result-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 20px;
+            margin-top: 18px;
+            background: #fff;
+        }
+        .result-card .product-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 6px 0 10px;
+            color: #1e293b;
+        }
+        .result-card .badge {
+            display: inline-block;
+            background: #fbbf24;
+            color: #000;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .result-card .summary-text {
+            font-size: 15px;
+            color: #374151;
+            line-height: 1.6;
+            margin: 8px 0 14px;
+        }
+        .result-card .meta-row {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .result-card .meta-row strong {
+            color: #374151;
+        }
+        .section-box {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 12px;
+        }
+        .section-box h4 {
+            margin: 0 0 10px;
+            font-size: 15px;
+        }
+        .fragrance-box {
+            background: #fdf6ec;
+            border: 1px solid #f5d89a;
+        }
+        .fragrance-box h4 { color: #92400e; }
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .note-card {
+            background: #fff;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .note-card .note-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+        .note-card .note-value {
+            font-size: 13px;
+            color: #1e293b;
+        }
+        .detail-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .detail-chip {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        .detail-chip .chip-label {
+            font-weight: 700;
+            color: #92400e;
+            font-size: 11px;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .tag-list {
+            list-style: none;
+            padding: 0;
+            margin: 6px 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .tag-list li {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 13px;
+            color: #78350f;
+        }
+        .scent-family-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #78350f;
+        }
+        .description-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+        }
+        .description-box h4 { color: #1e293b; }
+        .description-html {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #374151;
+        }
+        .description-html ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        .description-html li {
+            margin-bottom: 6px;
+        }
+        .seo-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .seo-box h4 { color: #166534; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Veltrix AI — Product Analyzer</h1>
+        <div class="muted">Enter a product idea or name to get a full AI analysis</div>
+
+        <input type="text" id="productIdea" placeholder="e.g. Parfum Tom Ford" />
+        <button id="analyzeBtn">Analyze</button>
+
+        <div id="message"></div>
+        <div id="results"></div>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>
