@@ -1099,8 +1099,10 @@ RULES:
                 "selling_points": data.get("selling_points", []),
             }
             return enforce_no_empty_fields(output, idea)
-        except Exception:
-            # Processing failed — try next retry or fall through to fallback
+        except Exception as exc:
+            # Processing failed — log and try next retry or fall through
+            # to fallback dict.
+            print(f"analyze_product_with_ai: processing error, retrying: {exc}")
             continue
 
     fallback = {
