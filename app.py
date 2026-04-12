@@ -787,24 +787,22 @@ RULES:
 
         # Flatten nested AI response to the flat field names used by
         # downstream consumers (API routes, frontend template, router).
-        insights = data.pop("extracted_insights", {}) or {}
-        frag = data.pop("fragrance_analysis", {}) or {}
+        insights = data.pop("extracted_insights", None) or {}
+        frag = data.pop("fragrance_analysis", None) or {}
 
         # clean_summary → short_summary
         if "clean_summary" in data and "short_summary" not in data:
             data["short_summary"] = data.pop("clean_summary")
 
-        # extracted_insights → flat fields
-        if "key_benefits" not in data:
-            data["key_benefits"] = insights.get("benefits", [])
-        if "selling_points" not in data:
-            data["selling_points"] = insights.get("key_features", [])
-        if "target_audience" not in data:
-            data["target_audience"] = insights.get("positioning", "")
-
         # luxury_upgrade_text → luxury_description
         if "luxury_upgrade_text" in data and "luxury_description" not in data:
             data["luxury_description"] = data.pop("luxury_upgrade_text")
+
+        # extracted_insights → flat fields (setdefault: AI flat fields win
+        # if present, otherwise fall back to the nested structure).
+        data.setdefault("key_benefits", insights.get("benefits", []))
+        data.setdefault("selling_points", insights.get("key_features", []))
+        data.setdefault("target_audience", insights.get("positioning", ""))
 
         # fragrance_analysis → flat fields
         if frag:
