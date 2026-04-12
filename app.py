@@ -959,148 +959,151 @@ RULES:
         if not isinstance(data, dict):
             continue
 
-        # --- Bullet handling: convert dash/bullet lines in long_description
-        # to proper <ul><li> HTML BEFORE any downstream validation. ----------
-        ld = data.get("long_description", "")
-        if ld:
-            # Detect lines starting with "- " or "• " that are NOT already
-            # inside <li> tags and convert them to an HTML list.
-            def _bullets_to_html(text: str) -> str:
-                _bullet_re = re.compile(r"^[-•–]\s+")
-                lines = text.split("\n")
-                result: list[str] = []
-                in_list = False
-                for line in lines:
-                    stripped = line.strip()
-                    is_bullet = bool(
-                        _bullet_re.match(stripped)
-                    ) and "<li>" not in stripped
-                    if is_bullet:
-                        if not in_list:
-                            result.append("<ul>")
-                            in_list = True
-                        content = _bullet_re.sub("", stripped)
-                        result.append(f"<li>{content}</li>")
-                    else:
-                        if in_list:
-                            result.append("</ul>")
-                            in_list = False
-                        result.append(line)
-                if in_list:
-                    result.append("</ul>")
-                return "\n".join(result)
+        # --- Process the parsed dict and build the structured output --------
+        # Wrapped in try/except so that any unexpected error during
+        # scrubbing / flattening falls through to the next retry (or the
+        # post-loop fallback) instead of propagating an exception.
+        try:
+            # --- Bullet handling: convert dash/bullet lines in
+            # long_description to proper <ul><li> HTML. ---
+            ld = data.get("long_description", "")
+            if ld:
+                def _bullets_to_html(text: str) -> str:
+                    _bullet_re = re.compile(r"^[-•–]\s+")
+                    lines = text.split("\n")
+                    result: list[str] = []
+                    in_list = False
+                    for line in lines:
+                        stripped = line.strip()
+                        is_bullet = bool(
+                            _bullet_re.match(stripped)
+                        ) and "<li>" not in stripped
+                        if is_bullet:
+                            if not in_list:
+                                result.append("<ul>")
+                                in_list = True
+                            content = _bullet_re.sub("", stripped)
+                            result.append(f"<li>{content}</li>")
+                        else:
+                            if in_list:
+                                result.append("</ul>")
+                                in_list = False
+                            result.append(line)
+                    if in_list:
+                        result.append("</ul>")
+                    return "\n".join(result)
 
-            data["long_description"] = _bullets_to_html(ld)
+                data["long_description"] = _bullets_to_html(ld)
 
-        # --- Strip banned phrases from ALL string values -------------------
-        _banned_re = re.compile(
-            r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
-            re.IGNORECASE,
-        )
+            # --- Strip banned phrases from ALL string values ---------------
+            _banned_re = re.compile(
+                r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
+                re.IGNORECASE,
+            )
 
-        # Determine fragrance signals from the original input for inference
-        _idea_lower = idea.lower()
-        _has_parfum = "parfum" in _idea_lower
-        _has_oud = "oud" in _idea_lower
-        _has_spicy = "spicy" in _idea_lower or "spice" in _idea_lower
-        _luxury_brands = ["tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
-                          "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
-                          "initio", "parfums de marly", "nishane", "tiziana terenzi"]
-        _is_luxury = any(b in _idea_lower for b in _luxury_brands)
+            _idea_lower = idea.lower()
+            _has_parfum = "parfum" in _idea_lower
+            _has_oud = "oud" in _idea_lower
+            _has_spicy = "spicy" in _idea_lower or "spice" in _idea_lower
+            _luxury_brands = ["tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
+                              "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
+                              "initio", "parfums de marly", "nishane", "tiziana terenzi"]
+            _is_luxury = any(b in _idea_lower for b in _luxury_brands)
 
-        def _infer_replacement(field_context: str = "") -> str:
-            """Generate an intelligent inference replacement based on fragrance signals."""
-            ctx = field_context.lower()
-            if _has_oud:
-                return "Likely a rich woody-oriental composition with oud prominence"
-            if _has_spicy:
-                return "Likely a warm spicy profile with aromatic depth"
-            if _has_parfum:
-                return "Likely a concentrated composition with strong sillage and longevity"
-            if _is_luxury:
-                return "Likely a complex, multi-layered composition reflecting luxury craftsmanship"
-            return "Likely a balanced, well-crafted composition based on fragrance positioning"
+            def _infer_replacement(field_context: str = "") -> str:
+                """Generate an intelligent inference replacement based on fragrance signals."""
+                if _has_oud:
+                    return "Likely a rich woody-oriental composition with oud prominence"
+                if _has_spicy:
+                    return "Likely a warm spicy profile with aromatic depth"
+                if _has_parfum:
+                    return "Likely a concentrated composition with strong sillage and longevity"
+                if _is_luxury:
+                    return "Likely a complex, multi-layered composition reflecting luxury craftsmanship"
+                return "Likely a balanced, well-crafted composition based on fragrance positioning"
 
-        def _scrub(value, field_name=""):
-            """Recursively replace banned phrases with intelligent inferences."""
-            if isinstance(value, str):
-                if _banned_re.search(value):
-                    # If the entire string is essentially just a banned phrase, replace fully
-                    stripped_check = _banned_re.sub("", value).strip(" .,;:-–—")
-                    if not stripped_check or len(stripped_check) < 5:
-                        return _infer_replacement(field_name)
-                    # Otherwise replace inline
-                    scrubbed = _banned_re.sub("inferred from product context", value)
-                    while "  " in scrubbed:
-                        scrubbed = scrubbed.replace("  ", " ")
-                    return scrubbed.strip()
+            def _scrub(value, field_name=""):
+                """Recursively replace banned phrases with intelligent inferences."""
+                if isinstance(value, str):
+                    if _banned_re.search(value):
+                        stripped_check = _banned_re.sub("", value).strip(" .,;:-–—")
+                        if not stripped_check or len(stripped_check) < 5:
+                            return _infer_replacement(field_name)
+                        scrubbed = _banned_re.sub("inferred from product context", value)
+                        while "  " in scrubbed:
+                            scrubbed = scrubbed.replace("  ", " ")
+                        return scrubbed.strip()
+                    return value
+                if isinstance(value, list):
+                    return [_scrub(v, field_name) for v in value]
+                if isinstance(value, dict):
+                    return {k: _scrub(v, k) for k, v in value.items()}
                 return value
-            if isinstance(value, list):
-                return [_scrub(v, field_name) for v in value]
-            if isinstance(value, dict):
-                return {k: _scrub(v, k) for k, v in value.items()}
-            return value
 
-        data = _scrub(data)
+            data = _scrub(data)
 
-        # Flatten nested AI response to the flat field names used by
-        # downstream consumers (API routes, frontend template, router).
-        insights = data.pop("extracted_insights", None) or {}
-        frag = data.pop("fragrance_analysis", None) or {}
+            # Flatten nested AI response to the flat field names used by
+            # downstream consumers (API routes, frontend template, router).
+            insights = data.pop("extracted_insights", None) or {}
+            frag = data.pop("fragrance_analysis", None) or {}
 
-        # clean_summary → short_summary
-        if "clean_summary" in data and "short_summary" not in data:
-            data["short_summary"] = data.pop("clean_summary")
+            # clean_summary → short_summary
+            if "clean_summary" in data and "short_summary" not in data:
+                data["short_summary"] = data.pop("clean_summary")
 
-        # luxury_upgrade_text → luxury_description
-        if "luxury_upgrade_text" in data and "luxury_description" not in data:
-            data["luxury_description"] = data.pop("luxury_upgrade_text")
+            # luxury_upgrade_text → luxury_description
+            if "luxury_upgrade_text" in data and "luxury_description" not in data:
+                data["luxury_description"] = data.pop("luxury_upgrade_text")
 
-        # extracted_insights → flat fields (setdefault: AI flat fields win
-        # if present, otherwise fall back to the nested structure).
-        data.setdefault("key_benefits", insights.get("benefits", []))
-        data.setdefault("selling_points", insights.get("key_features", []))
-        data.setdefault("target_audience", insights.get("positioning", ""))
+            # extracted_insights → flat fields
+            data.setdefault("key_benefits", insights.get("benefits", []))
+            data.setdefault("selling_points", insights.get("key_features", []))
+            data.setdefault("target_audience", insights.get("positioning", ""))
 
-        # fragrance_analysis → flat fields (always ensure all keys exist)
-        data.setdefault("scent_family", frag.get("scent_family", ""))
-        data.setdefault("fragrance_notes", {
-            "top": frag.get("top_notes", []),
-            "heart": frag.get("heart_notes", []),
-            "base": frag.get("base_notes", []),
-        })
-        data.setdefault("scent_evolution", frag.get("scent_evolution", ""))
-        data.setdefault("projection", frag.get("projection", ""))
-        data.setdefault("longevity", frag.get("longevity", ""))
-        data.setdefault("best_season", frag.get("best_season", ""))
-        data.setdefault("best_occasions", frag.get("best_occasions", []))
-        data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
+            # fragrance_analysis → flat fields
+            data.setdefault("scent_family", frag.get("scent_family", ""))
+            data.setdefault("fragrance_notes", {
+                "top": frag.get("top_notes", []),
+                "heart": frag.get("heart_notes", []),
+                "base": frag.get("base_notes", []),
+            })
+            data.setdefault("scent_evolution", frag.get("scent_evolution", ""))
+            data.setdefault("projection", frag.get("projection", ""))
+            data.setdefault("longevity", frag.get("longevity", ""))
+            data.setdefault("best_season", frag.get("best_season", ""))
+            data.setdefault("best_occasions", frag.get("best_occasions", []))
+            data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
 
-        # --- Construct the mandatory structured output dict ---
-        # Guarantees every required field is present with the correct type,
-        # regardless of what the AI actually returned.
-        output = {
-            "title": data.get("title", idea),
-            "short_summary": data.get("short_summary", ""),
-            "scent_family": data.get("scent_family", ""),
-            "fragrance_notes": data.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
-            "scent_evolution": data.get("scent_evolution", ""),
-            "projection": data.get("projection", ""),
-            "longevity": data.get("longevity", ""),
-            "best_season": data.get("best_season", ""),
-            "best_occasions": data.get("best_occasions", []),
-            "emotional_triggers": data.get("emotional_triggers", []),
-            "luxury_description": data.get("luxury_description", ""),
-            "long_description": data.get("long_description", ""),
-            "meta_description": data.get("meta_description", ""),
-            "keywords": data.get("keywords", ""),
-            "category": data.get("category", ""),
-            "technical_analysis": data.get("technical_analysis", ""),
-            "target_audience": data.get("target_audience", ""),
-            "key_benefits": data.get("key_benefits", []),
-            "selling_points": data.get("selling_points", []),
-        }
-        return enforce_no_empty_fields(output, idea)
+            # --- Construct the mandatory structured output dict ---
+            # Guarantees every required field is present with the correct
+            # type, regardless of what the AI actually returned.
+            output = {
+                "title": data.get("title", idea),
+                "short_summary": data.get("short_summary", ""),
+                "scent_family": data.get("scent_family", ""),
+                "fragrance_notes": data.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+                "scent_evolution": data.get("scent_evolution", ""),
+                "projection": data.get("projection", ""),
+                "longevity": data.get("longevity", ""),
+                "best_season": data.get("best_season", ""),
+                "best_occasions": data.get("best_occasions", []),
+                "emotional_triggers": data.get("emotional_triggers", []),
+                "luxury_description": data.get("luxury_description", ""),
+                "long_description": data.get("long_description", ""),
+                "meta_description": data.get("meta_description", ""),
+                "keywords": data.get("keywords", ""),
+                "category": data.get("category", ""),
+                "technical_analysis": data.get("technical_analysis", ""),
+                "target_audience": data.get("target_audience", ""),
+                "key_benefits": data.get("key_benefits", []),
+                "selling_points": data.get("selling_points", []),
+            }
+            return enforce_no_empty_fields(output, idea)
+        except Exception as exc:
+            # Processing failed — log and try next retry or fall through
+            # to fallback dict.
+            print(f"analyze_product_with_ai: processing error, retrying: {exc}")
+            continue
 
     fallback = {
         "title": idea,
