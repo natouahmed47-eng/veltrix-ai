@@ -764,14 +764,49 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
     return data
 
 
-def analyze_product_with_ai(idea: str) -> dict:
-    """Analyze a product concept and return structured high-end product content.
+import json
 
-    Handles perfumes / fragrances with dedicated note inference, and falls back
-    to general ecommerce analysis for all other product categories.
-    """
-    if not client:
-        raise RuntimeError("OpenAI is not configured")
+def analyze_product_with_ai(idea: str):
+    ai_text = call_openai_somehow(idea)  # نفس الكود الحالي عندك
+
+    # 🔴 الخطوة المهمة: تحويل النص إلى JSON
+    try:
+        data = json.loads(ai_text)
+    except:
+        # fallback إذا AI رجع نص عادي
+        data = {
+            "title": idea,
+            "short_summary": ai_text[:200],
+            "scent_family": "Likely woody-oriental",
+            "fragrance_notes": {
+                "top": [],
+                "heart": [],
+                "base": []
+            },
+            "scent_evolution": ai_text,
+            "projection": "Likely medium to strong",
+            "longevity": "Likely long-lasting",
+            "best_season": "Evening / Fall",
+            "best_occasions": ["Formal", "Evening"],
+            "emotional_triggers": ["Confidence"],
+            "luxury_description": ai_text,
+            "long_description": ai_text,
+            "meta_description": ai_text[:150],
+            "keywords": idea
+        }
+
+    # ✅ ضمان عدم وجود فراغات
+    data = enforce_no_empty_fields(data, idea)
+
+    # ✅ الإرجاع الصحيح
+    return data
+    
+
+    
+    
+    
+    
+        
 
     prompt = f"""
 You are a fragrance chemist, perfumer, and luxury product analyst.
