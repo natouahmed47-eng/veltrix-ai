@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from flask import Flask, jsonify, redirect, request, render_template_string
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 app = Flask(__name__)
 CORS(app)
@@ -937,7 +937,7 @@ RULES:
                 ],
                 temperature=0.7,
             )
-        except Exception as exc:
+        except (OpenAIError, ConnectionError, TimeoutError) as exc:
             print(f"analyze_product_with_ai: API call failed, retrying: {exc}")
             continue
 
