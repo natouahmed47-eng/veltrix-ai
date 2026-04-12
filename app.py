@@ -38,6 +38,19 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 MAX_AI_GENERATION_RETRIES = 3
 
+# Category-specific fields that may be present in AI analysis results.
+# Used by API endpoints to dynamically pass through category data.
+CATEGORY_SPECIFIC_FIELDS = [
+    "scent_family", "fragrance_notes", "scent_evolution", "projection",
+    "longevity", "best_season", "best_occasions", "emotional_triggers",
+    "luxury_description",
+    "specs", "performance", "use_cases", "pros", "cons",
+    "style", "materials", "fit", "occasions", "care_instructions",
+    "platform", "features", "integrations", "pricing_model",
+    "problem", "solution", "monetization", "competitive_advantage", "market_size",
+    "specifications",
+]
+
 
 class ShopifyStore(db.Model):
     __tablename__ = "shopify_stores"
@@ -1930,7 +1943,7 @@ def settings_page():
                             ${seoHtml}
 
                             <div class="diagnostics-row">
-                                🔍 category=${item.category ?? "unknown"} | has_ul=${item.has_ul} | li_count=${item.li_count} | bullet_symbol=${item.contains_bullet_symbol} | source=${item.source_used ?? ""} | lang=${item.language_used ?? ""}
+                                🔍 category=${item.category ?? "unknown"} | is_fragrance=${item.is_fragrance ?? false} | has_ul=${item.has_ul} | li_count=${item.li_count} | bullet_symbol=${item.contains_bullet_symbol} | source=${item.source_used ?? ""} | lang=${item.language_used ?? ""}
                             </div>
                             ${item.error ? `<div style="color:red;margin-top:8px;"><strong>Error:</strong> ${item.error}</div>` : ""}
                         </div>
@@ -2001,17 +2014,7 @@ def optimize_product():
     }
 
     # Include all category-specific fields dynamically
-    category_fields = [
-        "scent_family", "fragrance_notes", "scent_evolution", "projection",
-        "longevity", "best_season", "best_occasions", "emotional_triggers",
-        "luxury_description",
-        "specs", "performance", "use_cases", "pros", "cons",
-        "style", "materials", "fit", "occasions", "care_instructions",
-        "platform", "features", "integrations", "pricing_model",
-        "problem", "solution", "monetization", "competitive_advantage", "market_size",
-        "specifications",
-    ]
-    for field in category_fields:
+    for field in CATEGORY_SPECIFIC_FIELDS:
         if field in result:
             response_data[field] = result[field]
 
@@ -2052,17 +2055,7 @@ def analyze_product():
     }
 
     # Include all category-specific fields dynamically
-    category_fields = [
-        "scent_family", "fragrance_notes", "scent_evolution", "projection",
-        "longevity", "best_season", "best_occasions", "emotional_triggers",
-        "luxury_description",
-        "specs", "performance", "use_cases", "pros", "cons",
-        "style", "materials", "fit", "occasions", "care_instructions",
-        "platform", "features", "integrations", "pricing_model",
-        "problem", "solution", "monetization", "competitive_advantage", "market_size",
-        "specifications",
-    ]
-    for field in category_fields:
+    for field in CATEGORY_SPECIFIC_FIELDS:
         if field in result:
             response_data[field] = result[field]
 
@@ -2143,17 +2136,7 @@ def optimize_all_products():
             }
 
             # Include all category-specific fields dynamically
-            category_fields = [
-                "scent_family", "fragrance_notes", "scent_evolution", "projection",
-                "longevity", "best_season", "best_occasions", "emotional_triggers",
-                "luxury_description",
-                "specs", "performance", "use_cases", "pros", "cons",
-                "style", "materials", "fit", "occasions", "care_instructions",
-                "platform", "features", "integrations", "pricing_model",
-                "problem", "solution", "monetization", "competitive_advantage", "market_size",
-                "specifications",
-            ]
-            for field in category_fields:
+            for field in CATEGORY_SPECIFIC_FIELDS:
                 if field in optimized:
                     result_item[field] = optimized[field]
 
