@@ -765,7 +765,11 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
             cleaned = cleaned.strip(" .,;:-–—")
             return cleaned if cleaned else value
         if isinstance(value, list):
-            result = [_final_scrub(v) for v in value if _final_scrub(v)]
+            result = []
+            for v in value:
+                scrubbed = _final_scrub(v)
+                if scrubbed:
+                    result.append(scrubbed)
             return result if result else ["General-purpose product benefit"]
         if isinstance(value, dict):
             return {k: _final_scrub(v) for k, v in value.items()}
@@ -791,7 +795,7 @@ def analyze_product_with_ai(idea: str):
     elif any(k in idea_lower for k in ["startup", "business model", "business idea", "venture", "marketplace"]):
         detected_category = "business_idea"
     else:
-        detected_category = "general"
+        detected_category = "generic_product"
 
     # --- Build category-specific prompt sections ---
     if detected_category == "fragrance":
@@ -982,7 +986,7 @@ long_description HTML structure:
             data = {
                 "title": idea,
                 "short_summary": cleaned[:200],
-                "category": detected_category if detected_category != "general" else "generic_product",
+                "category": detected_category,
                 "key_benefits": [],
                 "selling_points": [],
                 "target_audience": "",
@@ -1091,7 +1095,7 @@ long_description HTML structure:
             output = {
                 "title": data.get("title", idea),
                 "short_summary": data.get("short_summary", ""),
-                "category": data.get("category", detected_category if detected_category != "general" else "generic_product"),
+                "category": data.get("category", detected_category),
                 "key_benefits": data.get("key_benefits", []),
                 "target_audience": data.get("target_audience", ""),
                 "technical_analysis": data.get("technical_analysis", ""),
@@ -1153,7 +1157,7 @@ long_description HTML structure:
     fallback = {
         "title": idea,
         "short_summary": "",
-        "category": detected_category if detected_category != "general" else "generic_product",
+        "category": detected_category,
         "key_benefits": [],
         "target_audience": "",
         "technical_analysis": "",
