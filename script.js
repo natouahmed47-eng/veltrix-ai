@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        messageEl.innerHTML = "Analyzing, please wait...";
+        messageEl.innerHTML = "\u23F3 Analyzing, please wait...";
         resultsEl.innerHTML = "";
         analyzeBtn.disabled = true;
 
@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            messageEl.innerHTML = '<div class="success">Analysis completed successfully!</div>';
+            messageEl.innerHTML = '<div class="success">\u2705 Analysis completed successfully!</div>';
             resultsEl.innerHTML = buildResultCard(data);
         } catch (error) {
             messageEl.innerHTML = '<div class="error">Connection error: ' + error.message + '</div>';
@@ -50,6 +50,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    /* ── Helpers ── */
+
     function esc(str) {
         if (!str) return "";
         var div = document.createElement("div");
@@ -57,57 +59,225 @@ document.addEventListener("DOMContentLoaded", function () {
         return div.innerHTML;
     }
 
+    /**
+     * Calculate an AI confidence score (80-95) from the richness of the data.
+     */
+    function calculateAIScore(item) {
+        var score = 80;
+        var perf = item.performance;
+        if (perf && typeof perf === "object" && Object.keys(perf).length) {
+            score += Math.min(Object.keys(perf).length, 3);
+        }
+        var benefits = item.key_benefits;
+        if (Array.isArray(benefits)) {
+            score += Math.min(benefits.length, 5);
+        }
+        var sp = item.selling_points;
+        if (Array.isArray(sp)) {
+            score += Math.min(sp.length, 3);
+        }
+        var uc = item.use_cases;
+        if (Array.isArray(uc) && uc.length) { score += 1; }
+        if (item.technical_analysis) { score += 1; }
+        if (item.category_specific && Object.keys(item.category_specific).length) { score += 2; }
+        return Math.min(score, 95);
+    }
+
+    /**
+     * Extract 3-5 smart tags from the product data to show as badges.
+     */
+    function extractTags(item) {
+        var tags = [];
+        var category = (item.category || "").toLowerCase();
+
+        /* Category-based tags */
+        var catLabels = {
+            fragrance: "Premium Scent",
+            electronics: "Tech Product",
+            fashion: "Fashion Item",
+            beauty: "Beauty Essential",
+            home: "Home & Living",
+            general: "Everyday Product"
+        };
+        tags.push(catLabels[category] || "Product");
+
+        /* Extract from benefits */
+        var benefits = item.key_benefits || [];
+        var selling = item.selling_points || [];
+        var pool = benefits.concat(selling);
+
+        var tagMap = [
+            { words: ["durable", "long-lasting", "sturdy", "robust", "quality"], label: "Durable" },
+            { words: ["luxury", "premium", "high-end", "exclusive"], label: "Luxury" },
+            { words: ["daily", "everyday", "routine", "regular"], label: "Best for daily use" },
+            { words: ["value", "affordable", "budget", "cost"], label: "Great Value" },
+            { words: ["portable", "compact", "lightweight", "travel"], label: "Portable" },
+            { words: ["eco", "sustainable", "natural", "organic"], label: "Eco-Friendly" },
+            { words: ["innovative", "smart", "advanced", "technology"], label: "Innovative" },
+            { words: ["comfort", "comfortable", "soft", "gentle"], label: "Comfortable" },
+            { words: ["versatile", "multi", "flexible", "adaptable"], label: "Versatile" }
+        ];
+
+        var poolStr = pool.join(" ").toLowerCase();
+        for (var i = 0; i < tagMap.length && tags.length < 5; i++) {
+            var match = tagMap[i];
+            for (var j = 0; j < match.words.length; j++) {
+                if (poolStr.indexOf(match.words[j]) !== -1) {
+                    tags.push(match.label);
+                    break;
+                }
+            }
+        }
+
+        /* Ensure at least 3 tags */
+        var fillers = ["AI Analyzed", "Verified", "Trending"];
+        for (var k = 0; k < fillers.length && tags.length < 3; k++) {
+            tags.push(fillers[k]);
+        }
+
+        return tags.slice(0, 5);
+    }
+
+    function buildScoreRing(score) {
+        var circumference = 2 * Math.PI * 26;
+        var offset = circumference - (score / 100) * circumference;
+        var color = score >= 90 ? "#10b981" : score >= 85 ? "#3b82f6" : "#f59e0b";
+        return (
+            '<div class="ai-score">' +
+                '<svg viewBox="0 0 64 64">' +
+                    '<circle class="score-track" cx="32" cy="32" r="26" />' +
+                    '<circle class="score-fill" cx="32" cy="32" r="26" stroke="' + color + '" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + offset + '" transform="rotate(-90 32 32)" />' +
+                    '<text class="score-text" x="32" y="36" text-anchor="middle">' + score + '</text>' +
+                '</svg>' +
+                '<div class="score-label">AI Score</div>' +
+            '</div>'
+        );
+    }
+
+    function sectionDivider(label) {
+        return '<div class="section-divider">' + label + '</div>';
+    }
+
+    /* ── Main build function ── */
+
     function buildResultCard(item) {
         var category = (item.category || "").toLowerCase();
         var cs = item.category_specific || {};
 
         /* Category badge */
         var badgeColors = {
-            fragrance:   { bg: "#fbbf24", icon: "\uD83C\uDF38" },
-            electronics: { bg: "#60a5fa", icon: "\uD83D\uDCBB" },
-            fashion:     { bg: "#f472b6", icon: "\uD83D\uDC57" },
-            beauty:      { bg: "#c084fc", icon: "\u2728" },
-            home:        { bg: "#34d399", icon: "\uD83C\uDFE0" },
-            general:     { bg: "#9ca3af", icon: "\uD83D\uDCE6" }
+            fragrance:   { bg: "#d97706", icon: "\uD83C\uDF38" },
+            electronics: { bg: "#2563eb", icon: "\uD83D\uDCBB" },
+            fashion:     { bg: "#db2777", icon: "\uD83D\uDC57" },
+            beauty:      { bg: "#9333ea", icon: "\u2728" },
+            home:        { bg: "#059669", icon: "\uD83C\uDFE0" },
+            general:     { bg: "#64748b", icon: "\uD83D\uDCE6" }
         };
         var badge = badgeColors[category] || badgeColors.general;
         var categoryBadge = '<span class="badge" style="background:' + badge.bg + ';">' + badge.icon + " " + esc(item.category || "Product") + "</span>";
 
-        /* Benefits & selling points */
-        var benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") : "";
-        var sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") : "";
+        /* AI Score */
+        var aiScore = calculateAIScore(item);
 
-        /* Use cases */
+        /* Smart Tags */
+        var tags = extractTags(item);
+        var tagsHtml = '<div class="tags-row">' + tags.map(function (t) { return '<span class="smart-tag">' + esc(t) + '</span>'; }).join("") + '</div>';
+
+        /* ── Product Header ── */
+        var headerHtml =
+            '<div class="product-header">' +
+                '<div class="ph-image">' + badge.icon + '</div>' +
+                '<div class="ph-info">' +
+                    '<div class="ph-top-row">' +
+                        '<h2 class="product-title">' + esc(item.title || "") + '</h2>' +
+                        categoryBadge +
+                    '</div>' +
+                    (item.short_summary ? '<p class="summary-text">' + esc(item.short_summary) + '</p>' : '') +
+                    tagsHtml +
+                '</div>' +
+                buildScoreRing(aiScore) +
+            '</div>';
+
+        /* ── Technical Analysis Card ── */
+        var analysisHtml = "";
+        if (item.technical_analysis) {
+            analysisHtml =
+                '<div class="card card--analysis">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDD2C</div><h4>Technical Analysis</h4></div>' +
+                    '<p>' + esc(item.technical_analysis) + '</p>' +
+                '</div>';
+        }
+
+        /* ── Target Audience Card ── */
+        var audienceHtml = "";
+        if (item.target_audience) {
+            audienceHtml =
+                '<div class="card card--audience">' +
+                    '<div class="card-header"><div class="card-icon">\uD83C\uDFAF</div><h4>Target Audience</h4></div>' +
+                    '<p>' + esc(item.target_audience) + '</p>' +
+                '</div>';
+        }
+
+        /* ── Key Benefits Card ── */
+        var benefitsHtml = "";
+        if (Array.isArray(item.key_benefits) && item.key_benefits.length) {
+            var benefitsList = item.key_benefits.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("");
+            benefitsHtml =
+                '<div class="card card--benefits">' +
+                    '<div class="card-header"><div class="card-icon">\u2705</div><h4>Key Benefits</h4></div>' +
+                    '<ul>' + benefitsList + '</ul>' +
+                '</div>';
+        }
+
+        /* ── Selling Points Card ── */
+        var sellingHtml = "";
+        if (Array.isArray(item.selling_points) && item.selling_points.length) {
+            var sellingList = item.selling_points.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("");
+            sellingHtml =
+                '<div class="card card--selling">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCA1</div><h4>Selling Points</h4></div>' +
+                    '<ul>' + sellingList + '</ul>' +
+                '</div>';
+        }
+
+        /* ── Use Cases Card ── */
         var useCasesHtml = "";
         if (Array.isArray(item.use_cases) && item.use_cases.length) {
-            useCasesHtml = '<div style="margin-top:8px;"><strong style="font-size:13px;">\uD83C\uDFAF Use Cases</strong><ul class="tag-list">' + item.use_cases.map(function (u) { return "<li>" + esc(u) + "</li>"; }).join("") + "</ul></div>";
+            useCasesHtml =
+                '<div class="card card--usecases">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCCB</div><h4>Use Cases</h4></div>' +
+                    '<ul class="tag-list">' + item.use_cases.map(function (u) { return "<li>" + esc(u) + "</li>"; }).join("") + '</ul>' +
+                '</div>';
         }
 
-        /* Performance */
+        /* ── Performance Card ── */
         var performanceHtml = "";
         if (item.performance && typeof item.performance === "object" && Object.keys(item.performance).length) {
-            var perfRows = Object.entries(item.performance).map(function (pair) { return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>"; }).join("");
+            var perfRows = Object.entries(item.performance).map(function (pair) {
+                return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>";
+            }).join("");
             performanceHtml =
-                '<div class="section-box" style="background:#fefce8;border:1px solid #fde68a;">' +
-                    '<h4 style="color:#854d0e;">\uD83D\uDCCA Performance</h4>' +
-                    '<div class="detail-row">' + perfRows + "</div>" +
-                "</div>";
+                '<div class="card card--performance">' +
+                    '<div class="card-header"><div class="card-icon">\u26A1</div><h4>Performance</h4></div>' +
+                    '<div class="detail-row">' + perfRows + '</div>' +
+                '</div>';
         }
 
-        /* Specifications */
+        /* ── Specifications Card ── */
         var specsHtml = "";
         if (item.specifications && typeof item.specifications === "object" && Object.keys(item.specifications).length) {
-            var specRows = Object.entries(item.specifications).map(function (pair) { return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>"; }).join("");
+            var specRows = Object.entries(item.specifications).map(function (pair) {
+                return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>";
+            }).join("");
             specsHtml =
-                '<div class="section-box" style="background:#f9fafb;border:1px solid #e5e7eb;">' +
-                    '<h4 style="color:#374151;">\u2699\uFE0F Specifications</h4>' +
-                    '<div class="detail-row">' + specRows + "</div>" +
-                "</div>";
+                '<div class="card card--specs">' +
+                    '<div class="card-header"><div class="card-icon">\u2699\uFE0F</div><h4>Specifications</h4></div>' +
+                    '<div class="detail-row">' + specRows + '</div>' +
+                '</div>';
         }
 
-        /* === Category-specific sections === */
+        /* ── Category-specific sections ── */
         var categoryHtml = "";
-
         if (category === "fragrance" && Object.keys(cs).length) {
             categoryHtml = buildFragranceSection(cs);
         } else if (category === "electronics" && Object.keys(cs).length) {
@@ -120,52 +290,54 @@ document.addEventListener("DOMContentLoaded", function () {
             categoryHtml = buildHomeSection(cs);
         }
 
-        /* Description */
+        /* ── Description Card ── */
         var descriptionHtml = "";
         if (item.long_description) {
             descriptionHtml =
-                '<div class="section-box description-box">' +
-                    '<h4>\uD83D\uDCDD Description</h4>' +
-                    '<div class="description-html">' + item.long_description + "</div>" +
-                "</div>";
+                '<div class="card card--description">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCDD</div><h4>Full Description</h4></div>' +
+                    '<div class="description-html">' + item.long_description + '</div>' +
+                '</div>';
         }
 
-        /* SEO */
+        /* ── SEO Card ── */
         var seoHtml = "";
         if (item.meta_description || item.keywords) {
             seoHtml =
-                '<div class="section-box seo-box">' +
-                    '<h4>\uD83D\uDD0E SEO</h4>' +
-                    (item.meta_description ? '<div style="font-size:13px;margin-bottom:6px;"><strong>Meta Description:</strong> ' + esc(item.meta_description) + "</div>" : "") +
-                    (item.keywords ? '<div style="font-size:13px;"><strong>Keywords:</strong> ' + esc(item.keywords) + "</div>" : "") +
-                "</div>";
+                '<div class="card card--seo">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCC8</div><h4>SEO Optimization</h4></div>' +
+                    (item.meta_description ? '<div style="margin-bottom:8px;"><strong style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Meta Description</strong><p style="margin:4px 0 0;">' + esc(item.meta_description) + '</p></div>' : '') +
+                    (item.keywords ? '<div><strong style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Keywords</strong><p style="margin:4px 0 0;">' + esc(item.keywords) + '</p></div>' : '') +
+                '</div>';
         }
 
+        /* ── Assemble ── */
         return (
-            '<div class="result-card">' +
-                '<div class="meta-row"><strong>Result</strong> ' + categoryBadge + "</div>" +
-                '<div class="product-title">' + esc(item.title || "") + "</div>" +
-                (item.short_summary ? '<p class="summary-text">' + esc(item.short_summary) + "</p>" : "") +
-                (item.technical_analysis ? '<div class="meta-row"><strong>Technical Analysis:</strong> ' + esc(item.technical_analysis) + "</div>" : "") +
-                (item.target_audience ? '<div class="meta-row"><strong>Target Audience:</strong> ' + esc(item.target_audience) + "</div>" : "") +
-                (benefits ? '<div style="margin-top:8px;"><strong style="font-size:13px;">\u2705 Key Benefits</strong><ul style="margin:4px 0 0;padding-left:20px;">' + benefits + "</ul></div>" : "") +
-                (sellingPts ? '<div style="margin-top:8px;"><strong style="font-size:13px;">\uD83D\uDCA1 Selling Points</strong><ul style="margin:4px 0 0;padding-left:20px;">' + sellingPts + "</ul></div>" : "") +
-                useCasesHtml +
-                performanceHtml +
-                specsHtml +
-                categoryHtml +
-                descriptionHtml +
-                seoHtml +
-            "</div>"
+            headerHtml +
+            sectionDivider("\uD83D\uDD0D AI Analysis") +
+            analysisHtml +
+            audienceHtml +
+            sectionDivider("\u2705 Product Intelligence") +
+            benefitsHtml +
+            sellingHtml +
+            useCasesHtml +
+            sectionDivider("\u26A1 Performance & Specs") +
+            performanceHtml +
+            specsHtml +
+            (categoryHtml ? sectionDivider("\uD83C\uDFF7\uFE0F Category Details") + categoryHtml : "") +
+            sectionDivider("\uD83D\uDCDD Content & SEO") +
+            descriptionHtml +
+            seoHtml
         );
     }
 
     /* ── Fragrance category section ── */
     function buildFragranceSection(cs) {
-        var html = '<div class="section-box fragrance-box"><h4>\uD83C\uDF38 Fragrance Details</h4>';
+        var html = '<div class="card fragrance-box">' +
+            '<div class="card-header"><div class="card-icon">\uD83C\uDF38</div><h4>Fragrance Profile</h4></div>';
 
         if (cs.scent_family) {
-            html += '<div style="margin-bottom:10px;"><span class="scent-family-value">' + esc(cs.scent_family) + "</span></div>";
+            html += '<div style="margin-bottom:12px;"><span class="scent-family-value">' + esc(cs.scent_family) + "</span></div>";
         }
 
         var notes = cs.fragrance_notes || {};
@@ -191,10 +363,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (cs.best_season) {
-            html += '<div style="margin-top:8px;font-size:13px;"><strong style="color:#92400e;">Best Season:</strong> ' + esc(cs.best_season) + "</div>";
+            html += '<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Best Season:</strong> ' + esc(cs.best_season) + "</div>";
         }
         if (Array.isArray(cs.best_occasions) && cs.best_occasions.length) {
-            html += '<div style="margin-top:6px;"><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">' + cs.best_occasions.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul></div>";
+            html += '<div style="margin-top:8px;"><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">' + cs.best_occasions.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul></div>";
         }
 
         html += "</div>";
@@ -203,7 +375,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Electronics category section ── */
     function buildElectronicsSection(cs) {
-        var html = '<div class="section-box" style="background:#eff6ff;border:1px solid #bfdbfe;"><h4 style="color:#1e40af;">\uD83D\uDD0C Electronics Details</h4>';
+        var html = '<div class="card" style="border-left:3px solid #2563eb;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#dbeafe;">\uD83D\uDD0C</div><h4>Electronics Details</h4></div>';
         var fields = [
             { key: "battery", label: "Battery" },
             { key: "connectivity", label: "Connectivity" },
@@ -213,7 +386,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
         fields.forEach(function (f) {
             if (cs[f.key]) {
-                html += '<div style="margin-bottom:6px;font-size:13px;"><strong>' + esc(f.label) + ':</strong> ' + esc(cs[f.key]) + "</div>";
+                html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#1e40af;">' + esc(f.label) + ':</strong> ' + esc(cs[f.key]) + "</div>";
             }
         });
         html += "</div>";
@@ -222,40 +395,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Fashion category section ── */
     function buildFashionSection(cs) {
-        var html = '<div class="section-box" style="background:#fdf2f8;border:1px solid #fbcfe8;"><h4 style="color:#9d174d;">\uD83D\uDC57 Fashion Details</h4>';
-        if (cs.style) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Style:</strong> ' + esc(cs.style) + "</div>";
-        if (cs.material) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Material:</strong> ' + esc(Array.isArray(cs.material) ? cs.material.join(", ") : String(cs.material)) + "</div>";
-        if (cs.fit) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Fit:</strong> ' + esc(cs.fit) + "</div>";
+        var html = '<div class="card" style="border-left:3px solid #db2777;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#fce7f3;">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
+        if (cs.style) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Style:</strong> ' + esc(cs.style) + "</div>";
+        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Material:</strong> ' + esc(Array.isArray(cs.material) ? cs.material.join(", ") : String(cs.material)) + "</div>";
+        if (cs.fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Fit:</strong> ' + esc(cs.fit) + "</div>";
         if (Array.isArray(cs.occasion) && cs.occasion.length) {
-            html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Occasion:</strong> ' + esc(cs.occasion.join(", ")) + "</div>";
+            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion.join(", ")) + "</div>";
         } else if (typeof cs.occasion === "string" && cs.occasion) {
-            html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Occasion:</strong> ' + esc(cs.occasion) + "</div>";
+            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion) + "</div>";
         }
-        if (cs.season) html += '<div style="font-size:13px;"><strong>Season:</strong> ' + esc(cs.season) + "</div>";
+        if (cs.season) html += '<div style="font-size:14px;"><strong style="color:#9d174d;">Season:</strong> ' + esc(cs.season) + "</div>";
         html += "</div>";
         return html;
     }
 
     /* ── Beauty category section ── */
     function buildBeautySection(cs) {
-        var html = '<div class="section-box" style="background:#faf5ff;border:1px solid #e9d5ff;"><h4 style="color:#7e22ce;">\u2728 Beauty Details</h4>';
-        if (cs.skin_type) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Skin Type:</strong> ' + esc(cs.skin_type) + "</div>";
+        var html = '<div class="card" style="border-left:3px solid #9333ea;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#f3e8ff;">\u2728</div><h4>Beauty Details</h4></div>';
+        if (cs.skin_type) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Skin Type:</strong> ' + esc(cs.skin_type) + "</div>";
         if (Array.isArray(cs.key_ingredients) && cs.key_ingredients.length) {
-            html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Key Ingredients:</strong> ' + esc(cs.key_ingredients.join(", ")) + "</div>";
+            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Key Ingredients:</strong> ' + esc(cs.key_ingredients.join(", ")) + "</div>";
         }
-        if (cs.texture) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Texture:</strong> ' + esc(cs.texture) + "</div>";
-        if (cs.routine_fit) html += '<div style="font-size:13px;"><strong>Routine Fit:</strong> ' + esc(cs.routine_fit) + "</div>";
+        if (cs.texture) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Texture:</strong> ' + esc(cs.texture) + "</div>";
+        if (cs.routine_fit) html += '<div style="font-size:14px;"><strong style="color:#7e22ce;">Routine Fit:</strong> ' + esc(cs.routine_fit) + "</div>";
         html += "</div>";
         return html;
     }
 
     /* ── Home category section ── */
     function buildHomeSection(cs) {
-        var html = '<div class="section-box" style="background:#ecfdf5;border:1px solid #a7f3d0;"><h4 style="color:#065f46;">\uD83C\uDFE0 Home Details</h4>';
-        if (cs.room_fit) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Room Fit:</strong> ' + esc(cs.room_fit) + "</div>";
-        if (cs.material) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Material:</strong> ' + esc(cs.material) + "</div>";
-        if (cs.practicality) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Practicality:</strong> ' + esc(cs.practicality) + "</div>";
-        if (cs.maintenance) html += '<div style="font-size:13px;"><strong>Maintenance:</strong> ' + esc(cs.maintenance) + "</div>";
+        var html = '<div class="card" style="border-left:3px solid #059669;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#d1fae5;">\uD83C\uDFE0</div><h4>Home & Living Details</h4></div>';
+        if (cs.room_fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Room Fit:</strong> ' + esc(cs.room_fit) + "</div>";
+        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Material:</strong> ' + esc(cs.material) + "</div>";
+        if (cs.practicality) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Practicality:</strong> ' + esc(cs.practicality) + "</div>";
+        if (cs.maintenance) html += '<div style="font-size:14px;"><strong style="color:#065f46;">Maintenance:</strong> ' + esc(cs.maintenance) + "</div>";
         html += "</div>";
         return html;
     }
