@@ -832,6 +832,7 @@ Description: {product.get("body_html", "")}
 '''.strip()
 
         result = analyze_product_with_ai(idea)
+        print("ANALYZER OUTPUT:", result)
 
         result.setdefault("category", "perfume / fragrance")
         result.setdefault("title", product.get("title", ""))
@@ -1294,7 +1295,6 @@ def optimize_product():
         "short_summary": result.get("short_summary", ""),
         "technical_analysis": result.get("technical_analysis", ""),
         "target_audience": result.get("target_audience", ""),
-        "ingredients_or_notes": result.get("ingredients_or_notes", ""),
         "key_benefits": result.get("key_benefits", []),
         "selling_points": result.get("selling_points", []),
         "long_description": long_desc,
@@ -1306,20 +1306,16 @@ def optimize_product():
         "has_ul": "<ul>" in long_desc.lower(),
         "li_count": long_desc.lower().count("<li>"),
         "contains_bullet_symbol": "•" in long_desc,
+        "scent_family": result.get("scent_family"),
+        "fragrance_notes": result.get("fragrance_notes"),
+        "scent_evolution": result.get("scent_evolution"),
+        "projection": result.get("projection"),
+        "longevity": result.get("longevity"),
+        "best_season": result.get("best_season"),
+        "best_occasions": result.get("best_occasions"),
+        "emotional_triggers": result.get("emotional_triggers"),
+        "luxury_description": result.get("luxury_description"),
     }
-
-    if result.get("is_fragrance"):
-        response_data.update({
-            "scent_family": result.get("scent_family", ""),
-            "fragrance_notes": result.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
-            "scent_evolution": result.get("scent_evolution", ""),
-            "projection": result.get("projection", ""),
-            "longevity": result.get("longevity", ""),
-            "best_season": result.get("best_season", ""),
-            "best_occasions": result.get("best_occasions", []),
-            "emotional_triggers": result.get("emotional_triggers", []),
-            "luxury_description": result.get("luxury_description", ""),
-        })
 
     return jsonify(response_data)
 
@@ -1421,7 +1417,6 @@ def optimize_all_products():
                 "short_summary": optimized.get("short_summary", ""),
                 "technical_analysis": optimized.get("technical_analysis", ""),
                 "target_audience": optimized.get("target_audience", ""),
-                "ingredients_or_notes": optimized.get("ingredients_or_notes", ""),
                 "key_benefits": optimized.get("key_benefits", []),
                 "selling_points": optimized.get("selling_points", []),
                 "new_description": long_desc,
