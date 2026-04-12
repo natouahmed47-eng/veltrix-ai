@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        messageEl.innerHTML = "Analyzing, please wait...";
+        messageEl.innerHTML = "\u23F3 Analyzing, please wait...";
         resultsEl.innerHTML = "";
         analyzeBtn.disabled = true;
 
@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            messageEl.innerHTML = '<div class="success">Analysis completed successfully!</div>';
+            messageEl.innerHTML = '<div class="success">\u2705 Analysis completed successfully!</div>';
             resultsEl.innerHTML = buildResultCard(data);
         } catch (error) {
             messageEl.innerHTML = '<div class="error">Connection error: ' + error.message + '</div>';
@@ -50,6 +50,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    /* ── Helpers ── */
+
     function esc(str) {
         if (!str) return "";
         var div = document.createElement("div");
@@ -57,33 +59,293 @@ document.addEventListener("DOMContentLoaded", function () {
         return div.innerHTML;
     }
 
+    /**
+     * Calculate an AI confidence score (80-95) from the richness of the data.
+     */
+    function calculateAIScore(item) {
+        var score = 80;
+        var perf = item.performance;
+        if (perf && typeof perf === "object" && Object.keys(perf).length) {
+            score += Math.min(Object.keys(perf).length, 3);
+        }
+        var benefits = item.key_benefits;
+        if (Array.isArray(benefits)) {
+            score += Math.min(benefits.length, 5);
+        }
+        var sp = item.selling_points;
+        if (Array.isArray(sp)) {
+            score += Math.min(sp.length, 3);
+        }
+        var uc = item.use_cases;
+        if (Array.isArray(uc) && uc.length) { score += 1; }
+        if (item.technical_analysis) { score += 1; }
+        if (item.category_specific && Object.keys(item.category_specific).length) { score += 2; }
+        return Math.min(score, 95);
+    }
+
+    /**
+     * Extract 3-5 smart tags from the product data to show as badges.
+     */
+    function extractTags(item) {
+        var tags = [];
+        var category = (item.category || "").toLowerCase();
+
+        /* Category-based tags */
+        var catLabels = {
+            fragrance: "Premium Scent",
+            electronics: "Tech Product",
+            fashion: "Fashion Item",
+            beauty: "Beauty Essential",
+            home: "Home & Living",
+            general: "Everyday Product"
+        };
+        tags.push(catLabels[category] || "Product");
+
+        /* Extract from benefits */
+        var benefits = item.key_benefits || [];
+        var selling = item.selling_points || [];
+        var pool = benefits.concat(selling);
+
+        var tagMap = [
+            { words: ["durable", "long-lasting", "sturdy", "robust", "quality"], label: "Durable" },
+            { words: ["luxury", "premium", "high-end", "exclusive"], label: "Luxury" },
+            { words: ["daily", "everyday", "routine", "regular"], label: "Best for daily use" },
+            { words: ["value", "affordable", "budget", "cost"], label: "Great Value" },
+            { words: ["portable", "compact", "lightweight", "travel"], label: "Portable" },
+            { words: ["eco", "sustainable", "natural", "organic"], label: "Eco-Friendly" },
+            { words: ["innovative", "smart", "advanced", "technology"], label: "Innovative" },
+            { words: ["comfort", "comfortable", "soft", "gentle"], label: "Comfortable" },
+            { words: ["versatile", "multi", "flexible", "adaptable"], label: "Versatile" }
+        ];
+
+        var poolStr = pool.join(" ").toLowerCase();
+        for (var i = 0; i < tagMap.length && tags.length < 5; i++) {
+            var match = tagMap[i];
+            for (var j = 0; j < match.words.length; j++) {
+                if (poolStr.indexOf(match.words[j]) !== -1) {
+                    tags.push(match.label);
+                    break;
+                }
+            }
+        }
+
+        /* Ensure at least 3 tags */
+        var fillers = ["AI Analyzed", "Full Report", "Detailed"];
+        for (var k = 0; k < fillers.length && tags.length < 3; k++) {
+            tags.push(fillers[k]);
+        }
+
+        return tags.slice(0, 5);
+    }
+
+    function formatMaterial(material) {
+        if (Array.isArray(material)) return material.join(", ");
+        return String(material || "");
+    }
+
+    function buildScoreRing(score) {
+        var circumference = 2 * Math.PI * 26;
+        var offset = circumference - (score / 100) * circumference;
+        var color = score >= 90 ? "#10b981" : score >= 85 ? "#3b82f6" : "#f59e0b";
+        return (
+            '<div class="ai-score">' +
+                '<svg viewBox="0 0 64 64">' +
+                    '<circle class="score-track" cx="32" cy="32" r="26" />' +
+                    '<circle class="score-fill" cx="32" cy="32" r="26" stroke="' + color + '" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + offset + '" transform="rotate(-90 32 32)" />' +
+                    '<text class="score-text" x="32" y="36" text-anchor="middle">' + score + '</text>' +
+                '</svg>' +
+                '<div class="score-label">AI Score</div>' +
+            '</div>'
+        );
+    }
+
+    function sectionDivider(label) {
+        return '<div class="section-divider">' + label + '</div>';
+    }
+
+    /* ── Main build function ── */
+
     function buildResultCard(item) {
         var category = (item.category || "").toLowerCase();
+        var cs = item.category_specific || {};
 
         /* Category badge */
         var badgeColors = {
-            fragrance:       { bg: "#fbbf24", icon: "\uD83C\uDF38" },
-            electronics:     { bg: "#60a5fa", icon: "\uD83D\uDCBB" },
-            fashion:         { bg: "#f472b6", icon: "\uD83D\uDC57" },
-            software:        { bg: "#a78bfa", icon: "\uD83D\uDDA5\uFE0F" },
-            business_idea:   { bg: "#34d399", icon: "\uD83D\uDCA1" },
-            generic_product: { bg: "#9ca3af", icon: "\uD83D\uDCE6" }
+            fragrance:   { bg: "#d97706", icon: "\uD83C\uDF38" },
+            electronics: { bg: "#2563eb", icon: "\uD83D\uDCBB" },
+            fashion:     { bg: "#db2777", icon: "\uD83D\uDC57" },
+            beauty:      { bg: "#9333ea", icon: "\u2728" },
+            home:        { bg: "#059669", icon: "\uD83C\uDFE0" },
+            general:     { bg: "#64748b", icon: "\uD83D\uDCE6" }
         };
-        var badge = badgeColors[category] || badgeColors.generic_product;
+        var badge = badgeColors[category] || badgeColors.general;
         var categoryBadge = '<span class="badge" style="background:' + badge.bg + ';">' + badge.icon + " " + esc(item.category || "Product") + "</span>";
 
-        /* Fragrance sections */
-        var scentFamilyHtml = "";
-        if (item.scent_family) {
-            scentFamilyHtml =
-                '<div class="section-box fragrance-box">' +
-                    '<h4>\uD83C\uDF3F Scent Family</h4>' +
-                    '<div class="scent-family-value">' + esc(item.scent_family) + "</div>" +
-                "</div>";
+        /* AI Score */
+        var aiScore = calculateAIScore(item);
+
+        /* Smart Tags */
+        var tags = extractTags(item);
+        var tagsHtml = '<div class="tags-row">' + tags.map(function (t) { return '<span class="smart-tag">' + esc(t) + '</span>'; }).join("") + '</div>';
+
+        /* ── Product Header ── */
+        var headerHtml =
+            '<div class="product-header">' +
+                '<div class="ph-image">' + badge.icon + '</div>' +
+                '<div class="ph-info">' +
+                    '<div class="ph-top-row">' +
+                        '<h2 class="product-title">' + esc(item.title || "") + '</h2>' +
+                        categoryBadge +
+                    '</div>' +
+                    (item.short_summary ? '<p class="summary-text">' + esc(item.short_summary) + '</p>' : '') +
+                    tagsHtml +
+                '</div>' +
+                buildScoreRing(aiScore) +
+            '</div>';
+
+        /* ── Technical Analysis Card ── */
+        var analysisHtml = "";
+        if (item.technical_analysis) {
+            analysisHtml =
+                '<div class="card card--analysis">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDD2C</div><h4>Technical Analysis</h4></div>' +
+                    '<p>' + esc(item.technical_analysis) + '</p>' +
+                '</div>';
         }
 
-        var fragranceNotesHtml = "";
-        var notes = item.fragrance_notes || {};
+        /* ── Target Audience Card ── */
+        var audienceHtml = "";
+        if (item.target_audience) {
+            audienceHtml =
+                '<div class="card card--audience">' +
+                    '<div class="card-header"><div class="card-icon">\uD83C\uDFAF</div><h4>Target Audience</h4></div>' +
+                    '<p>' + esc(item.target_audience) + '</p>' +
+                '</div>';
+        }
+
+        /* ── Key Benefits Card ── */
+        var benefitsHtml = "";
+        if (Array.isArray(item.key_benefits) && item.key_benefits.length) {
+            var benefitsList = item.key_benefits.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("");
+            benefitsHtml =
+                '<div class="card card--benefits">' +
+                    '<div class="card-header"><div class="card-icon">\u2705</div><h4>Key Benefits</h4></div>' +
+                    '<ul>' + benefitsList + '</ul>' +
+                '</div>';
+        }
+
+        /* ── Selling Points Card ── */
+        var sellingHtml = "";
+        if (Array.isArray(item.selling_points) && item.selling_points.length) {
+            var sellingList = item.selling_points.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("");
+            sellingHtml =
+                '<div class="card card--selling">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCA1</div><h4>Selling Points</h4></div>' +
+                    '<ul>' + sellingList + '</ul>' +
+                '</div>';
+        }
+
+        /* ── Use Cases Card ── */
+        var useCasesHtml = "";
+        if (Array.isArray(item.use_cases) && item.use_cases.length) {
+            useCasesHtml =
+                '<div class="card card--usecases">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCCB</div><h4>Use Cases</h4></div>' +
+                    '<ul class="tag-list">' + item.use_cases.map(function (u) { return "<li>" + esc(u) + "</li>"; }).join("") + '</ul>' +
+                '</div>';
+        }
+
+        /* ── Performance Card ── */
+        var performanceHtml = "";
+        if (item.performance && typeof item.performance === "object" && Object.keys(item.performance).length) {
+            var perfRows = Object.entries(item.performance).map(function (pair) {
+                return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>";
+            }).join("");
+            performanceHtml =
+                '<div class="card card--performance">' +
+                    '<div class="card-header"><div class="card-icon">\u26A1</div><h4>Performance</h4></div>' +
+                    '<div class="detail-row">' + perfRows + '</div>' +
+                '</div>';
+        }
+
+        /* ── Specifications Card ── */
+        var specsHtml = "";
+        if (item.specifications && typeof item.specifications === "object" && Object.keys(item.specifications).length) {
+            var specRows = Object.entries(item.specifications).map(function (pair) {
+                return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>";
+            }).join("");
+            specsHtml =
+                '<div class="card card--specs">' +
+                    '<div class="card-header"><div class="card-icon">\u2699\uFE0F</div><h4>Specifications</h4></div>' +
+                    '<div class="detail-row">' + specRows + '</div>' +
+                '</div>';
+        }
+
+        /* ── Category-specific sections ── */
+        var categoryHtml = "";
+        if (category === "fragrance" && Object.keys(cs).length) {
+            categoryHtml = buildFragranceSection(cs);
+        } else if (category === "electronics" && Object.keys(cs).length) {
+            categoryHtml = buildElectronicsSection(cs);
+        } else if (category === "fashion" && Object.keys(cs).length) {
+            categoryHtml = buildFashionSection(cs);
+        } else if (category === "beauty" && Object.keys(cs).length) {
+            categoryHtml = buildBeautySection(cs);
+        } else if (category === "home" && Object.keys(cs).length) {
+            categoryHtml = buildHomeSection(cs);
+        }
+
+        /* ── Description Card ── */
+        var descriptionHtml = "";
+        if (item.long_description) {
+            descriptionHtml =
+                '<div class="card card--description">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCDD</div><h4>Full Description</h4></div>' +
+                    '<div class="description-html">' + item.long_description + '</div>' +
+                '</div>';
+        }
+
+        /* ── SEO Card ── */
+        var seoHtml = "";
+        if (item.meta_description || item.keywords) {
+            seoHtml =
+                '<div class="card card--seo">' +
+                    '<div class="card-header"><div class="card-icon">\uD83D\uDCC8</div><h4>SEO Optimization</h4></div>' +
+                    (item.meta_description ? '<div style="margin-bottom:8px;"><strong style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Meta Description</strong><p style="margin:4px 0 0;">' + esc(item.meta_description) + '</p></div>' : '') +
+                    (item.keywords ? '<div><strong style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Keywords</strong><p style="margin:4px 0 0;">' + esc(item.keywords) + '</p></div>' : '') +
+                '</div>';
+        }
+
+        /* ── Assemble ── */
+        return (
+            headerHtml +
+            sectionDivider("\uD83D\uDD0D AI Analysis") +
+            analysisHtml +
+            audienceHtml +
+            sectionDivider("\u2705 Product Intelligence") +
+            benefitsHtml +
+            sellingHtml +
+            useCasesHtml +
+            sectionDivider("\u26A1 Performance & Specs") +
+            performanceHtml +
+            specsHtml +
+            (categoryHtml ? sectionDivider("\uD83C\uDFF7\uFE0F Category Details") + categoryHtml : "") +
+            sectionDivider("\uD83D\uDCDD Content & SEO") +
+            descriptionHtml +
+            seoHtml
+        );
+    }
+
+    /* ── Fragrance category section ── */
+    function buildFragranceSection(cs) {
+        var html = '<div class="card fragrance-box">' +
+            '<div class="card-header"><div class="card-icon">\uD83C\uDF38</div><h4>Fragrance Profile</h4></div>';
+
+        if (cs.scent_family) {
+            html += '<div style="margin-bottom:12px;"><span class="scent-family-value">' + esc(cs.scent_family) + "</span></div>";
+        }
+
+        var notes = cs.fragrance_notes || {};
         var hasNotes = (Array.isArray(notes.top) && notes.top.length) ||
                        (Array.isArray(notes.heart) && notes.heart.length) ||
                        (Array.isArray(notes.base) && notes.base.length);
@@ -91,181 +353,91 @@ document.addEventListener("DOMContentLoaded", function () {
             var topN = Array.isArray(notes.top) ? notes.top.join(", ") : "";
             var heartN = Array.isArray(notes.heart) ? notes.heart.join(", ") : "";
             var baseN = Array.isArray(notes.base) ? notes.base.join(", ") : "";
-            fragranceNotesHtml =
-                '<div class="section-box fragrance-box">' +
-                    '<h4>\uD83C\uDFB5 Fragrance Notes</h4>' +
-                    '<div class="notes-grid">' +
-                        (topN ? '<div class="note-card"><div class="note-label">Top Notes</div><div class="note-value">' + esc(topN) + "</div></div>" : "") +
-                        (heartN ? '<div class="note-card"><div class="note-label">Heart Notes</div><div class="note-value">' + esc(heartN) + "</div></div>" : "") +
-                        (baseN ? '<div class="note-card"><div class="note-label">Base Notes</div><div class="note-value">' + esc(baseN) + "</div></div>" : "") +
-                    "</div>" +
-                    (item.scent_evolution ? '<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Scent Evolution:</strong> ' + esc(item.scent_evolution) + "</div>" : "") +
-                "</div>";
+            html += '<div class="notes-grid">' +
+                (topN ? '<div class="note-card"><div class="note-label">Top Notes</div><div class="note-value">' + esc(topN) + "</div></div>" : "") +
+                (heartN ? '<div class="note-card"><div class="note-label">Heart Notes</div><div class="note-value">' + esc(heartN) + "</div></div>" : "") +
+                (baseN ? '<div class="note-card"><div class="note-label">Base Notes</div><div class="note-value">' + esc(baseN) + "</div></div>" : "") +
+            "</div>";
         }
 
-        var perfHtml = "";
-        if (item.projection || item.longevity) {
-            perfHtml =
-                '<div class="section-box fragrance-box">' +
-                    '<h4>\uD83D\uDCCA Performance</h4>' +
-                    '<div class="detail-row">' +
-                        (item.projection ? '<div class="detail-chip"><span class="chip-label">Projection</span>' + esc(item.projection) + "</div>" : "") +
-                        (item.longevity ? '<div class="detail-chip"><span class="chip-label">Longevity</span>' + esc(item.longevity) + "</div>" : "") +
-                    "</div>" +
-                "</div>";
+        if (cs.projection || cs.longevity) {
+            html += '<div class="detail-row">' +
+                (cs.projection ? '<div class="detail-chip"><span class="chip-label">Projection</span>' + esc(cs.projection) + "</div>" : "") +
+                (cs.longevity ? '<div class="detail-chip"><span class="chip-label">Longevity</span>' + esc(cs.longevity) + "</div>" : "") +
+            "</div>";
         }
 
-        var usageHtml = "";
-        if (item.best_season || (Array.isArray(item.best_occasions) && item.best_occasions.length)) {
-            usageHtml =
-                '<div class="section-box fragrance-box">' +
-                    '<h4>\uD83D\uDDD3\uFE0F Usage</h4>' +
-                    (item.best_season ? '<div style="margin-bottom:8px;"><strong style="font-size:13px;color:#92400e;">Best Season:</strong> <span style="font-size:13px;">' + esc(item.best_season) + "</span></div>" : "") +
-                    (Array.isArray(item.best_occasions) && item.best_occasions.length ? '<div><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">' + item.best_occasions.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul></div>" : "") +
-                "</div>";
+        if (cs.best_season) {
+            html += '<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Best Season:</strong> ' + esc(cs.best_season) + "</div>";
+        }
+        if (Array.isArray(cs.best_occasions) && cs.best_occasions.length) {
+            html += '<div style="margin-top:8px;"><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">' + cs.best_occasions.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul></div>";
         }
 
-        var emotionalHtml = "";
-        if (Array.isArray(item.emotional_triggers) && item.emotional_triggers.length) {
-            emotionalHtml =
-                '<div class="section-box fragrance-box">' +
-                    '<h4>\uD83D\uDCAB Emotional Profile</h4>' +
-                    '<ul class="tag-list">' + item.emotional_triggers.map(function (e) { return "<li>" + esc(e) + "</li>"; }).join("") + "</ul>" +
-                "</div>";
+        html += "</div>";
+        return html;
+    }
+
+    /* ── Electronics category section ── */
+    function buildElectronicsSection(cs) {
+        var html = '<div class="card" style="border-left:3px solid #2563eb;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#dbeafe;">\uD83D\uDD0C</div><h4>Electronics Details</h4></div>';
+        var fields = [
+            { key: "battery", label: "Battery" },
+            { key: "connectivity", label: "Connectivity" },
+            { key: "compatibility", label: "Compatibility" },
+            { key: "build_quality", label: "Build Quality" },
+            { key: "performance_level", label: "Performance Level" }
+        ];
+        fields.forEach(function (f) {
+            if (cs[f.key]) {
+                html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#1e40af;">' + esc(f.label) + ':</strong> ' + esc(cs[f.key]) + "</div>";
+            }
+        });
+        html += "</div>";
+        return html;
+    }
+
+    /* ── Fashion category section ── */
+    function buildFashionSection(cs) {
+        var html = '<div class="card" style="border-left:3px solid #db2777;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#fce7f3;">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
+        if (cs.style) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Style:</strong> ' + esc(cs.style) + "</div>";
+        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Material:</strong> ' + esc(formatMaterial(cs.material)) + "</div>";
+        if (cs.fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Fit:</strong> ' + esc(cs.fit) + "</div>";
+        if (Array.isArray(cs.occasion) && cs.occasion.length) {
+            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion.join(", ")) + "</div>";
+        } else if (typeof cs.occasion === "string" && cs.occasion) {
+            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion) + "</div>";
         }
+        if (cs.season) html += '<div style="font-size:14px;"><strong style="color:#9d174d;">Season:</strong> ' + esc(cs.season) + "</div>";
+        html += "</div>";
+        return html;
+    }
 
-        var luxuryHtml = "";
-        if (item.luxury_description) {
-            luxuryHtml = '<div style="margin-top:10px;font-size:13px;font-style:italic;color:#78350f;padding:10px 14px;background:#fffbeb;border-radius:8px;border:1px solid #fde68a;">' + esc(item.luxury_description) + "</div>";
+    /* ── Beauty category section ── */
+    function buildBeautySection(cs) {
+        var html = '<div class="card" style="border-left:3px solid #9333ea;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#f3e8ff;">\u2728</div><h4>Beauty Details</h4></div>';
+        if (cs.skin_type) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Skin Type:</strong> ' + esc(cs.skin_type) + "</div>";
+        if (Array.isArray(cs.key_ingredients) && cs.key_ingredients.length) {
+            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Key Ingredients:</strong> ' + esc(cs.key_ingredients.join(", ")) + "</div>";
         }
+        if (cs.texture) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Texture:</strong> ' + esc(cs.texture) + "</div>";
+        if (cs.routine_fit) html += '<div style="font-size:14px;"><strong style="color:#7e22ce;">Routine Fit:</strong> ' + esc(cs.routine_fit) + "</div>";
+        html += "</div>";
+        return html;
+    }
 
-        /* Electronics sections */
-        var specsHtml = "";
-        if (item.specs && typeof item.specs === "object" && Object.keys(item.specs).length) {
-            var specRows = Object.entries(item.specs).map(function (pair) { return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>"; }).join("");
-            specsHtml =
-                '<div class="section-box" style="background:#eff6ff;border:1px solid #bfdbfe;">' +
-                    '<h4 style="color:#1e40af;">\u2699\uFE0F Specifications</h4>' +
-                    '<div class="detail-row">' + specRows + "</div>" +
-                "</div>";
-        }
-
-        var prosHtml = "";
-        if (Array.isArray(item.pros) && item.pros.length) {
-            prosHtml = '<div style="margin-top:8px;"><strong style="font-size:13px;color:#166534;">\u2705 Pros</strong><ul style="margin:4px 0 0;padding-left:20px;">' + item.pros.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul></div>";
-        }
-
-        var consHtml = "";
-        if (Array.isArray(item.cons) && item.cons.length) {
-            consHtml = '<div style="margin-top:8px;"><strong style="font-size:13px;color:#991b1b;">\u26A0\uFE0F Cons</strong><ul style="margin:4px 0 0;padding-left:20px;">' + item.cons.map(function (c) { return "<li>" + esc(c) + "</li>"; }).join("") + "</ul></div>";
-        }
-
-        /* Fashion sections */
-        var fashionHtml = "";
-        if (item.style || item.fit || (Array.isArray(item.materials) && item.materials.length)) {
-            fashionHtml =
-                '<div class="section-box" style="background:#fdf2f8;border:1px solid #fbcfe8;">' +
-                    '<h4 style="color:#9d174d;">\uD83D\uDC57 Fashion Details</h4>' +
-                    (item.style ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Style:</strong> ' + esc(item.style) + "</div>" : "") +
-                    (item.fit ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Fit:</strong> ' + esc(item.fit) + "</div>" : "") +
-                    (Array.isArray(item.materials) && item.materials.length ? '<div style="font-size:13px;"><strong>Materials:</strong> ' + esc(item.materials.join(", ")) + "</div>" : "") +
-                "</div>";
-        }
-
-        /* Software sections */
-        var softwareHtml = "";
-        if (item.platform || (Array.isArray(item.features) && item.features.length)) {
-            softwareHtml =
-                '<div class="section-box" style="background:#f5f3ff;border:1px solid #ddd6fe;">' +
-                    '<h4 style="color:#5b21b6;">\uD83D\uDDA5\uFE0F Software Details</h4>' +
-                    (item.platform ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Platform:</strong> ' + esc(item.platform) + "</div>" : "") +
-                    (item.pricing_model ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Pricing:</strong> ' + esc(item.pricing_model) + "</div>" : "") +
-                    (Array.isArray(item.features) && item.features.length ? '<div style="font-size:13px;"><strong>Features:</strong><ul style="margin:4px 0 0;padding-left:20px;">' + item.features.map(function (f) { return "<li>" + esc(f) + "</li>"; }).join("") + "</ul></div>" : "") +
-                "</div>";
-        }
-
-        /* Business idea sections */
-        var businessHtml = "";
-        if (item.problem || item.solution || item.monetization) {
-            businessHtml =
-                '<div class="section-box" style="background:#ecfdf5;border:1px solid #a7f3d0;">' +
-                    '<h4 style="color:#065f46;">\uD83D\uDCA1 Business Analysis</h4>' +
-                    (item.problem ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Problem:</strong> ' + esc(item.problem) + "</div>" : "") +
-                    (item.solution ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Solution:</strong> ' + esc(item.solution) + "</div>" : "") +
-                    (item.monetization ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Monetization:</strong> ' + esc(item.monetization) + "</div>" : "") +
-                    (item.competitive_advantage ? '<div style="margin-bottom:6px;font-size:13px;"><strong>Competitive Advantage:</strong> ' + esc(item.competitive_advantage) + "</div>" : "") +
-                    (item.market_size ? '<div style="font-size:13px;"><strong>Market Size:</strong> ' + esc(item.market_size) + "</div>" : "") +
-                "</div>";
-        }
-
-        /* Generic specifications */
-        var genericSpecsHtml = "";
-        if (item.specifications && typeof item.specifications === "object" && Object.keys(item.specifications).length) {
-            var rows = Object.entries(item.specifications).map(function (pair) { return '<div class="detail-chip"><span class="chip-label">' + esc(pair[0]) + "</span>" + esc(String(pair[1])) + "</div>"; }).join("");
-            genericSpecsHtml =
-                '<div class="section-box" style="background:#f9fafb;border:1px solid #e5e7eb;">' +
-                    '<h4 style="color:#374151;">\uD83D\uDCCB Specifications</h4>' +
-                    '<div class="detail-row">' + rows + "</div>" +
-                "</div>";
-        }
-
-        /* Use cases */
-        var useCasesHtml = "";
-        if (Array.isArray(item.use_cases) && item.use_cases.length) {
-            useCasesHtml = '<div style="margin-top:8px;"><strong style="font-size:13px;">Use Cases</strong><ul class="tag-list">' + item.use_cases.map(function (u) { return "<li>" + esc(u) + "</li>"; }).join("") + "</ul></div>";
-        }
-
-        /* Benefits & selling points */
-        var benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(function (b) { return "<li>" + esc(b) + "</li>"; }).join("") : "";
-        var sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(function (s) { return "<li>" + esc(s) + "</li>"; }).join("") : "";
-
-        /* Description (rendered as HTML from backend) */
-        var descriptionHtml = "";
-        if (item.long_description) {
-            descriptionHtml =
-                '<div class="section-box description-box">' +
-                    '<h4>\uD83D\uDCDD Description</h4>' +
-                    '<div class="description-html">' + item.long_description + "</div>" +
-                "</div>";
-        }
-
-        /* SEO */
-        var seoHtml = "";
-        if (item.meta_description || item.keywords) {
-            seoHtml =
-                '<div class="section-box seo-box">' +
-                    '<h4>\uD83D\uDD0E SEO</h4>' +
-                    (item.meta_description ? '<div style="font-size:13px;margin-bottom:6px;"><strong>Meta Description:</strong> ' + esc(item.meta_description) + "</div>" : "") +
-                    (item.keywords ? '<div style="font-size:13px;"><strong>Keywords:</strong> ' + esc(item.keywords) + "</div>" : "") +
-                "</div>";
-        }
-
-        return (
-            '<div class="result-card">' +
-                '<div class="meta-row"><strong>Result</strong> ' + categoryBadge + "</div>" +
-                '<div class="product-title">' + esc(item.title || "") + "</div>" +
-                (item.short_summary ? '<p class="summary-text">' + esc(item.short_summary) + "</p>" : "") +
-                (item.technical_analysis ? '<div class="meta-row"><strong>Technical Analysis:</strong> ' + esc(item.technical_analysis) + "</div>" : "") +
-                (item.target_audience ? '<div class="meta-row"><strong>Target Audience:</strong> ' + esc(item.target_audience) + "</div>" : "") +
-                (benefits ? '<div style="margin-top:8px;"><strong style="font-size:13px;">Key Benefits</strong><ul style="margin:4px 0 0;padding-left:20px;">' + benefits + "</ul></div>" : "") +
-                (sellingPts ? '<div style="margin-top:8px;"><strong style="font-size:13px;">Selling Points</strong><ul style="margin:4px 0 0;padding-left:20px;">' + sellingPts + "</ul></div>" : "") +
-                scentFamilyHtml +
-                fragranceNotesHtml +
-                perfHtml +
-                usageHtml +
-                emotionalHtml +
-                luxuryHtml +
-                specsHtml +
-                prosHtml +
-                consHtml +
-                fashionHtml +
-                softwareHtml +
-                businessHtml +
-                genericSpecsHtml +
-                useCasesHtml +
-                descriptionHtml +
-                seoHtml +
-            "</div>"
-        );
+    /* ── Home category section ── */
+    function buildHomeSection(cs) {
+        var html = '<div class="card" style="border-left:3px solid #059669;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#d1fae5;">\uD83C\uDFE0</div><h4>Home & Living Details</h4></div>';
+        if (cs.room_fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Room Fit:</strong> ' + esc(cs.room_fit) + "</div>";
+        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Material:</strong> ' + esc(cs.material) + "</div>";
+        if (cs.practicality) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Practicality:</strong> ' + esc(cs.practicality) + "</div>";
+        if (cs.maintenance) html += '<div style="font-size:14px;"><strong style="color:#065f46;">Maintenance:</strong> ' + esc(cs.maintenance) + "</div>";
+        html += "</div>";
+        return html;
     }
 });
