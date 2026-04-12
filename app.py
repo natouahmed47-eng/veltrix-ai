@@ -606,6 +606,164 @@ Description: {description}
     }
 
 
+def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
+    """Fill any missing, empty, or weak values with inferred expert-level content.
+
+    Ensures zero empty strings, zero empty arrays, and zero forbidden phrases
+    in the final output.
+    """
+    idea_lower = idea.lower()
+
+    # --- Detect fragrance signals for inference ---
+    has_parfum = "parfum" in idea_lower
+    has_oud = "oud" in idea_lower
+    has_spicy = "spicy" in idea_lower or "spice" in idea_lower
+    luxury_brands = [
+        "tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
+        "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
+        "initio", "parfums de marly", "nishane", "tiziana terenzi",
+    ]
+    is_luxury = any(b in idea_lower for b in luxury_brands)
+
+    # --- Determine inferred defaults based on product signals ---
+    if has_oud:
+        default_family = "Likely woody-oriental"
+        default_top = ["Likely: saffron", "Likely: bergamot"]
+        default_heart = ["Likely: oud", "Likely: rose"]
+        default_base = ["Likely: sandalwood", "Likely: musk", "Likely: amber"]
+        default_evolution = "Likely opens with bright spiced accords, evolving into a deep oud-rose heart, settling into a warm woody-ambery base"
+        default_projection = "Likely strong projection given oud concentration"
+        default_longevity = "Likely long-lasting (8–12 hours) due to oud and resinous base"
+        default_season = "Likely fall/winter — ideal for cooler temperatures"
+        default_occasions = ["Likely evening events", "Likely formal occasions", "Likely special occasions"]
+        default_emotions = ["confidence", "sophistication", "mystique", "power"]
+    elif has_spicy:
+        default_family = "Likely warm spicy"
+        default_top = ["Likely: black pepper", "Likely: cardamom"]
+        default_heart = ["Likely: cinnamon", "Likely: nutmeg"]
+        default_base = ["Likely: vanilla", "Likely: tonka bean", "Likely: amber"]
+        default_evolution = "Likely opens with peppery spice, transitions into warm aromatic heart, dries down to sweet balsamic base"
+        default_projection = "Likely moderate to strong projection"
+        default_longevity = "Likely moderate to long-lasting (6–10 hours)"
+        default_season = "Likely fall/winter — warm spicy profiles suit cool weather"
+        default_occasions = ["Likely evening wear", "Likely date nights", "Likely social gatherings"]
+        default_emotions = ["warmth", "seduction", "boldness", "charisma"]
+    elif has_parfum:
+        default_family = "Likely a concentrated fragrance composition"
+        default_top = ["Likely: citrus accord", "Likely: aromatic opening"]
+        default_heart = ["Likely: floral or woody heart"]
+        default_base = ["Likely: musk", "Likely: amber", "Likely: woods"]
+        default_evolution = "Likely a rich, evolving composition with strong sillage due to parfum concentration"
+        default_projection = "Likely strong projection due to parfum concentration"
+        default_longevity = "Likely long-lasting (10+ hours) — parfum concentration ensures endurance"
+        default_season = "Likely versatile across seasons with parfum intensity"
+        default_occasions = ["Likely formal events", "Likely evening occasions", "Likely signature scent"]
+        default_emotions = ["luxury", "confidence", "presence", "elegance"]
+    elif is_luxury:
+        default_family = "Likely a complex, artisan fragrance composition"
+        default_top = ["Likely: refined citrus or spice opening"]
+        default_heart = ["Likely: rare florals or precious woods"]
+        default_base = ["Likely: ambergris", "Likely: musk", "Likely: precious woods"]
+        default_evolution = "Likely a multi-layered evolution reflecting luxury craftsmanship and rare ingredients"
+        default_projection = "Likely moderate to strong — crafted for presence"
+        default_longevity = "Likely long-lasting (8+ hours) — luxury formulation ensures endurance"
+        default_season = "Likely versatile — designed for year-round sophistication"
+        default_occasions = ["Likely exclusive events", "Likely fine dining", "Likely professional settings"]
+        default_emotions = ["prestige", "exclusivity", "refinement", "dominance"]
+    else:
+        default_family = "Likely a balanced fragrance composition"
+        default_top = ["Likely: fresh aromatic opening"]
+        default_heart = ["Likely: floral or woody heart accord"]
+        default_base = ["Likely: musk", "Likely: cedarwood"]
+        default_evolution = "Likely a balanced scent journey from fresh opening to warm, lasting dry-down"
+        default_projection = "Likely moderate projection"
+        default_longevity = "Likely moderate longevity (4–6 hours)"
+        default_season = "Likely spring/summer — suitable for warmer weather"
+        default_occasions = ["Likely daily wear", "Likely casual outings", "Likely office appropriate"]
+        default_emotions = ["freshness", "approachability", "confidence"]
+
+    # --- Enforce mandatory string fields ---
+    string_defaults = {
+        "scent_family": default_family,
+        "scent_evolution": default_evolution,
+        "projection": default_projection,
+        "longevity": default_longevity,
+        "best_season": default_season,
+        "luxury_description": f"Likely a distinguished composition crafted for the discerning individual — {idea[:80]}",
+        "short_summary": f"Likely an expertly crafted product with distinctive character — {idea[:80]}",
+        "technical_analysis": f"Likely a well-structured composition balancing key accords — {idea[:80]}",
+        "target_audience": "Likely discerning individuals who value quality and distinction",
+        "meta_description": idea[:150] if idea else "Expertly crafted luxury product",
+        "keywords": idea[:100] if idea else "luxury, premium, quality",
+        "category": "fragrance" if any(k in idea_lower for k in ["perfume", "parfum", "fragrance", "cologne", "oud", "eau de"]) else "general ecommerce product",
+    }
+
+    for field, fallback in string_defaults.items():
+        val = data.get(field)
+        if not val or (isinstance(val, str) and not val.strip()):
+            data[field] = fallback
+
+    # --- Enforce mandatory list fields ---
+    list_defaults = {
+        "best_occasions": default_occasions,
+        "emotional_triggers": default_emotions,
+        "key_benefits": ["Likely premium quality formulation", "Likely distinctive character", "Likely lasting impression"],
+        "selling_points": ["Likely expert craftsmanship", "Likely unique composition", "Likely luxurious experience"],
+    }
+
+    for field, fallback in list_defaults.items():
+        val = data.get(field)
+        if not val or (isinstance(val, list) and len(val) == 0):
+            data[field] = fallback
+
+    # --- Enforce fragrance_notes (nested dict with top/heart/base) ---
+    notes = data.get("fragrance_notes")
+    if not isinstance(notes, dict):
+        notes = {"top": [], "heart": [], "base": []}
+        data["fragrance_notes"] = notes
+
+    if not notes.get("top"):
+        notes["top"] = default_top
+    if not notes.get("heart"):
+        notes["heart"] = default_heart
+    if not notes.get("base"):
+        notes["base"] = default_base
+    data["fragrance_notes"] = notes
+
+    # --- Ensure long_description is non-empty ---
+    if not data.get("long_description") or not data["long_description"].strip():
+        data["long_description"] = f"<p>{idea}</p>"
+
+    # --- Ensure title is non-empty ---
+    if not data.get("title") or not data["title"].strip():
+        data["title"] = idea
+
+    # --- Final pass: scan all string fields for any remaining forbidden phrases ---
+    _final_banned_re = re.compile(
+        r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
+        re.IGNORECASE,
+    )
+
+    def _final_scrub(value):
+        if isinstance(value, str):
+            if _final_banned_re.search(value):
+                cleaned = _final_banned_re.sub("inferred from product positioning", value)
+                while "  " in cleaned:
+                    cleaned = cleaned.replace("  ", " ")
+                return cleaned.strip()
+            return value
+        if isinstance(value, list):
+            result = [_final_scrub(v) for v in value]
+            return result if result else ["Likely relevant based on product context"]
+        if isinstance(value, dict):
+            return {k: _final_scrub(v) for k, v in value.items()}
+        return value
+
+    data = _final_scrub(data)
+
+    return data
+
+
 def analyze_product_with_ai(idea: str) -> dict:
     """Analyze a product concept and return structured high-end product content.
 
@@ -625,7 +783,7 @@ However, you are also a domain expert.
 If information is explicitly present, use it exactly.
 If information is missing, infer only when there is a strong logical signal.
 Use realistic domain knowledge, not fantasy.
-NEVER say "not specified", "unavailable", or "cannot be determined".
+NEVER say "not specified", "not provided", "unavailable", "cannot be determined", or "no data".
 If something is unknown, infer it with domain expertise and prefix with "Likely".
 
 ---
@@ -647,7 +805,7 @@ CRITICAL RULES:
    - infer missing details only when there is a strong logical signal from the input or domain expertise
    - prefix inferred values with "Likely" (e.g. "Likely woody-oriental", "Likely moderate to strong projection")
 5) You MUST NOT:
-   - EVER use the phrases "not specified", "unavailable", or "cannot be determined" — use domain inference with "Likely" prefix instead
+   - EVER use the phrases "not specified", "not provided", "unavailable", "cannot be determined", or "no data" — use domain inference with "Likely" prefix instead
    - produce empty or placeholder analysis — every field should contain useful expert insight
    - use generic marketing filler (e.g. "luxurious fragrance", "captivating scent", "timeless elegance")
    - produce output that contains zero insight — that is wrong
@@ -741,7 +899,7 @@ RULES:
 - DO NOT fully invent details with no basis — but DO use domain expertise to fill gaps when logically supported
 - Prefix inferred items with "Likely" or "Likely:" (e.g. "Likely woody-oriental", "Likely: bergamot")
 - Do NOT use vague filler words or generic phrases: "luxurious fragrance", "captivating scent", "timeless elegance", "ultimate", "premium", "amazing"
-- NEVER use "not specified", "unavailable", "cannot be determined", or similar phrases — always provide expert inference with "Likely" prefix instead
+- NEVER use "not specified", "not provided", "unavailable", "cannot be determined", "no data", or similar phrases — always provide expert inference with "Likely" prefix instead
 - If output contains zero insight, it is wrong
 - If output is fully invented, it is wrong
 - Balance accuracy with expert reasoning
@@ -766,7 +924,7 @@ RULES:
                         "You must strictly respect the provided product content. "
                         "If information is explicitly present, use it exactly. "
                         "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
-                        "NEVER output 'not specified', 'unavailable', or 'cannot be determined' — always infer with 'Likely' prefix instead. "
+                        "NEVER output 'not specified', 'not provided', 'unavailable', 'cannot be determined', or 'no data' — always infer with 'Likely' prefix instead. "
                         "Produce useful expert analysis — zero-insight output is wrong, fully-invented output is wrong. "
                         "You return clean, structured JSON only — no markdown, no code fences, no extra text."
                     ),
@@ -836,22 +994,51 @@ RULES:
 
         # --- Strip banned phrases from ALL string values -------------------
         _banned_re = re.compile(
-            r"\b(not specified|unavailable|cannot be determined)\b",
+            r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
             re.IGNORECASE,
         )
 
-        def _scrub(value):
-            """Recursively remove banned phrases from strings."""
+        # Determine fragrance signals from the original input for inference
+        _idea_lower = idea.lower()
+        _has_parfum = "parfum" in _idea_lower
+        _has_oud = "oud" in _idea_lower
+        _has_spicy = "spicy" in _idea_lower or "spice" in _idea_lower
+        _luxury_brands = ["tom ford", "dior", "chanel", "creed", "maison francis kurkdjian",
+                          "byredo", "le labo", "amouage", "xerjoff", "roja", "clive christian",
+                          "initio", "parfums de marly", "nishane", "tiziana terenzi"]
+        _is_luxury = any(b in _idea_lower for b in _luxury_brands)
+
+        def _infer_replacement(field_context: str = "") -> str:
+            """Generate an intelligent inference replacement based on fragrance signals."""
+            ctx = field_context.lower()
+            if _has_oud:
+                return "Likely a rich woody-oriental composition with oud prominence"
+            if _has_spicy:
+                return "Likely a warm spicy profile with aromatic depth"
+            if _has_parfum:
+                return "Likely a concentrated composition with strong sillage and longevity"
+            if _is_luxury:
+                return "Likely a complex, multi-layered composition reflecting luxury craftsmanship"
+            return "Likely a balanced, well-crafted composition based on fragrance positioning"
+
+        def _scrub(value, field_name=""):
+            """Recursively replace banned phrases with intelligent inferences."""
             if isinstance(value, str):
-                scrubbed = _banned_re.sub("", value)
-                # Collapse any double-spaces left after removal.
-                while "  " in scrubbed:
-                    scrubbed = scrubbed.replace("  ", " ")
-                return scrubbed.strip()
+                if _banned_re.search(value):
+                    # If the entire string is essentially just a banned phrase, replace fully
+                    stripped_check = _banned_re.sub("", value).strip(" .,;:-–—")
+                    if not stripped_check or len(stripped_check) < 5:
+                        return _infer_replacement(field_name)
+                    # Otherwise replace inline
+                    scrubbed = _banned_re.sub("inferred from product context", value)
+                    while "  " in scrubbed:
+                        scrubbed = scrubbed.replace("  ", " ")
+                    return scrubbed.strip()
+                return value
             if isinstance(value, list):
-                return [_scrub(v) for v in value]
+                return [_scrub(v, field_name) for v in value]
             if isinstance(value, dict):
-                return {k: _scrub(v) for k, v in value.items()}
+                return {k: _scrub(v, k) for k, v in value.items()}
             return value
 
         data = _scrub(data)
@@ -889,9 +1076,10 @@ RULES:
         data.setdefault("best_occasions", frag.get("best_occasions", []))
         data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
 
+        data = enforce_no_empty_fields(data, idea)
         return data
 
-    return {
+    fallback = {
         "category": "",
         "title": idea,
         "short_summary": "",
@@ -912,6 +1100,7 @@ RULES:
         "meta_description": "",
         "keywords": idea,
     }
+    return enforce_no_empty_fields(fallback, idea)
 
 
 def looks_like_fragrance(product):
