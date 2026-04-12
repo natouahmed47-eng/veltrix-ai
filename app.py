@@ -969,24 +969,40 @@ Rules:
             print(f"analyze_product_with_ai: API call failed, retrying: {exc}")
             continue
 
-        raw_text = response.choices[0].message.content if response.choices else ""
-        if not raw_text:
+        content = response.choices[0].message.content
+        if not content:
             continue
 
-        cleaned = raw_text.strip().replace("\u200b", "").replace("\ufeff", "")
+        cleaned = content.strip()
 
-        if cleaned.startswith("```json"):
-            cleaned = cleaned[7:]
-        elif cleaned.startswith("```"):
-            cleaned = cleaned[3:]
-        if cleaned.endswith("```"):
-            cleaned = cleaned[:-3]
+        # Remove code block markers if present
+        cleaned = re.sub(r"^```json", "", cleaned)
+        cleaned = re.sub(r"```$", "", cleaned)
         cleaned = cleaned.strip()
 
         try:
             data = json.loads(cleaned)
-        except (ValueError, json.JSONDecodeError):
-            continue
+        except Exception as e:
+            print("JSON PARSE ERROR:", str(e))
+            print("RAW OUTPUT:", content)
+
+            # fallback safe structure
+            data = {
+                "title": idea,
+                "short_summary": cleaned[:200],
+                "scent_family": "Likely woody-oriental",
+                "fragrance_notes": {"top": [], "heart": [], "base": []},
+                "scent_evolution": cleaned,
+                "projection": "Likely medium to strong",
+                "longevity": "Likely long-lasting",
+                "best_season": "Evening",
+                "best_occasions": ["Formal"],
+                "emotional_triggers": ["Confidence"],
+                "luxury_description": cleaned,
+                "long_description": cleaned,
+                "meta_description": cleaned[:150],
+                "keywords": idea
+            }
 
         if not isinstance(data, dict):
             continue
