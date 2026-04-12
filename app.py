@@ -1076,15 +1076,35 @@ RULES:
         data.setdefault("best_occasions", frag.get("best_occasions", []))
         data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
 
-        data = enforce_no_empty_fields(data, idea)
-        return data
+        # --- Construct the mandatory structured output dict ---
+        # Guarantees every required field is present with the correct type,
+        # regardless of what the AI actually returned.
+        output = {
+            "title": data.get("title", idea),
+            "short_summary": data.get("short_summary", ""),
+            "scent_family": data.get("scent_family", ""),
+            "fragrance_notes": data.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+            "scent_evolution": data.get("scent_evolution", ""),
+            "projection": data.get("projection", ""),
+            "longevity": data.get("longevity", ""),
+            "best_season": data.get("best_season", ""),
+            "best_occasions": data.get("best_occasions", []),
+            "emotional_triggers": data.get("emotional_triggers", []),
+            "luxury_description": data.get("luxury_description", ""),
+            "long_description": data.get("long_description", ""),
+            "meta_description": data.get("meta_description", ""),
+            "keywords": data.get("keywords", ""),
+            "category": data.get("category", ""),
+            "technical_analysis": data.get("technical_analysis", ""),
+            "target_audience": data.get("target_audience", ""),
+            "key_benefits": data.get("key_benefits", []),
+            "selling_points": data.get("selling_points", []),
+        }
+        return enforce_no_empty_fields(output, idea)
 
     fallback = {
-        "category": "",
         "title": idea,
         "short_summary": "",
-        "technical_analysis": "",
-        "target_audience": "",
         "scent_family": "",
         "fragrance_notes": {"top": [], "heart": [], "base": []},
         "scent_evolution": "",
@@ -1093,12 +1113,15 @@ RULES:
         "best_season": "",
         "best_occasions": [],
         "emotional_triggers": [],
-        "key_benefits": [],
-        "selling_points": [],
         "luxury_description": "",
         "long_description": f"<p>{idea}</p>",
         "meta_description": "",
         "keywords": idea,
+        "category": "",
+        "technical_analysis": "",
+        "target_audience": "",
+        "key_benefits": [],
+        "selling_points": [],
     }
     return enforce_no_empty_fields(fallback, idea)
 
