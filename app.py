@@ -1458,6 +1458,150 @@ def settings_page():
             padding: 2px 6px;
             border-radius: 6px;
         }
+        /* ── Result card styles ── */
+        .result-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 20px;
+            margin-top: 18px;
+            background: #fff;
+        }
+        .result-card .product-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 6px 0 10px;
+            color: #1e293b;
+        }
+        .result-card .badge {
+            display: inline-block;
+            background: #fbbf24;
+            color: #000;
+            padding: 3px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        .result-card .summary-text {
+            font-size: 15px;
+            color: #374151;
+            line-height: 1.6;
+            margin: 8px 0 14px;
+        }
+        .result-card .meta-row {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .result-card .meta-row strong {
+            color: #374151;
+        }
+        .section-box {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 12px;
+        }
+        .section-box h4 {
+            margin: 0 0 10px;
+            font-size: 15px;
+        }
+        .fragrance-box {
+            background: #fdf6ec;
+            border: 1px solid #f5d89a;
+        }
+        .fragrance-box h4 { color: #92400e; }
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .note-card {
+            background: #fff;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .note-card .note-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+        .note-card .note-value {
+            font-size: 13px;
+            color: #1e293b;
+        }
+        .detail-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .detail-chip {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        .detail-chip .chip-label {
+            font-weight: 700;
+            color: #92400e;
+            font-size: 11px;
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 2px;
+        }
+        .tag-list {
+            list-style: none;
+            padding: 0;
+            margin: 6px 0 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .tag-list li {
+            background: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 13px;
+            color: #78350f;
+        }
+        .description-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+        }
+        .description-box h4 { color: #1e293b; }
+        .description-html {
+            font-size: 14px;
+            line-height: 1.7;
+            color: #374151;
+        }
+        .description-html ul {
+            padding-left: 20px;
+            margin: 10px 0;
+        }
+        .description-html li {
+            margin-bottom: 6px;
+        }
+        .diagnostics-row {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #9ca3af;
+            background: #f9fafb;
+            padding: 6px 10px;
+            border-radius: 6px;
+        }
+        .seo-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        .seo-box h4 { color: #166534; }
     </style>
 </head>
 <body>
@@ -1545,61 +1689,120 @@ def settings_page():
                     const benefits = Array.isArray(item.key_benefits) ? item.key_benefits.map(b => `<li>${b}</li>`).join("") : "";
                     const sellingPts = Array.isArray(item.selling_points) ? item.selling_points.map(s => `<li>${s}</li>`).join("") : "";
 
+                    /* ── Fragrance profile section ── */
                     let fragranceHtml = "";
-                    if (item.is_fragrance) {
-                        const notes = item.fragrance_notes || {};
+                    const notes = item.fragrance_notes || {};
+                    const hasNotes = (Array.isArray(notes.top) && notes.top.length) ||
+                                     (Array.isArray(notes.heart) && notes.heart.length) ||
+                                     (Array.isArray(notes.base) && notes.base.length);
+                    const hasFragranceData = item.scent_family || hasNotes || item.projection || item.longevity || item.best_season;
+
+                    if (hasFragranceData) {
                         const topNotes = Array.isArray(notes.top) ? notes.top.join(", ") : "";
                         const heartNotes = Array.isArray(notes.heart) ? notes.heart.join(", ") : "";
                         const baseNotes = Array.isArray(notes.base) ? notes.base.join(", ") : "";
-                        const occasions = Array.isArray(item.best_occasions) ? item.best_occasions.join(", ") : "";
-                        const emotions = Array.isArray(item.emotional_triggers) ? item.emotional_triggers.join(", ") : "";
+
+                        let notesGrid = "";
+                        if (hasNotes) {
+                            notesGrid = `<div class="notes-grid">
+                                ${topNotes ? `<div class="note-card"><div class="note-label">Top Notes</div><div class="note-value">${topNotes}</div></div>` : ""}
+                                ${heartNotes ? `<div class="note-card"><div class="note-label">Heart Notes</div><div class="note-value">${heartNotes}</div></div>` : ""}
+                                ${baseNotes ? `<div class="note-card"><div class="note-label">Base Notes</div><div class="note-value">${baseNotes}</div></div>` : ""}
+                            </div>`;
+                        }
+
+                        let detailChips = `<div class="detail-row">`;
+                        if (item.scent_family) detailChips += `<div class="detail-chip"><span class="chip-label">Scent Family</span>${item.scent_family}</div>`;
+                        if (item.projection) detailChips += `<div class="detail-chip"><span class="chip-label">Projection</span>${item.projection}</div>`;
+                        if (item.longevity) detailChips += `<div class="detail-chip"><span class="chip-label">Longevity</span>${item.longevity}</div>`;
+                        if (item.best_season) detailChips += `<div class="detail-chip"><span class="chip-label">Best Season</span>${item.best_season}</div>`;
+                        detailChips += `</div>`;
+
+                        let occasionsList = "";
+                        if (Array.isArray(item.best_occasions) && item.best_occasions.length) {
+                            occasionsList = `<div style="margin-top:10px;"><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">${item.best_occasions.map(o => `<li>${o}</li>`).join("")}</ul></div>`;
+                        }
+
+                        let emotionsList = "";
+                        if (Array.isArray(item.emotional_triggers) && item.emotional_triggers.length) {
+                            emotionsList = `<div style="margin-top:10px;"><strong style="font-size:13px;color:#92400e;">Emotional Triggers</strong><ul class="tag-list">${item.emotional_triggers.map(e => `<li>${e}</li>`).join("")}</ul></div>`;
+                        }
+
+                        let scentEvolution = "";
+                        if (item.scent_evolution) {
+                            scentEvolution = `<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Scent Evolution:</strong> ${item.scent_evolution}</div>`;
+                        }
+
+                        let luxuryDesc = "";
+                        if (item.luxury_description) {
+                            luxuryDesc = `<div style="margin-top:10px;font-size:13px;font-style:italic;color:#78350f;">${item.luxury_description}</div>`;
+                        }
 
                         fragranceHtml = `
-                            <div style="margin-top:10px; padding:12px; background:#fdf6ec; border:1px solid #f5d89a; border-radius:10px;">
-                                <div style="font-weight:bold; font-size:15px; margin-bottom:8px;">🌸 Fragrance Profile</div>
-                                <div><strong>Scent Family:</strong> ${item.scent_family ?? ""}</div>
-                                <div><strong>Top Notes:</strong> ${topNotes}</div>
-                                <div><strong>Heart Notes:</strong> ${heartNotes}</div>
-                                <div><strong>Base Notes:</strong> ${baseNotes}</div>
-                                <div><strong>Projection:</strong> ${item.projection ?? ""}</div>
-                                <div><strong>Longevity:</strong> ${item.longevity ?? ""}</div>
-                                <div><strong>Best Season:</strong> ${item.best_season ?? ""}</div>
-                                <div><strong>Best Occasions:</strong> ${occasions}</div>
-                                <div><strong>Emotional Triggers:</strong> ${emotions}</div>
-                                <div><strong>Scent Evolution:</strong> ${item.scent_evolution ?? ""}</div>
-                                <div style="margin-top:8px;"><strong>Luxury Description:</strong><br>${item.luxury_description ?? ""}</div>
+                            <div class="section-box fragrance-box">
+                                <h4>🌸 Fragrance Analysis</h4>
+                                ${notesGrid}
+                                ${detailChips}
+                                ${occasionsList}
+                                ${emotionsList}
+                                ${scentEvolution}
+                                ${luxuryDesc}
+                            </div>
+                        `;
+                    }
+
+                    /* ── Description section (rendered as HTML) ── */
+                    let descriptionHtml = "";
+                    if (item.new_description) {
+                        descriptionHtml = `
+                            <div class="section-box description-box">
+                                <h4>📝 Product Description</h4>
+                                <div class="description-html">${item.new_description}</div>
+                            </div>
+                        `;
+                    }
+
+                    /* ── SEO section ── */
+                    let seoHtml = "";
+                    if (item.meta_description_preview || item.keywords) {
+                        seoHtml = `
+                            <div class="section-box seo-box">
+                                <h4>🔎 SEO</h4>
+                                ${item.meta_description_preview ? `<div style="font-size:13px;margin-bottom:6px;"><strong>Meta Description:</strong> ${item.meta_description_preview}</div>` : ""}
+                                ${item.keywords ? `<div style="font-size:13px;"><strong>Keywords:</strong> ${item.keywords}</div>` : ""}
                             </div>
                         `;
                     }
 
                     html += `
-                        <div style="border:1px solid #e5e7eb; border-radius:12px; padding:14px; margin-top:14px; background:#fff;">
-                            <div><strong>#${index + 1}</strong> ${item.is_fragrance ? '<span style="background:#fbbf24;color:#000;padding:2px 8px;border-radius:6px;font-size:12px;">🌸 Fragrance</span>' : ''}</div>
-                            <div><strong>Product ID:</strong> ${item.product_id ?? ""}</div>
-                            <div><strong>Old Title:</strong> ${item.old_title ?? ""}</div>
-                            <div><strong>New Title:</strong> ${item.new_title ?? ""}</div>
-                            <div><strong>Category:</strong> ${item.category ?? ""}</div>
-                            <div><strong>Short Summary:</strong> ${item.short_summary ?? ""}</div>
-                            <div><strong>Technical Analysis:</strong> ${item.technical_analysis ?? ""}</div>
-                            <div><strong>Target Audience:</strong> ${item.target_audience ?? ""}</div>
-                            <div><strong>Ingredients / Notes:</strong> ${item.ingredients_or_notes ?? ""}</div>
-                            ${benefits ? `<div><strong>Key Benefits:</strong><ul>${benefits}</ul></div>` : ""}
-                            ${sellingPts ? `<div><strong>Selling Points:</strong><ul>${sellingPts}</ul></div>` : ""}
-                            ${fragranceHtml}
-                            <div><strong>Source:</strong> ${item.source_used ?? ""}</div>
-                            <div><strong>Status:</strong> ${item.success ? "Success" : "Failed"}</div>
-                            <div><strong>Language:</strong> ${item.language_used ?? ""}</div>
-                            <div><strong>Description:</strong><br>${item.new_description ?? ""}</div>
-                            <div style="margin-top:6px; font-size:12px; color:#555; background:#f3f4f6; padding:6px 10px; border-radius:6px;">
-                                <strong>🔍 Diagnostics:</strong>
-                                is_fragrance = <strong>${item.is_fragrance ?? false}</strong> &nbsp;|&nbsp;
-                                has_ul = <strong>${item.has_ul}</strong> &nbsp;|&nbsp;
-                                li_count = <strong>${item.li_count}</strong> &nbsp;|&nbsp;
-                                contains_bullet_symbol = <strong>${item.contains_bullet_symbol}</strong>
+                        <div class="result-card">
+                            <div class="meta-row">
+                                <strong>#${index + 1}</strong>
+                                ${item.is_fragrance ? '<span class="badge">🌸 Fragrance</span>' : ''}
+                                &nbsp;·&nbsp; Product ID: ${item.product_id ?? ""}
+                                &nbsp;·&nbsp; ${item.success ? "✅ Success" : "❌ Failed"}
                             </div>
-                            <div><strong>Meta Description:</strong><br>${item.meta_description_preview ?? ""}</div>
-                            <div><strong>Keywords:</strong><br>${item.keywords ?? ""}</div>
-                            ${item.error ? `<div style="color:red;"><strong>Error:</strong> ${item.error}</div>` : ""}
+
+                            ${item.old_title ? `<div class="meta-row">Previously: ${item.old_title}</div>` : ""}
+
+                            <div class="product-title">${item.new_title ?? ""}</div>
+
+                            ${item.short_summary ? `<p class="summary-text">${item.short_summary}</p>` : ""}
+
+                            ${item.technical_analysis ? `<div class="meta-row"><strong>Technical Analysis:</strong> ${item.technical_analysis}</div>` : ""}
+                            ${item.target_audience ? `<div class="meta-row"><strong>Target Audience:</strong> ${item.target_audience}</div>` : ""}
+
+                            ${benefits ? `<div style="margin-top:8px;"><strong style="font-size:13px;">Key Benefits</strong><ul style="margin:4px 0 0;padding-left:20px;">${benefits}</ul></div>` : ""}
+                            ${sellingPts ? `<div style="margin-top:8px;"><strong style="font-size:13px;">Selling Points</strong><ul style="margin:4px 0 0;padding-left:20px;">${sellingPts}</ul></div>` : ""}
+
+                            ${fragranceHtml}
+                            ${descriptionHtml}
+                            ${seoHtml}
+
+                            <div class="diagnostics-row">
+                                🔍 is_fragrance=${item.is_fragrance ?? false} | has_ul=${item.has_ul} | li_count=${item.li_count} | bullet_symbol=${item.contains_bullet_symbol} | source=${item.source_used ?? ""} | lang=${item.language_used ?? ""}
+                            </div>
+                            ${item.error ? `<div style="color:red;margin-top:8px;"><strong>Error:</strong> ${item.error}</div>` : ""}
                         </div>
                     `;
                 });
