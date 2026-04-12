@@ -1361,49 +1361,82 @@ def optimize_all_products():
 
     for product in products[:5]:
         try:
-            optimized = optimize_product_router(product, lang)
-            long_desc = optimized.get("long_description") or optimized.get("description", "")
+            product_title = product.get("title", "")
+            is_fragrance = looks_like_fragrance_product(product)
+            print("FRAGRANCE DETECTED:", is_fragrance, product_title)
 
-            results.append({
-                "product_id": product.get("id"),
-                "old_title": product.get("title", ""),
-                "new_title": optimized.get("title", ""),
-                "category": optimized.get("category", ""),
-                "short_summary": optimized.get("short_summary", ""),
-                "technical_analysis": optimized.get("technical_analysis", ""),
-                "target_audience": optimized.get("target_audience", ""),
-                "ingredients_or_notes": optimized.get("ingredients_or_notes", ""),
-                "key_benefits": optimized.get("key_benefits", []),
-                "selling_points": optimized.get("selling_points", []),
-                "new_description": long_desc,
-                "meta_description_preview": optimized.get("meta_description", ""),
-                "keywords": optimized.get("keywords", ""),
-                "source_used": optimized.get("source_used", "unknown"),
-                "success": True,
-                "status_code": 200,
-                "language_used": lang,
-                "error": "",
-                "title_variants": [],
-                "is_fragrance": optimized.get("is_fragrance", False),
-                "has_ul": optimized.get("has_ul"),
-                "li_count": optimized.get("li_count"),
-                "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
-                **(
-                    {
-                        "scent_family": optimized.get("scent_family", ""),
-                        "fragrance_notes": optimized.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
-                        "scent_evolution": optimized.get("scent_evolution", ""),
-                        "projection": optimized.get("projection", ""),
-                        "longevity": optimized.get("longevity", ""),
-                        "best_season": optimized.get("best_season", ""),
-                        "best_occasions": optimized.get("best_occasions", []),
-                        "emotional_triggers": optimized.get("emotional_triggers", []),
-                        "luxury_description": optimized.get("luxury_description", ""),
-                    }
-                    if optimized.get("is_fragrance")
-                    else {}
-                ),
-            })
+            if is_fragrance:
+                brand = (product.get("vendor") or "").strip()
+                description = (product.get("body_html") or "").strip()
+                idea_string = f"Title: {product_title} | Brand: {brand} | Description: {description}".strip()
+                optimized = analyze_product_with_ai(idea_string)
+                optimized["is_fragrance"] = True
+                long_desc = optimized.get("long_description") or optimized.get("description", "")
+
+                results.append({
+                    "product_id": product.get("id"),
+                    "old_title": product_title,
+                    "new_title": optimized.get("title", ""),
+                    "category": optimized.get("category", ""),
+                    "short_summary": optimized.get("short_summary", ""),
+                    "technical_analysis": optimized.get("technical_analysis", ""),
+                    "target_audience": optimized.get("target_audience", ""),
+                    "ingredients_or_notes": optimized.get("ingredients_or_notes", ""),
+                    "key_benefits": optimized.get("key_benefits", []),
+                    "selling_points": optimized.get("selling_points", []),
+                    "new_description": long_desc,
+                    "meta_description_preview": optimized.get("meta_description", ""),
+                    "keywords": optimized.get("keywords", ""),
+                    "source_used": optimized.get("source_used", "analyzer"),
+                    "success": True,
+                    "status_code": 200,
+                    "language_used": lang,
+                    "error": "",
+                    "title_variants": [],
+                    "is_fragrance": True,
+                    "has_ul": optimized.get("has_ul"),
+                    "li_count": optimized.get("li_count"),
+                    "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
+                    "scent_family": optimized.get("scent_family", ""),
+                    "fragrance_notes": optimized.get("fragrance_notes", {"top": [], "heart": [], "base": []}),
+                    "scent_evolution": optimized.get("scent_evolution", ""),
+                    "projection": optimized.get("projection", ""),
+                    "longevity": optimized.get("longevity", ""),
+                    "best_season": optimized.get("best_season", ""),
+                    "best_occasions": optimized.get("best_occasions", []),
+                    "emotional_triggers": optimized.get("emotional_triggers", []),
+                    "luxury_description": optimized.get("luxury_description", ""),
+                })
+            else:
+                optimized = build_title_and_description_with_ai(product, lang=lang)
+                optimized["is_fragrance"] = False
+                long_desc = optimized.get("long_description") or optimized.get("description", "")
+
+                results.append({
+                    "product_id": product.get("id"),
+                    "old_title": product_title,
+                    "new_title": optimized.get("title", ""),
+                    "category": optimized.get("category", ""),
+                    "short_summary": optimized.get("short_summary", ""),
+                    "technical_analysis": optimized.get("technical_analysis", ""),
+                    "target_audience": optimized.get("target_audience", ""),
+                    "ingredients_or_notes": optimized.get("ingredients_or_notes", ""),
+                    "key_benefits": optimized.get("key_benefits", []),
+                    "selling_points": optimized.get("selling_points", []),
+                    "new_description": long_desc,
+                    "meta_description_preview": optimized.get("meta_description", ""),
+                    "keywords": optimized.get("keywords", ""),
+                    "source_used": optimized.get("source_used", "unknown"),
+                    "success": True,
+                    "status_code": 200,
+                    "language_used": lang,
+                    "error": "",
+                    "title_variants": [],
+                    "is_fragrance": False,
+                    "has_ul": optimized.get("has_ul"),
+                    "li_count": optimized.get("li_count"),
+                    "contains_bullet_symbol": optimized.get("contains_bullet_symbol"),
+                })
         except Exception as e:
             results.append({
                 "product_id": product.get("id"),
