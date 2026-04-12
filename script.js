@@ -224,7 +224,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function buildFashionSection(cs) {
         var html = '<div class="section-box" style="background:#fdf2f8;border:1px solid #fbcfe8;"><h4 style="color:#9d174d;">\uD83D\uDC57 Fashion Details</h4>';
         if (cs.style) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Style:</strong> ' + esc(cs.style) + "</div>";
-        if (cs.material) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Material:</strong> ' + esc(typeof cs.material === "string" ? cs.material : JSON.stringify(cs.material)) + "</div>";
+        if (cs.material) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Material:</strong> ' + esc(Array.isArray(cs.material) ? cs.material.join(", ") : String(cs.material)) + "</div>";
         if (cs.fit) html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Fit:</strong> ' + esc(cs.fit) + "</div>";
         if (Array.isArray(cs.occasion) && cs.occasion.length) {
             html += '<div style="margin-bottom:6px;font-size:13px;"><strong>Occasion:</strong> ' + esc(cs.occasion.join(", ")) + "</div>";

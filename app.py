@@ -1178,12 +1178,13 @@ long_description HTML structure:
                 data.setdefault("projection", frag.get("projection", ""))
                 data.setdefault("longevity", frag.get("longevity", ""))
 
-            # --- Build the unified output dict ---
+            # --- Normalize category early ---
             category = (data.get("category") or detected_category or "general").lower()
-            # Normalize legacy category names to supported set
             if category not in SUPPORTED_CATEGORIES:
                 category = "general"
+            data["category"] = category
 
+            # --- Build the unified output dict ---
             output = {
                 "title": data.get("title", idea),
                 "category": category,
@@ -1268,6 +1269,10 @@ long_description HTML structure:
                     "practicality": cs.get("practicality") or data.get("practicality", ""),
                     "maintenance": cs.get("maintenance") or data.get("maintenance", ""),
                 }
+                # Normalize material: if it's a list, join it
+                mat = output["category_specific"]["material"]
+                if isinstance(mat, list):
+                    output["category_specific"]["material"] = ", ".join(mat)
 
             return enforce_no_empty_fields(output, idea)
         except Exception as exc:
