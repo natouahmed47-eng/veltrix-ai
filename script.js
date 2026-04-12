@@ -130,12 +130,17 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         /* Ensure at least 3 tags */
-        var fillers = ["AI Analyzed", "Verified", "Trending"];
+        var fillers = ["AI Analyzed", "Full Report", "Detailed"];
         for (var k = 0; k < fillers.length && tags.length < 3; k++) {
             tags.push(fillers[k]);
         }
 
         return tags.slice(0, 5);
+    }
+
+    function formatMaterial(material) {
+        if (Array.isArray(material)) return material.join(", ");
+        return String(material || "");
     }
 
     function buildScoreRing(score) {
@@ -398,7 +403,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var html = '<div class="card" style="border-left:3px solid #db2777;">' +
             '<div class="card-header"><div class="card-icon" style="background:#fce7f3;">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
         if (cs.style) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Style:</strong> ' + esc(cs.style) + "</div>";
-        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Material:</strong> ' + esc(Array.isArray(cs.material) ? cs.material.join(", ") : String(cs.material)) + "</div>";
+        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Material:</strong> ' + esc(formatMaterial(cs.material)) + "</div>";
         if (cs.fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Fit:</strong> ' + esc(cs.fit) + "</div>";
         if (Array.isArray(cs.occasion) && cs.occasion.length) {
             html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion.join(", ")) + "</div>";
