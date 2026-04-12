@@ -616,29 +616,37 @@ def analyze_product_with_ai(idea: str) -> dict:
         raise RuntimeError("OpenAI is not configured")
 
     prompt = f"""
-You are NOT a copywriter.
+You are NOT a copywriter. You are NOT allowed to invent random product details.
 
-You are a fragrance chemist, perfumer, and luxury fragrance analyst.
+You are a fragrance chemist, perfumer, and luxury product analyst.
 
-Your task is to analyze a REAL perfume product — not generate generic marketing text.
+Your job is NOT to create a generic description.
+Your job is to:
+- analyze
+- structure
+- enhance
+- refine
+- elevate
+WITHOUT changing the factual meaning of the input.
 
-You MUST follow the structure exactly. No free writing.
+You MUST strictly use the EXACT content provided as input.
 
+---
 INPUT PRODUCT:
 {idea}
 
-CRITICAL INSTRUCTIONS:
+---
+CRITICAL RULES:
 
-1) You MUST treat this as a specific perfume product (not a general idea).
-2) If details are missing, infer them realistically based on known fragrance structures — NEVER stay generic.
-3) Your analysis must reflect real perfume logic:
-   - top notes = volatile opening molecules (perceived in the first 15 minutes)
-   - heart notes = main composition (the core character of the fragrance)
-   - base notes = fixatives and depth (the lasting impression — longevity and sillage)
-4) You MUST avoid generic phrases like:
-   "luxurious fragrance", "captivating scent", "timeless elegance",
-   "ultimate", "premium", "amazing"
-5) You MUST produce structured expert output.
+1) DO NOT ignore the input content.
+2) DO NOT replace it with generic marketing text.
+3) DO NOT hallucinate unknown ingredients, notes, or product details.
+4) You MAY:
+   - reorganize the text
+   - improve clarity
+   - upgrade language to premium level
+   - extract structured data
+   - infer ONLY when clearly supported by the input (prefix uncertain items with "Likely:")
 
 ---
 STEP 1 — IDENTIFY CATEGORY
@@ -653,24 +661,24 @@ Classify the product into exactly one of:
 - general ecommerce product
 
 ---
-STEP 2 — CATEGORY-SPECIFIC ANALYSIS
+STEP 2 — CATEGORY-SPECIFIC EXTRACTION
 
-If it is a perfume / fragrance, you MUST identify:
-- Scent Family: floral, oriental, woody, fresh, citrus, gourmand, aquatic, chypre, fougère, etc.
-- Top Notes: volatile opening molecules perceived in the first 15 minutes — cite specific aromatic compounds or raw materials
-- Heart Notes: the main composition that defines the fragrance character
-- Base Notes: fixatives and depth — resins, musks, woods, ambers that anchor the scent
-- Scent Evolution: technical explanation of how the scent evolves on skin — from the volatile opening through the heart development to the fixative dry-down
-- Projection: strong / moderate / soft — with reasoning based on the composition (e.g., heavy oud vs. light citrus)
-- Longevity: short / moderate / long-lasting — with reasoning based on fixatives and molecular weight
-- Best Season: spring / summer / autumn / winter / year-round — based on composition weight and character
-- Best Occasions: specific real-life use cases (e.g., evening galas, date nights, office wear, casual outings)
-- Emotional Triggers: specific emotions this scent evokes (e.g., dominance, seduction, power, mystery, warmth)
+IF the product is a perfume / fragrance, you MUST extract (not invent):
+- scent_family: based on clues in text (floral, oriental, woody, fresh, citrus, gourmand, aquatic, chypre, fougère, etc.)
+- top_notes: only if mentioned or strongly implied by the input
+- heart_notes: only if mentioned or strongly implied by the input
+- base_notes: only if mentioned or strongly implied by the input
+- scent_evolution: how the scent evolves on skin — ONLY based on what the input supports
+- projection: based on words like "strong", "soft", "noticeable", "powerful" in the input
+- longevity: based on "long-lasting", "enduring", "hours" etc. in the input
+- best_season: based on composition weight and character clues in the input
+- best_occasions: based on context in the input (e.g., evening, formal, casual, date night)
+- emotional_triggers: based on emotional language in the input (confidence, elegance, seduction, power, etc.)
 
 For all other categories:
-- Identify key ingredients, materials, or components (prefix uncertain inferences with "Likely:")
-- Describe the function, use case, and key differentiators
-- Identify the specific target buyer persona
+- Identify key ingredients, materials, or components ONLY from the input (prefix uncertain items with "Likely:")
+- Describe function, use case, and key differentiators based on the input
+- Identify the target buyer persona from context in the input
 
 ---
 STEP 3 — OUTPUT
@@ -679,55 +687,58 @@ Return ONLY valid JSON. No markdown. No code fences. No extra text.
 The JSON must have EXACTLY these fields:
 
 {{
-  "category": "perfume / fragrance (or other detected category)",
-  "title": "refined, product-specific SEO title — must reference the actual product, not a generic phrase",
-  "short_summary": "2–3 sentence expert-level hook — must reference specific notes or composition, not generic praise",
-  "technical_analysis": "deep expert explanation of the composition — woods, spices, resins, musks, synthetics, accords — and how they interact. Must read like a perfumer's analysis, not marketing copy",
-  "target_audience": "precise persona with real context (e.g., 'men 30-45 who wear Tom Ford and seek bold evening fragrances') — not generic",
-  "scent_family": "accurate scent family (woody, oriental, gourmand, floral, chypre, fougère, aquatic, etc.) — empty string for non-fragrance",
-  "fragrance_notes": {{
-    "top": ["realistic specific notes — e.g., bergamot, pink pepper, saffron"],
-    "heart": ["realistic specific notes — e.g., rose absolute, oud, jasmine sambac"],
-    "base": ["realistic specific notes — e.g., sandalwood, musk, benzoin, vetiver"]
+  "category": "detected from content",
+  "title": "refined version of original title — must reference the actual product, not a generic phrase",
+  "clean_summary": "rewritten version of original text — NOT new ideas. 2–3 sentence expert-level summary that references specific elements from the input",
+  "extracted_insights": {{
+    "key_features": ["feature 1 from input", "feature 2 from input", "feature 3 from input"],
+    "benefits": ["benefit 1 from input", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
+    "positioning": "precise target audience and market positioning — based on input context, not generic"
   }},
-  "scent_evolution": "technical explanation of how scent evolves on skin — from volatile top molecules through heart development to the fixative dry-down — empty string for non-fragrance",
-  "projection": "soft / moderate / strong with explanation based on composition — empty string for non-fragrance",
-  "longevity": "short / moderate / long-lasting with reasoning based on fixatives and molecular weight — empty string for non-fragrance",
-  "best_season": "based on composition weight and character — empty string for non-fragrance",
-  "best_occasions": ["specific real-life use cases — not generic"],
-  "emotional_triggers": ["specific emotions like dominance, seduction, power, mystery — not generic adjectives"],
-  "key_benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
-  "selling_points": ["conversion angle 1", "conversion angle 2", "conversion angle 3"],
-  "luxury_description": "high-end brand-level narrative at Tom Ford / Dior level — must use sensory language, reference actual composition elements, and read like a world-class fragrance house product page. NO generic marketing filler.",
+  "fragrance_analysis": {{
+    "scent_family": "accurate scent family — empty string for non-fragrance",
+    "top_notes": ["only notes mentioned or strongly implied by the input"],
+    "heart_notes": ["only notes mentioned or strongly implied by the input"],
+    "base_notes": ["only notes mentioned or strongly implied by the input"],
+    "scent_evolution": "how the scent evolves — empty string for non-fragrance or if not supported by input",
+    "projection": "soft / moderate / strong based on input clues — empty string for non-fragrance",
+    "longevity": "short / moderate / long-lasting based on input clues — empty string for non-fragrance",
+    "best_season": "based on composition clues — empty string for non-fragrance",
+    "best_occasions": ["occasions based on input context — empty array for non-fragrance"],
+    "emotional_triggers": ["specific emotions from input — empty array for non-fragrance"]
+  }},
+  "technical_analysis": "expert explanation of composition or product structure — based on input content, not invented. Must read like an analyst's breakdown, not marketing copy",
+  "luxury_upgrade_text": "same meaning as the input, but elevated to high-end brand level — Tom Ford / Dior caliber. Must reference actual elements from the input. NO generic marketing filler.",
   "long_description": "<p>...</p><ul><li><strong>Label:</strong> explanation</li>...</ul><p>...</p>",
-  "meta_description": "under 155 characters, buyer-intent focused",
-  "keywords": "comma-separated buyer-intent keywords"
+  "meta_description": "under 155 characters, buyer-intent focused, based on input content",
+  "keywords": "comma-separated buyer-intent keywords derived from input"
 }}
 
 long_description HTML structure (STRICT):
-<p>Opening hook paragraph — must reference specific fragrance elements, not generic praise.</p>
-<p>Second paragraph that addresses the buyer's desire and positions this product using expert fragrance knowledge.</p>
+<p>Opening hook paragraph — must reference specific product elements from the input, not generic praise.</p>
+<p>Second paragraph that addresses the buyer's desire and positions this product using content from the input.</p>
 <ul>
-<li><strong>Composition:</strong> Expert description of note structure and accords.</li>
-<li><strong>Projection & Longevity:</strong> Performance characteristics with reasoning.</li>
-<li><strong>Best For:</strong> Specific occasions and seasons.</li>
-<li><strong>Scent Character:</strong> The emotional and sensory signature.</li>
-<li><strong>Who Wears This:</strong> The target persona and what it communicates.</li>
+<li><strong>Composition:</strong> Description of product structure / note structure based on input.</li>
+<li><strong>Projection & Longevity:</strong> Performance characteristics based on input clues.</li>
+<li><strong>Best For:</strong> Specific occasions and seasons based on input context.</li>
+<li><strong>Scent Character:</strong> The emotional and sensory signature based on input.</li>
+<li><strong>Who Wears This:</strong> The target persona based on input context.</li>
 </ul>
 <p>Closing paragraph — expert recommendation, not generic call to action.</p>
 
 RULES:
-- You are a fragrance chemist, NOT a copywriter — write like an expert, not a marketer
-- Be specific to THIS product — never produce content that could apply to any perfume
-- If notes or ingredients are not provided, infer realistically based on known fragrance families and brand conventions — prefix uncertain items with "Likely:"
+- You are an analyst, NOT a copywriter — extract and elevate, never fabricate
+- Be specific to THIS product — never produce content that could apply to any product
+- DO NOT invent notes, ingredients, or details not supported by the input
+- You MAY infer ONLY when clearly supported — prefix uncertain items with "Likely:"
 - Do NOT use vague filler words or generic phrases: "luxurious fragrance", "captivating scent", "timeless elegance", "ultimate", "premium", "amazing"
 - long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
-- fragrance_notes must use empty arrays for non-fragrance products
-- best_occasions and emotional_triggers must use empty arrays for non-fragrance products
-- scent_evolution, best_season must use empty strings for non-fragrance products
-- luxury_description must reference actual composition elements and read like a Tom Ford or Maison Francis Kurkdjian product page
+- fragrance_analysis notes must use empty arrays for non-fragrance products
+- fragrance_analysis occasions and emotional_triggers must use empty arrays for non-fragrance products
+- fragrance_analysis scent_evolution, best_season must use empty strings for non-fragrance products
+- luxury_upgrade_text must reference actual elements from the input — not generic marketing text
 - emotional_triggers must cite specific emotions (e.g., dominance, seduction, power, confidence) — not generic adjectives
-- technical_analysis must discuss actual aromatic materials, accords, and composition structure — not vague descriptions
+- technical_analysis must discuss actual materials, accords, or product details from the input — not vague descriptions
 - Return ONLY valid JSON — no markdown, no code fences, no extra text
 """
 
@@ -738,8 +749,9 @@ RULES:
                 {
                     "role": "system",
                     "content": (
-                        "You are a fragrance chemist, perfumer, and luxury fragrance analyst — NOT a copywriter. "
-                        "You analyze real perfume products with expert-level precision. "
+                        "You are a fragrance chemist, perfumer, and luxury product analyst — NOT a copywriter. "
+                        "You analyze real products with expert-level precision. "
+                        "You MUST strictly use the exact content provided as input — do NOT invent or hallucinate details. "
                         "You return clean, structured JSON only — no markdown, no code fences, no extra text."
                     ),
                 },
@@ -772,6 +784,42 @@ RULES:
 
         if not isinstance(data, dict):
             continue
+
+        # Flatten nested AI response to the flat field names used by
+        # downstream consumers (API routes, frontend template, router).
+        insights = data.pop("extracted_insights", {}) or {}
+        frag = data.pop("fragrance_analysis", {}) or {}
+
+        # clean_summary → short_summary
+        if "clean_summary" in data and "short_summary" not in data:
+            data["short_summary"] = data.pop("clean_summary")
+
+        # extracted_insights → flat fields
+        if "key_benefits" not in data:
+            data["key_benefits"] = insights.get("benefits", [])
+        if "selling_points" not in data:
+            data["selling_points"] = insights.get("key_features", [])
+        if "target_audience" not in data:
+            data["target_audience"] = insights.get("positioning", "")
+
+        # luxury_upgrade_text → luxury_description
+        if "luxury_upgrade_text" in data and "luxury_description" not in data:
+            data["luxury_description"] = data.pop("luxury_upgrade_text")
+
+        # fragrance_analysis → flat fields
+        if frag:
+            data.setdefault("scent_family", frag.get("scent_family", ""))
+            data.setdefault("fragrance_notes", {
+                "top": frag.get("top_notes", []),
+                "heart": frag.get("heart_notes", []),
+                "base": frag.get("base_notes", []),
+            })
+            data.setdefault("scent_evolution", frag.get("scent_evolution", ""))
+            data.setdefault("projection", frag.get("projection", ""))
+            data.setdefault("longevity", frag.get("longevity", ""))
+            data.setdefault("best_season", frag.get("best_season", ""))
+            data.setdefault("best_occasions", frag.get("best_occasions", []))
+            data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
 
         return data
 
