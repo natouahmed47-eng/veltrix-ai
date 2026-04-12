@@ -625,7 +625,8 @@ However, you are also a domain expert.
 If information is explicitly present, use it exactly.
 If information is missing, infer only when there is a strong logical signal.
 Use realistic domain knowledge, not fantasy.
-If something truly cannot be inferred, say so briefly once, not repeatedly.
+NEVER say "not specified", "unavailable", or "cannot be determined".
+If something is unknown, infer it with domain expertise and prefix with "Likely".
 
 ---
 INPUT PRODUCT:
@@ -646,7 +647,7 @@ CRITICAL RULES:
    - infer missing details only when there is a strong logical signal from the input or domain expertise
    - prefix inferred values with "Likely" (e.g. "Likely woody-oriental", "Likely moderate to strong projection")
 5) You MUST NOT:
-   - repeat "not specified", "unavailable", or "cannot be determined" more than once in the entire output
+   - EVER use the phrases "not specified", "unavailable", or "cannot be determined" — use domain inference with "Likely" prefix instead
    - produce empty or placeholder analysis — every field should contain useful expert insight
    - use generic marketing filler (e.g. "luxurious fragrance", "captivating scent", "timeless elegance")
    - produce output that contains zero insight — that is wrong
@@ -740,7 +741,7 @@ RULES:
 - DO NOT fully invent details with no basis — but DO use domain expertise to fill gaps when logically supported
 - Prefix inferred items with "Likely" or "Likely:" (e.g. "Likely woody-oriental", "Likely: bergamot")
 - Do NOT use vague filler words or generic phrases: "luxurious fragrance", "captivating scent", "timeless elegance", "ultimate", "premium", "amazing"
-- Do NOT repeat "not specified", "unavailable", "cannot be determined", or similar phrases more than once total — if something is truly unknown, mention it briefly once then move on
+- NEVER use "not specified", "unavailable", "cannot be determined", or similar phrases — always provide expert inference with "Likely" prefix instead
 - If output contains zero insight, it is wrong
 - If output is fully invented, it is wrong
 - Balance accuracy with expert reasoning
@@ -765,7 +766,7 @@ RULES:
                         "You must strictly respect the provided product content. "
                         "If information is explicitly present, use it exactly. "
                         "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
-                        "If something truly cannot be inferred, say so briefly once, not repeatedly. "
+                        "NEVER output 'not specified', 'unavailable', or 'cannot be determined' — always infer with 'Likely' prefix instead. "
                         "Produce useful expert analysis — zero-insight output is wrong, fully-invented output is wrong. "
                         "You return clean, structured JSON only — no markdown, no code fences, no extra text."
                     ),
@@ -800,6 +801,61 @@ RULES:
         if not isinstance(data, dict):
             continue
 
+        # --- Bullet handling: convert dash/bullet lines in long_description
+        # to proper <ul><li> HTML BEFORE any downstream validation. ----------
+        ld = data.get("long_description", "")
+        if ld:
+            # Detect lines starting with "- " or "• " that are NOT already
+            # inside <li> tags and convert them to an HTML list.
+            def _bullets_to_html(text: str) -> str:
+                _bullet_re = re.compile(r"^[-•–]\s+")
+                lines = text.split("\n")
+                result: list[str] = []
+                in_list = False
+                for line in lines:
+                    stripped = line.strip()
+                    is_bullet = bool(
+                        _bullet_re.match(stripped)
+                    ) and "<li>" not in stripped
+                    if is_bullet:
+                        if not in_list:
+                            result.append("<ul>")
+                            in_list = True
+                        content = _bullet_re.sub("", stripped)
+                        result.append(f"<li>{content}</li>")
+                    else:
+                        if in_list:
+                            result.append("</ul>")
+                            in_list = False
+                        result.append(line)
+                if in_list:
+                    result.append("</ul>")
+                return "\n".join(result)
+
+            data["long_description"] = _bullets_to_html(ld)
+
+        # --- Strip banned phrases from ALL string values -------------------
+        _banned_re = re.compile(
+            r"\b(not specified|unavailable|cannot be determined)\b",
+            re.IGNORECASE,
+        )
+
+        def _scrub(value):
+            """Recursively remove banned phrases from strings."""
+            if isinstance(value, str):
+                scrubbed = _banned_re.sub("", value)
+                # Collapse any double-spaces left after removal.
+                while "  " in scrubbed:
+                    scrubbed = scrubbed.replace("  ", " ")
+                return scrubbed.strip()
+            if isinstance(value, list):
+                return [_scrub(v) for v in value]
+            if isinstance(value, dict):
+                return {k: _scrub(v) for k, v in value.items()}
+            return value
+
+        data = _scrub(data)
+
         # Flatten nested AI response to the flat field names used by
         # downstream consumers (API routes, frontend template, router).
         insights = data.pop("extracted_insights", None) or {}
@@ -819,20 +875,19 @@ RULES:
         data.setdefault("selling_points", insights.get("key_features", []))
         data.setdefault("target_audience", insights.get("positioning", ""))
 
-        # fragrance_analysis → flat fields
-        if frag:
-            data.setdefault("scent_family", frag.get("scent_family", ""))
-            data.setdefault("fragrance_notes", {
-                "top": frag.get("top_notes", []),
-                "heart": frag.get("heart_notes", []),
-                "base": frag.get("base_notes", []),
-            })
-            data.setdefault("scent_evolution", frag.get("scent_evolution", ""))
-            data.setdefault("projection", frag.get("projection", ""))
-            data.setdefault("longevity", frag.get("longevity", ""))
-            data.setdefault("best_season", frag.get("best_season", ""))
-            data.setdefault("best_occasions", frag.get("best_occasions", []))
-            data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
+        # fragrance_analysis → flat fields (always ensure all keys exist)
+        data.setdefault("scent_family", frag.get("scent_family", ""))
+        data.setdefault("fragrance_notes", {
+            "top": frag.get("top_notes", []),
+            "heart": frag.get("heart_notes", []),
+            "base": frag.get("base_notes", []),
+        })
+        data.setdefault("scent_evolution", frag.get("scent_evolution", ""))
+        data.setdefault("projection", frag.get("projection", ""))
+        data.setdefault("longevity", frag.get("longevity", ""))
+        data.setdefault("best_season", frag.get("best_season", ""))
+        data.setdefault("best_occasions", frag.get("best_occasions", []))
+        data.setdefault("emotional_triggers", frag.get("emotional_triggers", []))
 
         return data
 
