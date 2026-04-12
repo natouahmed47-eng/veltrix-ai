@@ -823,13 +823,23 @@ def optimize_product_router(product, lang="en"):
     print("FRAGRANCE DETECTED:", is_fragrance, product.get("title", ""))
 
     if is_fragrance:
-        idea = f'''
-Title: {product.get("title", "")}
-Brand: {product.get("vendor", "")}
-Category: {product.get("product_type", "")}
-Tags: {product.get("tags", "")}
-Description: {product.get("body_html", "")}
-'''.strip()
+        title = product.get("title", "")
+        brand = product.get("vendor", "")
+        product_type = product.get("product_type", "")
+        tags = product.get("tags", "")
+        body_html = product.get("body_html", "")
+
+        idea = (
+            f"[SPECIFIC FRAGRANCE PRODUCT — NOT A GENERIC IDEA]\n"
+            f"This is a real fragrance product currently listed for sale. "
+            f"Analyze it as a specific, existing product — do NOT generate generic perfume content.\n"
+            f"\n"
+            f"Full Product Title: {title}\n"
+            f"Brand / House: {brand}\n"
+            f"Product Type: {product_type}\n"
+            f"Tags: {tags}\n"
+            f"Product Description / Body HTML:\n{body_html}"
+        ).strip()
 
         result = analyze_product_with_ai(idea)
         print("FRAGRANCE ROUTER RESULT:", result)
