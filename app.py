@@ -44,7 +44,7 @@ CATEGORY_SPECIFIC_FIELDS = [
     "scent_family", "fragrance_notes", "scent_evolution", "projection",
     "longevity", "best_season", "best_occasions", "emotional_triggers",
     "luxury_description",
-    "specs", "performance", "use_cases", "pros", "cons",
+    "specs", "performance", "battery", "use_cases", "pros", "cons",
     "style", "materials", "fit", "occasions", "care_instructions",
     "platform", "features", "integrations", "pricing_model",
     "problem", "solution", "monetization", "competitive_advantage", "market_size",
@@ -620,14 +620,11 @@ Description: {description}
 
 
 def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
-    """Fill any missing, empty, or weak values with inferred expert-level content.
+    """Fill any missing or empty values with concrete, category-aware defaults.
 
-    Category-aware: applies fragrance-specific defaults only when the detected
-    category is fragrance.  For all other categories the defaults are generic
-    and product-appropriate.
-
-    Ensures zero empty strings, zero empty arrays, and zero forbidden phrases
-    in the final output.
+    Ensures zero empty strings, zero empty arrays, and zero forbidden/vague
+    phrases in the final output.  All defaults are concrete data — never
+    prefixed with 'Likely' or wrapped in hedging language.
     """
     idea_lower = idea.lower()
     category = (data.get("category") or "").lower()
@@ -638,11 +635,11 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
 
     # --- Always-required string fields (universal) ---
     string_defaults = {
-        "short_summary": f"Likely an expertly crafted product with distinctive character — {idea[:80]}",
-        "technical_analysis": f"Likely a well-structured product with strong market positioning — {idea[:80]}",
-        "target_audience": "Likely discerning individuals who value quality and distinction",
-        "meta_description": idea[:150] if idea else "Expertly crafted product",
-        "keywords": idea[:100] if idea else "quality, premium, product",
+        "short_summary": f"Product analysis: {idea[:80]}",
+        "technical_analysis": f"Structured product assessment for: {idea[:80]}",
+        "target_audience": "Quality-conscious consumers in the 25-45 age range",
+        "meta_description": idea[:150] if idea else "Product analysis and specifications",
+        "keywords": idea[:100] if idea else "product, analysis, specifications",
         "category": category or ("fragrance" if is_fragrance else "generic_product"),
     }
 
@@ -653,8 +650,8 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
 
     # --- Always-required list fields (universal) ---
     list_defaults = {
-        "key_benefits": ["Likely premium quality", "Likely distinctive character", "Likely strong value proposition"],
-        "selling_points": ["Likely expert craftsmanship", "Likely unique positioning", "Likely compelling value"],
+        "key_benefits": ["High build quality", "Functional design", "Competitive value"],
+        "selling_points": ["Verified product specifications", "Clear use-case fit", "Strong category positioning"],
     }
 
     for field, fallback in list_defaults.items():
@@ -675,40 +672,40 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         is_luxury = any(b in idea_lower for b in luxury_brands)
 
         if has_oud:
-            default_family = "Likely woody-oriental"
-            default_top = ["Likely: saffron", "Likely: bergamot"]
-            default_heart = ["Likely: oud", "Likely: rose"]
-            default_base = ["Likely: sandalwood", "Likely: musk", "Likely: amber"]
-            default_projection = "Likely strong projection given oud concentration"
-            default_longevity = "Likely long-lasting (8–12 hours) due to oud and resinous base"
+            default_family = "Woody-oriental"
+            default_top = ["Saffron", "Bergamot"]
+            default_heart = ["Oud", "Rose"]
+            default_base = ["Sandalwood", "Musk", "Amber"]
+            default_projection = "Strong"
+            default_longevity = "8-12 hours"
         elif has_spicy:
-            default_family = "Likely warm spicy"
-            default_top = ["Likely: black pepper", "Likely: cardamom"]
-            default_heart = ["Likely: cinnamon", "Likely: nutmeg"]
-            default_base = ["Likely: vanilla", "Likely: tonka bean", "Likely: amber"]
-            default_projection = "Likely moderate to strong projection"
-            default_longevity = "Likely moderate to long-lasting (6–10 hours)"
+            default_family = "Warm spicy"
+            default_top = ["Black pepper", "Cardamom"]
+            default_heart = ["Cinnamon", "Nutmeg"]
+            default_base = ["Vanilla", "Tonka bean", "Amber"]
+            default_projection = "Moderate to strong"
+            default_longevity = "6-10 hours"
         elif has_parfum:
-            default_family = "Likely a concentrated fragrance composition"
-            default_top = ["Likely: citrus accord", "Likely: aromatic opening"]
-            default_heart = ["Likely: floral or woody heart"]
-            default_base = ["Likely: musk", "Likely: amber", "Likely: woods"]
-            default_projection = "Likely strong projection due to parfum concentration"
-            default_longevity = "Likely long-lasting (10+ hours) — parfum concentration ensures endurance"
+            default_family = "Concentrated aromatic"
+            default_top = ["Citrus accord", "Aromatic herbs"]
+            default_heart = ["Floral-woody blend"]
+            default_base = ["Musk", "Amber", "Woods"]
+            default_projection = "Strong (parfum concentration)"
+            default_longevity = "10+ hours (parfum concentration)"
         elif is_luxury:
-            default_family = "Likely a complex, artisan fragrance composition"
-            default_top = ["Likely: refined citrus or spice opening"]
-            default_heart = ["Likely: rare florals or precious woods"]
-            default_base = ["Likely: ambergris", "Likely: musk", "Likely: precious woods"]
-            default_projection = "Likely moderate to strong — crafted for presence"
-            default_longevity = "Likely long-lasting (8+ hours) — luxury formulation ensures endurance"
+            default_family = "Complex artisan blend"
+            default_top = ["Refined citrus", "Spice opening"]
+            default_heart = ["Rare florals", "Precious woods"]
+            default_base = ["Ambergris", "Musk", "Precious woods"]
+            default_projection = "Moderate to strong"
+            default_longevity = "8+ hours"
         else:
-            default_family = "Likely a balanced fragrance composition"
-            default_top = ["Likely: fresh aromatic opening"]
-            default_heart = ["Likely: floral or woody heart accord"]
-            default_base = ["Likely: musk", "Likely: cedarwood"]
-            default_projection = "Likely moderate projection"
-            default_longevity = "Likely moderate longevity (4–6 hours)"
+            default_family = "Balanced aromatic"
+            default_top = ["Fresh citrus", "Aromatic herbs"]
+            default_heart = ["Floral accord", "Woody heart"]
+            default_base = ["Musk", "Cedarwood"]
+            default_projection = "Moderate"
+            default_longevity = "4-6 hours"
 
         frag_string_defaults = {
             "scent_family": default_family,
@@ -740,23 +737,40 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
     if not data.get("title") or not data["title"].strip():
         data["title"] = idea
 
-    # --- Final pass: scan all string fields for any remaining forbidden phrases ---
+    # --- Final pass: strip forbidden/vague phrases from all values ---
     _final_banned_re = re.compile(
-        r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
+        r"\b(not specified|not provided|unavailable|cannot be determined|no data"
+        r"|based on context|based on product context|inferred from product positioning"
+        r"|inferred from product context)\b",
+        re.IGNORECASE,
+    )
+    _likely_re = re.compile(r"\bLikely:?\s*", re.IGNORECASE)
+    _marketing_re = re.compile(
+        r"\b(luxurious|elegant|sophisticated|exquisite|opulent|sumptuous)\b",
         re.IGNORECASE,
     )
 
     def _final_scrub(value):
         if isinstance(value, str):
-            if _final_banned_re.search(value):
-                cleaned = _final_banned_re.sub("inferred from product positioning", value)
-                while "  " in cleaned:
-                    cleaned = cleaned.replace("  ", " ")
-                return cleaned.strip()
-            return value
+            cleaned = value
+            # Remove "Likely" / "Likely:" prefixes
+            cleaned = _likely_re.sub("", cleaned)
+            # Remove banned vague phrases
+            cleaned = _final_banned_re.sub("", cleaned)
+            # Remove marketing filler adjectives
+            cleaned = _marketing_re.sub("", cleaned)
+            # Collapse whitespace
+            while "  " in cleaned:
+                cleaned = cleaned.replace("  ", " ")
+            cleaned = cleaned.strip(" .,;:-–—")
+            return cleaned if cleaned else value
         if isinstance(value, list):
-            result = [_final_scrub(v) for v in value]
-            return result if result else ["Likely relevant based on product context"]
+            result = []
+            for v in value:
+                scrubbed = _final_scrub(v)
+                if scrubbed:
+                    result.append(scrubbed)
+            return result if result else ["General-purpose product benefit"]
         if isinstance(value, dict):
             return {k: _final_scrub(v) for k, v in value.items()}
         return value
@@ -767,132 +781,159 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
 
 
 def analyze_product_with_ai(idea: str):
-    prompt = f"""
-You are a universal product intelligence analyst and domain expert.
-You analyze ANY type of product or business idea with professional expertise.
+    # --- STEP 0: Pre-detect category from input keywords ---
+    idea_lower = idea.lower()
 
-You must strictly respect the provided product content.
-If information is explicitly present, use it exactly.
-If information is missing, infer only when there is a strong logical signal.
-Use realistic domain knowledge, not fantasy.
-NEVER say "not specified", "not provided", "unavailable", "cannot be determined", or "no data".
-If something is unknown, infer it with domain expertise and prefix with "Likely".
+    if any(k in idea_lower for k in ["perfume", "parfum", "fragrance", "cologne", "oud", "eau de"]):
+        detected_category = "fragrance"
+    elif any(k in idea_lower for k in ["phone", "laptop", "tablet", "headphone", "speaker", "camera", "tv", "monitor", "processor", "gpu"]):
+        detected_category = "electronics"
+    elif any(k in idea_lower for k in ["watch", "shirt", "dress", "jacket", "sneaker", "shoe", "handbag", "sunglasses", "clothing"]):
+        detected_category = "fashion"
+    elif any(k in idea_lower for k in ["app", "software", "saas", "platform", "api", "plugin", "extension"]):
+        detected_category = "software"
+    elif any(k in idea_lower for k in ["startup", "business model", "business idea", "venture", "marketplace"]):
+        detected_category = "business_idea"
+    else:
+        detected_category = "generic_product"
+
+    # --- Build category-specific prompt sections ---
+    if detected_category == "fragrance":
+        category_instructions = """
+CATEGORY-SPECIFIC FIELDS (fragrance):
+You MUST return these fields with concrete data:
+- scent_family: exact fragrance family (e.g. "woody-oriental", "fresh citrus", "floral-musk")
+- fragrance_notes: { "top": [...], "heart": [...], "base": [...] } — each array must have 2-4 specific ingredient names
+- projection: one of "weak", "moderate", "strong"
+- longevity: concrete hour range (e.g. "6-8 hours")
+- scent_evolution: how the scent changes over time (dry-down behavior)
+- best_season: specific seasons (e.g. "Fall, Winter")
+- best_occasions: array of 2-3 specific occasions
+
+FRAGRANCE ANALYSIS RULES:
+- Use actual perfumery terminology (top/heart/base notes, sillage, dry-down)
+- Identify real ingredients, not vague descriptors
+- Derive scent family from note composition
+- Estimate longevity and projection from concentration type and base note weight
+"""
+    elif detected_category == "electronics":
+        category_instructions = """
+CATEGORY-SPECIFIC FIELDS (electronics):
+You MUST return these fields with concrete data:
+- specs: object with real technical specifications (processor, RAM, storage, display, battery capacity, etc.)
+- performance: specific performance assessment with benchmark context
+- battery: battery life estimate with usage scenario (e.g. "8 hours mixed use")
+- use_cases: array of 3-5 specific use cases
+- pros: array of 3-5 concrete advantages
+- cons: array of 2-3 real limitations
+
+ELECTRONICS ANALYSIS RULES:
+- Use real spec numbers and units (GHz, GB, mAh, nits)
+- Compare against category benchmarks where possible
+- Identify target user segment based on specs and price positioning
+"""
+    elif detected_category == "fashion":
+        category_instructions = """
+CATEGORY-SPECIFIC FIELDS (fashion):
+You MUST return these fields with concrete data:
+- style: specific style category (e.g. "minimalist streetwear", "business casual")
+- materials: array of materials/fabrics used
+- fit: fit description (e.g. "slim fit", "relaxed", "true to size")
+- occasions: array of suitable occasions
+- care_instructions: specific care instructions
+
+FASHION ANALYSIS RULES:
+- Identify exact materials/fabrics when possible
+- Categorize style precisely, not generically
+- Note construction quality indicators
+"""
+    elif detected_category == "software":
+        category_instructions = """
+CATEGORY-SPECIFIC FIELDS (software):
+You MUST return these fields:
+- platform: target platform(s) (e.g. "Web, iOS, Android")
+- features: array of key features with brief descriptions
+- integrations: array of compatible tools/platforms
+- pricing_model: pricing structure (e.g. "Freemium with $9/mo Pro tier")
+- use_cases: array of specific use cases
+"""
+    elif detected_category == "business_idea":
+        category_instructions = """
+CATEGORY-SPECIFIC FIELDS (business_idea):
+You MUST return these fields:
+- problem: specific problem being addressed
+- solution: concrete proposed solution
+- monetization: revenue model
+- competitive_advantage: specific differentiators
+- market_size: estimated market with data points
+"""
+    else:
+        category_instructions = """
+CATEGORY-SPECIFIC FIELDS (generic_product):
+You MUST return these fields:
+- specifications: object with key product specs
+- use_cases: array of specific use cases
+- pros: array of concrete advantages
+- cons: array of real limitations
+"""
+
+    prompt = f"""
+Analyze the following product or idea as an expert product analyst.
+Your job is to extract and structure real, concrete data — not marketing copy.
 
 ---
 INPUT:
 {idea}
 
 ---
-CRITICAL RULES:
-
-1) DO NOT ignore the input content.
-2) DO NOT replace it with generic marketing text.
-3) DO NOT fully invent product details with no basis in the input.
-4) You MUST:
-   - reorganize the text
-   - improve clarity
-   - upgrade language to premium level
-   - extract structured data
-   - use explicit product information exactly as given
-   - infer missing details only when there is a strong logical signal
-   - prefix inferred values with "Likely"
-5) You MUST NOT:
-   - EVER use "not specified", "not provided", "unavailable", "cannot be determined", or "no data"
-   - produce empty or placeholder analysis
-   - use generic marketing filler
-6) Balance accuracy with expert reasoning.
+PRE-DETECTED CATEGORY: {detected_category}
+Use this category unless the input clearly belongs to a different one.
 
 ---
-STEP 1 — DETECT CATEGORY
-Classify the input into EXACTLY ONE of these categories:
-- fragrance
-- electronics
-- fashion
-- software
-- business_idea
-- generic_product
+STRICT RULES:
+
+1) You are an expert product analyst, NOT a marketing writer.
+2) Return ONLY factual, structured data.
+3) NEVER use these phrases:
+   - "Likely", "likely"
+   - "based on context"
+   - "not specified", "not provided", "unavailable", "cannot be determined", "no data"
+4) NEVER use generic marketing adjectives:
+   - "luxurious", "elegant", "sophisticated", "exquisite", "opulent", "sumptuous"
+5) If a detail is not in the input, derive it from domain expertise with concrete values.
+   Do NOT hedge — state the derived value directly.
+6) All data must be specific to THIS product. No generic filler.
 
 ---
-STEP 2 — GENERATE CATEGORY-SPECIFIC ANALYSIS
+UNIVERSAL FIELDS (always required):
+- title: product name
+- short_summary: 2-3 sentence factual summary (no marketing fluff)
+- category: "{detected_category}" (or override if input clearly indicates otherwise)
+- key_benefits: array of 3-5 concrete, measurable benefits
+- target_audience: specific demographic/psychographic description
+- technical_analysis: expert-level factual analysis (materials, construction, market position)
+- long_description: HTML with structure below
+- meta_description: under 155 characters, factual
+- keywords: comma-separated relevant search terms
+- selling_points: array of 3 data-backed conversion angles
 
-ALWAYS include these universal fields:
-- title
-- short_summary (2–3 sentence expert summary)
-- category (from Step 1)
-- key_benefits (array of 3–5 benefits)
-- target_audience (specific description of who this is for)
-- technical_analysis (expert-level analysis)
-- long_description (HTML)
-- meta_description (under 155 chars)
-- keywords (comma-separated)
-- selling_points (array of 3 conversion angles)
-
-ADDITIONALLY, include category-specific fields:
-
-IF category is "fragrance":
-- scent_family: the fragrance family (e.g. "woody-oriental", "fresh citrus")
-- fragrance_notes: {{ "top": [...], "heart": [...], "base": [...] }}
-- projection: "soft" / "moderate" / "strong"
-- longevity: "short" / "moderate" / "long-lasting" with hour estimates
-
-IF category is "electronics":
-- specs: key technical specifications as an object (e.g. {{"processor": "...", "ram": "...", "storage": "..."}})
-- performance: performance analysis string
-- use_cases: array of ideal use cases
-- pros: array of advantages
-- cons: array of disadvantages or limitations
-
-IF category is "fashion":
-- style: style description (e.g. "casual streetwear", "formal business")
-- materials: array of materials or fabrics
-- fit: fit description
-- occasions: array of suitable occasions
-- care_instructions: care/maintenance tips
-
-IF category is "software":
-- platform: target platform(s)
-- features: array of key features
-- integrations: array of integrations or compatible tools
-- pricing_model: pricing structure description
-- use_cases: array of ideal use cases
-
-IF category is "business_idea":
-- problem: the problem being solved
-- solution: the proposed solution
-- monetization: how it makes money
-- competitive_advantage: what sets it apart
-- market_size: estimated market opportunity
-
-IF category is "generic_product":
-- specifications: key product specs as an object
-- use_cases: array of use cases
-- pros: array of advantages
-- cons: array of limitations
+{category_instructions}
 
 ---
-STEP 3 — OUTPUT
-Return ONLY valid JSON. No markdown. No code fences. No extra text.
+OUTPUT FORMAT:
+Return ONLY valid JSON. No markdown. No code fences. No explanatory text.
 
-long_description HTML structure (STRICT):
-<p>Opening hook paragraph referencing specific product elements.</p>
-<p>Second paragraph addressing the buyer's need and positioning this product.</p>
+long_description HTML structure:
+<p>Factual opening paragraph about the product.</p>
+<p>Technical details and positioning paragraph.</p>
 <ul>
-<li><strong>Label:</strong> Specific explanation.</li>
-<li><strong>Label:</strong> Specific explanation.</li>
-<li><strong>Label:</strong> Specific explanation.</li>
-<li><strong>Label:</strong> Specific explanation.</li>
-<li><strong>Label:</strong> Specific explanation.</li>
+<li><strong>Label:</strong> Specific data point.</li>
+<li><strong>Label:</strong> Specific data point.</li>
+<li><strong>Label:</strong> Specific data point.</li>
+<li><strong>Label:</strong> Specific data point.</li>
+<li><strong>Label:</strong> Specific data point.</li>
 </ul>
-<p>Closing paragraph — expert recommendation.</p>
-
-RULES:
-- Detect the correct category FIRST, then include the matching category-specific fields
-- Be specific to THIS product — never produce generic content
-- DO NOT include category-specific fields that don't match the detected category
-- Prefix inferred items with "Likely" or "Likely:"
-- NEVER use "not specified", "not provided", "unavailable", "cannot be determined", "no data"
-- long_description must use only <p>, <ul>, <li>, <strong> tags and contain exactly 5 <li> items
-- Return ONLY valid JSON — no markdown, no code fences, no extra text
+<p>Closing paragraph — objective recommendation with stated reasoning.</p>
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
@@ -903,14 +944,14 @@ RULES:
                     {
                         "role": "system",
                         "content": (
-                            "You are a universal product intelligence analyst and domain expert. "
-                            "You analyze ANY product or business idea — fragrances, electronics, fashion, software, business ideas, and more. "
-                            "You must strictly respect the provided content. "
-                            "If information is explicitly present, use it exactly. "
-                            "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
-                            "NEVER output 'not specified', 'not provided', 'unavailable', 'cannot be determined', or 'no data' — always infer with 'Likely' prefix instead. "
-                            "Produce useful expert analysis — zero-insight output is wrong, fully-invented output is wrong. "
-                            "You return clean, structured JSON only — no markdown, no code fences, no extra text."
+                            "You are an expert product analyst and domain specialist. "
+                            "You produce structured, factual product intelligence — not marketing copy. "
+                            "You analyze products across all categories: fragrances, electronics, fashion, software, business ideas, and more. "
+                            "You always return concrete data: real specifications, measurable attributes, and specific details. "
+                            "NEVER use vague hedging language like 'Likely', 'based on context', 'not specified'. "
+                            "NEVER use marketing filler like 'luxurious', 'elegant', 'sophisticated'. "
+                            "If information is missing from the input, derive it using domain expertise and state it directly. "
+                            "You return clean, valid JSON only — no markdown, no code fences, no extra text."
                         ),
                     },
                     {
@@ -918,7 +959,7 @@ RULES:
                         "content": prompt,
                     },
                 ],
-                temperature=0.7,
+                temperature=0.4,
             )
         except (OpenAIError, ConnectionError, TimeoutError) as exc:
             print(f"analyze_product_with_ai: API call failed, retrying: {exc}")
@@ -945,7 +986,7 @@ RULES:
             data = {
                 "title": idea,
                 "short_summary": cleaned[:200],
-                "category": "generic_product",
+                "category": detected_category,
                 "key_benefits": [],
                 "selling_points": [],
                 "target_audience": "",
@@ -991,28 +1032,28 @@ RULES:
 
                 data["long_description"] = _bullets_to_html(ld)
 
-            # --- Strip banned phrases from ALL string values ---------------
+            # --- Strip banned/vague/marketing phrases from ALL values ------
             _banned_re = re.compile(
                 r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
                 re.IGNORECASE,
             )
-
-            def _infer_replacement(field_context: str = "") -> str:
-                """Generate an intelligent inference replacement based on product context."""
-                return "Likely a well-crafted product based on market positioning"
+            _likely_re = re.compile(r"\bLikely:?\s*", re.IGNORECASE)
+            _marketing_re = re.compile(
+                r"\b(luxurious|elegant|sophisticated|exquisite|opulent|sumptuous)\b",
+                re.IGNORECASE,
+            )
 
             def _scrub(value, field_name=""):
-                """Recursively replace banned phrases with intelligent inferences."""
+                """Recursively clean banned phrases, 'Likely' prefixes, and marketing filler."""
                 if isinstance(value, str):
-                    if _banned_re.search(value):
-                        stripped_check = _banned_re.sub("", value).strip(" .,;:-–—")
-                        if not stripped_check or len(stripped_check) < 5:
-                            return _infer_replacement(field_name)
-                        scrubbed = _banned_re.sub("inferred from product context", value)
-                        while "  " in scrubbed:
-                            scrubbed = scrubbed.replace("  ", " ")
-                        return scrubbed.strip()
-                    return value
+                    cleaned = value
+                    cleaned = _likely_re.sub("", cleaned)
+                    cleaned = _banned_re.sub("", cleaned)
+                    cleaned = _marketing_re.sub("", cleaned)
+                    while "  " in cleaned:
+                        cleaned = cleaned.replace("  ", " ")
+                    cleaned = cleaned.strip()
+                    return cleaned if cleaned else value
                 if isinstance(value, list):
                     return [_scrub(v, field_name) for v in value]
                 if isinstance(value, dict):
@@ -1054,7 +1095,7 @@ RULES:
             output = {
                 "title": data.get("title", idea),
                 "short_summary": data.get("short_summary", ""),
-                "category": data.get("category", "generic_product"),
+                "category": data.get("category", detected_category),
                 "key_benefits": data.get("key_benefits", []),
                 "target_audience": data.get("target_audience", ""),
                 "technical_analysis": data.get("technical_analysis", ""),
@@ -1065,7 +1106,7 @@ RULES:
             }
 
             # Include any category-specific fields the AI returned
-            category = (data.get("category") or "generic_product").lower()
+            category = (data.get("category") or detected_category or "generic_product").lower()
 
             if category == "fragrance":
                 output["scent_family"] = data.get("scent_family", "")
@@ -1080,6 +1121,7 @@ RULES:
             elif category == "electronics":
                 output["specs"] = data.get("specs", {})
                 output["performance"] = data.get("performance", "")
+                output["battery"] = data.get("battery", "")
                 output["use_cases"] = data.get("use_cases", [])
                 output["pros"] = data.get("pros", [])
                 output["cons"] = data.get("cons", [])
@@ -1115,7 +1157,7 @@ RULES:
     fallback = {
         "title": idea,
         "short_summary": "",
-        "category": "generic_product",
+        "category": detected_category,
         "key_benefits": [],
         "target_audience": "",
         "technical_analysis": "",
