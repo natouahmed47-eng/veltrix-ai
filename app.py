@@ -914,28 +914,32 @@ RULES:
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
-        response = client.chat.completions.create(
-            model="gpt-4.1-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a fragrance chemist, perfumer, and luxury product analyst — also a domain expert. "
-                        "You must strictly respect the provided product content. "
-                        "If information is explicitly present, use it exactly. "
-                        "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
-                        "NEVER output 'not specified', 'not provided', 'unavailable', 'cannot be determined', or 'no data' — always infer with 'Likely' prefix instead. "
-                        "Produce useful expert analysis — zero-insight output is wrong, fully-invented output is wrong. "
-                        "You return clean, structured JSON only — no markdown, no code fences, no extra text."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": prompt,
-                },
-            ],
-            temperature=0.7,
-        )
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4.1-mini",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a fragrance chemist, perfumer, and luxury product analyst — also a domain expert. "
+                            "You must strictly respect the provided product content. "
+                            "If information is explicitly present, use it exactly. "
+                            "If information is missing, infer only when there is a strong logical signal — use realistic domain knowledge, not fantasy. "
+                            "NEVER output 'not specified', 'not provided', 'unavailable', 'cannot be determined', or 'no data' — always infer with 'Likely' prefix instead. "
+                            "Produce useful expert analysis — zero-insight output is wrong, fully-invented output is wrong. "
+                            "You return clean, structured JSON only — no markdown, no code fences, no extra text."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    },
+                ],
+                temperature=0.7,
+            )
+        except Exception as exc:
+            print(f"analyze_product_with_ai: API call failed, retrying: {exc}")
+            continue
 
         raw_text = response.choices[0].message.content if response.choices else ""
         if not raw_text:
