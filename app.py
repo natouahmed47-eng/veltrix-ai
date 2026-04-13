@@ -2874,87 +2874,8 @@ def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
 
-def _migrate_missing_columns():
-    """Add columns that exist in the SQLAlchemy models but not yet in the database.
-
-    ``db.create_all()`` only creates *new* tables – it never alters existing
-    ones.  This helper inspects every mapped table and issues ``ALTER TABLE …
-    ADD COLUMN`` for any column the database is missing, keeping the schema in
-    sync without a full Alembic setup.
-    """
-    from sqlalchemy import inspect as sa_inspect, text
-
-    dialect = db.engine.dialect
-    preparer = dialect.identifier_preparer
-    inspector = sa_inspect(db.engine)
-
-    for table_name, table in db.metadata.tables.items():
-        if not inspector.has_table(table_name):
-            continue  # table doesn't exist yet; create_all() will handle it
-
-        existing = {col["name"] for col in inspector.get_columns(table_name)}
-        for column in table.columns:
-            if column.name in existing:
-                continue
-
-            quoted_table = preparer.quote_identifier(table_name)
-            quoted_col = preparer.quote_identifier(column.name)
-            col_type = column.type.compile(dialect=dialect)
-            default_sql = _column_default_sql(column)
-
-            if not column.nullable and default_sql is not None:
-                stmt = (
-                    f"ALTER TABLE {quoted_table} "
-                    f"ADD COLUMN {quoted_col} {col_type} "
-                    f"DEFAULT {default_sql} NOT NULL"
-                )
-            elif default_sql is not None:
-                stmt = (
-                    f"ALTER TABLE {quoted_table} "
-                    f"ADD COLUMN {quoted_col} {col_type} "
-                    f"DEFAULT {default_sql}"
-                )
-            else:
-                stmt = (
-                    f"ALTER TABLE {quoted_table} "
-                    f"ADD COLUMN {quoted_col} {col_type}"
-                )
-
-            app.logger.info("Auto-migration: %s", stmt)
-            try:
-                db.session.execute(text(stmt))
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                app.logger.exception(
-                    "Auto-migration failed for %s.%s", table_name, column.name
-                )
-
-
-def _column_default_sql(column):
-    """Return an SQL-safe default literal for *column*, or ``None``."""
-    # Check server_default first (e.g. server_default=text("now()"))
-    if column.server_default is not None:
-        return column.server_default.arg.text if hasattr(column.server_default.arg, "text") else str(column.server_default.arg)
-
-    if column.default is None or not hasattr(column.default, "arg"):
-        return None
-    val = column.default.arg
-    if callable(val):
-        return None  # Python-side callable (e.g. datetime.utcnow)
-    if isinstance(val, bool):
-        return "TRUE" if val else "FALSE"
-    if isinstance(val, (int, float)):
-        return str(val)
-    if isinstance(val, str):
-        safe = val.replace("'", "''")
-        return f"'{safe}'"
-    return None
-
-
 with app.app_context():
     db.create_all()
-    _migrate_missing_columns()
 
 
 if __name__ == "__main__":
