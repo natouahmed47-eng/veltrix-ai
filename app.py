@@ -40,6 +40,8 @@ SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products"
 PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.sandbox.paypal.com")
+PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "")
+ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -92,6 +94,7 @@ class User(db.Model):
     token = db.Column(db.String(64), unique=True, nullable=True, index=True)
     is_pro = db.Column(db.Boolean, default=False, nullable=False)
     paypal_order_id = db.Column(db.String(255), nullable=True)
+    paypal_subscription_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     analyses = db.relationship("SavedAnalysis", backref="user", lazy=True)
@@ -1617,7 +1620,180 @@ def paypal_capture_order(user):
     return jsonify({"message": "Payment successful. Pro activated!", "is_pro": True})
 
 
-@app.route("/api/save-analysis", methods=["POST"])
+@app.route("/api/config", methods=["GET"])
+def api_config():
+    """Return safe public configuration. Never expose secrets."""
+    return jsonify({
+        "paypal_client_id": PAYPAL_CLIENT_ID,
+        "paypal_plan_id": PAYPAL_PLAN_ID,
+    })
+
+
+@app.route("/api/admin/paypal/create-plan", methods=["POST"])
+def admin_create_paypal_plan():
+    """One-time admin helper: create PayPal Product + Billing Plan via API.
+
+    Requires ``Authorization: Bearer <ADMIN_SECRET>`` header.
+    Skips if PAYPAL_PLAN_ID is already set.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    provided = auth_header.replace("Bearer ", "").strip()
+    if not ADMIN_SECRET or provided != ADMIN_SECRET:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if PAYPAL_PLAN_ID:
+        return jsonify({
+            "message": "PAYPAL_PLAN_ID already set",
+            "plan_id": PAYPAL_PLAN_ID,
+        })
+
+    # --- Step 1: PayPal OAuth ---
+    try:
+        access_token = get_paypal_access_token()
+    except Exception as exc:
+        app.logger.error("PayPal auth failed during plan creation: %s", exc)
+        return jsonify({"error": "PayPal authentication failed"}), 502
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {access_token}",
+    }
+
+    # --- Step 2: Create Catalog Product ---
+    product_payload = {
+        "name": "Veltrix AI Pro",
+        "description": "Monthly subscription for unlimited AI product analysis on Veltrix AI",
+        "type": "SERVICE",
+        "category": "SOFTWARE",
+    }
+    prod_resp = requests.post(
+        f"{PAYPAL_API_BASE}/v1/catalogs/products",
+        json=product_payload,
+        headers=headers,
+        timeout=30,
+    )
+    if prod_resp.status_code not in (200, 201):
+        app.logger.error(
+            "PayPal product creation failed: %s %s",
+            prod_resp.status_code, prod_resp.text,
+        )
+        return jsonify({
+            "error": "Failed to create PayPal catalog product",
+            "details": prod_resp.text,
+        }), 502
+
+    product_data = prod_resp.json()
+    product_id = product_data.get("id", "")
+
+    # --- Step 3: Create Billing Plan ---
+    plan_payload = {
+        "product_id": product_id,
+        "name": "Veltrix AI Pro Monthly",
+        "description": "10 USD monthly subscription for unlimited AI product analysis",
+        "status": "ACTIVE",
+        "billing_cycles": [
+            {
+                "frequency": {
+                    "interval_unit": "MONTH",
+                    "interval_count": 1,
+                },
+                "tenure_type": "REGULAR",
+                "sequence": 1,
+                "total_cycles": 0,
+                "pricing_scheme": {
+                    "fixed_price": {
+                        "value": "10",
+                        "currency_code": "USD",
+                    }
+                },
+            }
+        ],
+        "payment_preferences": {
+            "auto_bill_outstanding": True,
+            "payment_failure_threshold": 3,
+        },
+        "quantity_supported": False,
+    }
+    plan_resp = requests.post(
+        f"{PAYPAL_API_BASE}/v1/billing/plans",
+        json=plan_payload,
+        headers=headers,
+        timeout=30,
+    )
+    if plan_resp.status_code not in (200, 201):
+        app.logger.error(
+            "PayPal plan creation failed: %s %s",
+            plan_resp.status_code, plan_resp.text,
+        )
+        return jsonify({
+            "error": "Failed to create PayPal billing plan",
+            "details": plan_resp.text,
+        }), 502
+
+    plan_data = plan_resp.json()
+    plan_id = plan_data.get("id", "")
+
+    app.logger.info(
+        "PayPal plan created — product_id=%s plan_id=%s. "
+        "Set PAYPAL_PLAN_ID=%s in your environment.",
+        product_id, plan_id, plan_id,
+    )
+
+    return jsonify({
+        "product_id": product_id,
+        "plan_id": plan_id,
+        "message": "Plan created. Set PAYPAL_PLAN_ID env var to this plan_id.",
+    }), 201
+
+
+@app.route("/api/paypal/activate-subscription", methods=["POST"])
+@login_required
+def paypal_activate_subscription(user):
+    """Activate Pro after a PayPal subscription is approved."""
+    body = request.get_json(force=True, silent=True) or {}
+    subscription_id = (body.get("subscriptionID") or "").strip()
+    if not subscription_id:
+        return jsonify({"error": "subscriptionID is required"}), 400
+
+    # Idempotency
+    if user.is_pro and user.paypal_subscription_id == subscription_id:
+        return jsonify({"message": "Subscription already active.", "is_pro": True})
+
+    # Verify subscription status with PayPal
+    try:
+        access_token = get_paypal_access_token()
+    except Exception as exc:
+        app.logger.error("PayPal auth failed: %s", exc)
+        return jsonify({"error": "PayPal authentication failed"}), 502
+
+    resp = requests.get(
+        f"{PAYPAL_API_BASE}/v1/billing/subscriptions/{subscription_id}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        timeout=30,
+    )
+    if resp.status_code != 200:
+        app.logger.error(
+            "PayPal subscription check failed: %s %s",
+            resp.status_code, resp.text,
+        )
+        return jsonify({"error": "Failed to verify subscription"}), 502
+
+    sub_data = resp.json()
+    status = sub_data.get("status", "")
+    if status not in ("ACTIVE", "APPROVED"):
+        return jsonify({"error": f"Subscription status is {status}, not active"}), 400
+
+    user.is_pro = True
+    user.paypal_subscription_id = subscription_id
+    db.session.commit()
+
+    return jsonify({"message": "Subscription activated. Pro enabled!", "is_pro": True})
+
+
+
 @login_required
 def api_save_analysis(user):
     analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
