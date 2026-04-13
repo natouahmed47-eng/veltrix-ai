@@ -95,6 +95,7 @@ class User(db.Model):
     is_pro = db.Column(db.Boolean, default=False, nullable=False)
     paypal_order_id = db.Column(db.String(255), nullable=True)
     paypal_subscription_id = db.Column(db.String(255), nullable=True)
+    paypal_plan_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     analyses = db.relationship("SavedAnalysis", backref="user", lazy=True)
@@ -1493,16 +1494,23 @@ def api_register():
     if existing:
         return jsonify({"error": "Username already taken"}), 409
 
-    token = secrets.token_hex(32)
-    user = User(
-        username=username,
-        password_hash=generate_password_hash(password),
-        token=token,
-    )
-    db.session.add(user)
-    db.session.commit()
+    try:
+        token = secrets.token_hex(32)
+        user = User(
+            username=username,
+            password_hash=generate_password_hash(password),
+            token=token,
+            is_pro=False,
+        )
+        db.session.add(user)
+        db.session.commit()
 
-    return jsonify({"token": token, "username": user.username}), 201
+        return jsonify({"token": token, "username": user.username}), 201
+
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error("Registration failed for user %s: %s", username, e)
+        return jsonify({"error": "Registration failed. Please try again later."}), 500
 
 
 @app.route("/api/login", methods=["POST"])
