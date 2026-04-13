@@ -1476,25 +1476,18 @@ def dashboard():
 
 @app.route("/api/register", methods=["POST"])
 def api_register():
-    data = request.get_json(force=True, silent=True)
-    if data is None:
-        return jsonify({"error": "Invalid or missing JSON body"}), 400
-
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
-
-    if not username or not password:
-        return jsonify({"error": "Username and password are required"}), 400
-    if len(username) < 3:
-        return jsonify({"error": "Username must be at least 3 characters"}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
-
-    existing = User.query.filter_by(username=username).first()
-    if existing:
-        return jsonify({"error": "Username already taken"}), 409
-
     try:
+        data = request.get_json() or {}
+        username = (data.get("username") or "").strip()
+        password = (data.get("password") or "").strip()
+
+        if not username or not password:
+            return jsonify({"error": "Missing username or password"}), 400
+
+        existing = User.query.filter_by(username=username).first()
+        if existing:
+            return jsonify({"error": "Username already taken"}), 409
+
         token = secrets.token_hex(32)
         user = User(
             username=username,
@@ -1502,6 +1495,7 @@ def api_register():
             token=token,
             is_pro=False,
         )
+
         db.session.add(user)
         db.session.commit()
 
@@ -1635,6 +1629,28 @@ def api_config():
         "paypal_client_id": PAYPAL_CLIENT_ID,
         "paypal_plan_id": PAYPAL_PLAN_ID,
     })
+
+
+@app.route("/api/admin/reset-db", methods=["POST"])
+def admin_reset_db():
+    """One-time admin helper: drop and recreate all database tables.
+
+    Requires ``Authorization: Bearer <ADMIN_SECRET>`` header.
+    WARNING: This is destructive and deletes all data. Use only for
+    development/testing recovery when the schema is out of sync.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    provided = auth_header.replace("Bearer ", "").strip()
+    if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        db.drop_all()
+        db.create_all()
+        return jsonify({"success": True, "message": "Database tables reset successfully"}), 200
+    except Exception as e:
+        app.logger.error("Database reset failed: %s", e)
+        return jsonify({"error": "Database reset failed"}), 500
 
 
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
