@@ -1475,42 +1475,29 @@ def dashboard():
 # ── Auth & SaaS Endpoints ──
 
 @app.route("/api/register", methods=["POST"])
-def api_register():
-    data = request.get_json(force=True, silent=True)
-    if data is None:
-        return jsonify({"error": "Invalid or missing JSON body"}), 400
-
-    username = (data.get("username") or "").strip()
-    password = data.get("password") or ""
-
-    if not username or not password:
-        return jsonify({"error": "Username and password are required"}), 400
-    if len(username) < 3:
-        return jsonify({"error": "Username must be at least 3 characters"}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters"}), 400
-
-    existing = User.query.filter_by(username=username).first()
-    if existing:
-        return jsonify({"error": "Username already taken"}), 409
-
+def register():
     try:
-        token = secrets.token_hex(32)
+        data = request.get_json() or {}
+        username = (data.get("username") or "").strip()
+        password = (data.get("password") or "").strip()
+
+        if not username or not password:
+            return jsonify({"error": "Missing username or password"}), 400
+
         user = User(
             username=username,
             password_hash=generate_password_hash(password),
-            token=token,
-            is_pro=False,
+            is_pro=False
         )
+
         db.session.add(user)
         db.session.commit()
 
-        return jsonify({"token": token, "username": user.username}), 201
+        return jsonify({"success": True}), 201
 
     except Exception as e:
         db.session.rollback()
-        app.logger.error("Registration failed for user %s: %s", username, e)
-        return jsonify({"error": "Registration failed. Please try again later."}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/login", methods=["POST"])
@@ -2860,6 +2847,7 @@ def internal_error(error):
 
 
 with app.app_context():
+    db.drop_all()
     db.create_all()
 
 
