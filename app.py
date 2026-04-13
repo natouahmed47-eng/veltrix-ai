@@ -37,6 +37,10 @@ SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
 SHOPIFY_REDIRECT_URI = os.environ.get("SHOPIFY_REDIRECT_URI")
 SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products")
 
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.sandbox.paypal.com")
+
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 MAX_AI_GENERATION_RETRIES = 3
@@ -86,6 +90,8 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.Text, nullable=False)
     token = db.Column(db.String(64), unique=True, nullable=True, index=True)
+    is_pro = db.Column(db.Boolean, default=False, nullable=False)
+    paypal_order_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     analyses = db.relationship("SavedAnalysis", backref="user", lazy=True)
@@ -121,6 +127,19 @@ def login_required(f):
             return jsonify({"error": "Authentication required"}), 401
         return f(user, *args, **kwargs)
     return decorated
+
+
+def get_paypal_access_token():
+    """Obtain an OAuth2 access token from PayPal."""
+    resp = requests.post(
+        f"{PAYPAL_API_BASE}/v1/oauth2/token",
+        data={"grant_type": "client_credentials"},
+        auth=(PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET),
+        headers={"Accept": "application/json"},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()["access_token"]
 
 
 def sanitize_plain_text(text_value: str) -> str:
@@ -1510,18 +1529,99 @@ def api_login():
 @login_required
 def api_me(user):
     analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
+    limit = "unlimited" if user.is_pro else FREE_ANALYSIS_LIMIT
     return jsonify({
         "username": user.username,
         "analysis_count": analysis_count,
-        "analysis_limit": FREE_ANALYSIS_LIMIT,
+        "analysis_limit": limit,
+        "is_pro": user.is_pro,
     })
+
+
+@app.route("/api/paypal/create-order", methods=["POST"])
+@login_required
+def paypal_create_order(user):
+    try:
+        access_token = get_paypal_access_token()
+    except Exception as exc:
+        app.logger.error("PayPal auth failed: %s", exc)
+        return jsonify({"error": "PayPal authentication failed"}), 502
+
+    order_payload = {
+        "intent": "CAPTURE",
+        "purchase_units": [
+            {
+                "amount": {
+                    "currency_code": "USD",
+                    "value": "10.00",
+                },
+            }
+        ],
+    }
+
+    resp = requests.post(
+        f"{PAYPAL_API_BASE}/v2/checkout/orders",
+        json=order_payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        timeout=30,
+    )
+    if resp.status_code not in (200, 201):
+        app.logger.error("PayPal create-order failed: %s %s", resp.status_code, resp.text)
+        return jsonify({"error": "Failed to create PayPal order"}), 502
+
+    order_data = resp.json()
+    return jsonify({"id": order_data["id"]})
+
+
+@app.route("/api/paypal/capture-order", methods=["POST"])
+@login_required
+def paypal_capture_order(user):
+    body = request.get_json(force=True, silent=True) or {}
+    order_id = (body.get("orderID") or "").strip()
+    if not order_id:
+        return jsonify({"error": "orderID is required"}), 400
+
+    # Idempotency: if this order was already processed, return success
+    if user.is_pro and user.paypal_order_id == order_id:
+        return jsonify({"message": "Payment already processed.", "is_pro": True})
+
+    try:
+        access_token = get_paypal_access_token()
+    except Exception as exc:
+        app.logger.error("PayPal auth failed: %s", exc)
+        return jsonify({"error": "PayPal authentication failed"}), 502
+
+    resp = requests.post(
+        f"{PAYPAL_API_BASE}/v2/checkout/orders/{order_id}/capture",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        timeout=30,
+    )
+    if resp.status_code not in (200, 201):
+        app.logger.error("PayPal capture failed: %s %s", resp.status_code, resp.text)
+        return jsonify({"error": "Failed to capture PayPal order"}), 502
+
+    capture_data = resp.json()
+    if capture_data.get("status") != "COMPLETED":
+        return jsonify({"error": "Payment was not completed"}), 400
+
+    user.is_pro = True
+    user.paypal_order_id = order_id
+    db.session.commit()
+
+    return jsonify({"message": "Payment successful. Pro activated!", "is_pro": True})
 
 
 @app.route("/api/save-analysis", methods=["POST"])
 @login_required
 def api_save_analysis(user):
     analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
-    if analysis_count >= FREE_ANALYSIS_LIMIT:
+    if not user.is_pro and analysis_count >= FREE_ANALYSIS_LIMIT:
         return jsonify({
             "error": f"Free plan limit reached ({FREE_ANALYSIS_LIMIT} analyses). Upgrade to save more.",
         }), 403
@@ -1544,11 +1644,12 @@ def api_save_analysis(user):
     db.session.add(saved)
     db.session.commit()
 
+    limit = "unlimited" if user.is_pro else FREE_ANALYSIS_LIMIT
     return jsonify({
         "message": "Analysis saved",
         "id": saved.id,
         "analysis_count": analysis_count + 1,
-        "analysis_limit": FREE_ANALYSIS_LIMIT,
+        "analysis_limit": limit,
     }), 201
 
 
@@ -1575,7 +1676,7 @@ def api_my_analyses(user):
     return jsonify({
         "analyses": items,
         "count": len(items),
-        "limit": FREE_ANALYSIS_LIMIT,
+        "limit": "unlimited" if user.is_pro else FREE_ANALYSIS_LIMIT,
     })
 
 
@@ -2394,7 +2495,7 @@ def analyze_product():
     current_user = get_current_user()
     if current_user:
         analysis_count = SavedAnalysis.query.filter_by(user_id=current_user.id).count()
-        if analysis_count >= FREE_ANALYSIS_LIMIT:
+        if not current_user.is_pro and analysis_count >= FREE_ANALYSIS_LIMIT:
             return jsonify({
                 "error": f"Free plan limit reached ({FREE_ANALYSIS_LIMIT} analyses). Upgrade for unlimited access.",
                 "limit_reached": True,
