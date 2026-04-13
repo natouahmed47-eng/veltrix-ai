@@ -628,6 +628,10 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 fetch("/api/config").then(function(r) { return r.json(); }).then(function(cfg) {
   window.PAYPAL_PLAN_ID = cfg.paypal_plan_id || "";
+  if (!window.PAYPAL_PLAN_ID) {
+    console.warn("PayPal plan ID not configured; subscription button disabled.");
+    return;
+  }
   paypal.Buttons({
     createSubscription: function(data, actions) {
       return actions.subscription.create({
@@ -651,4 +655,6 @@ fetch("/api/config").then(function(r) { return r.json(); }).then(function(cfg) {
         });
     }
   }).render('#paypal-button-container');
+}).catch(function(err) {
+  console.error("Failed to load PayPal config:", err);
 });
