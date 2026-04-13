@@ -1475,7 +1475,7 @@ def dashboard():
 # ── Auth & SaaS Endpoints ──
 
 @app.route("/api/register", methods=["POST"])
-def register():
+def api_register():
     try:
         data = request.get_json() or {}
         username = (data.get("username") or "").strip()
@@ -1484,16 +1484,22 @@ def register():
         if not username or not password:
             return jsonify({"error": "Missing username or password"}), 400
 
+        existing = User.query.filter_by(username=username).first()
+        if existing:
+            return jsonify({"error": "Username already taken"}), 409
+
+        token = secrets.token_hex(32)
         user = User(
             username=username,
             password_hash=generate_password_hash(password),
-            is_pro=False
+            token=token,
+            is_pro=False,
         )
 
         db.session.add(user)
         db.session.commit()
 
-        return jsonify({"success": True}), 201
+        return jsonify({"token": token, "username": user.username}), 201
 
     except Exception as e:
         db.session.rollback()
@@ -1622,6 +1628,27 @@ def api_config():
         "paypal_client_id": PAYPAL_CLIENT_ID,
         "paypal_plan_id": PAYPAL_PLAN_ID,
     })
+
+
+@app.route("/api/admin/reset-db", methods=["POST"])
+def admin_reset_db():
+    """One-time admin helper: drop and recreate all database tables.
+
+    Requires ``Authorization: Bearer <ADMIN_SECRET>`` header.
+    WARNING: This is destructive and deletes all data. Use only for
+    development/testing recovery when the schema is out of sync.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    provided = auth_header.replace("Bearer ", "").strip()
+    if not ADMIN_SECRET or provided != ADMIN_SECRET:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    try:
+        db.drop_all()
+        db.create_all()
+        return jsonify({"success": True, "message": "Database tables reset successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
@@ -2847,7 +2874,6 @@ def internal_error(error):
 
 
 with app.app_context():
-    db.drop_all()
     db.create_all()
 
 
