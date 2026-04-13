@@ -627,18 +627,34 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 });
 paypal.Buttons({
-  createOrder: function(data, actions) {
-    return actions.order.create({
-      purchase_units: [{
-        amount: {
-          value: "10.00"
-        }
-      }]
-    });
+  createOrder: function() {
+    var token = localStorage.getItem("veltrix_token") || "";
+    return fetch("/api/paypal/create-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      }
+    }).then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.error) { throw new Error(data.error); }
+        return data.id;
+      });
   },
-  onApprove: function(data, actions) {
-    return actions.order.capture().then(function(details) {
-      alert("تم الدفع بنجاح 👍");
-    });
+  onApprove: function(data) {
+    var token = localStorage.getItem("veltrix_token") || "";
+    return fetch("/api/paypal/capture-order", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ orderID: data.orderID })
+    }).then(function(res) { return res.json(); })
+      .then(function(details) {
+        if (details.error) { alert("Payment failed: " + details.error); return; }
+        alert("Payment successful! Pro activated.");
+        window.location.reload();
+      });
   }
 }).render('#paypal-button-container');
