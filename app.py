@@ -2884,7 +2884,10 @@ def _migrate_missing_columns():
     """
     from sqlalchemy import inspect as sa_inspect, text
 
+    dialect = db.engine.dialect
+    preparer = dialect.identifier_preparer
     inspector = sa_inspect(db.engine)
+
     for table_name, table in db.metadata.tables.items():
         if not inspector.has_table(table_name):
             continue  # table doesn't exist yet; create_all() will handle it
@@ -2894,42 +2897,46 @@ def _migrate_missing_columns():
             if column.name in existing:
                 continue
 
-            col_type = column.type.compile(dialect=db.engine.dialect)
+            quoted_table = preparer.quote_identifier(table_name)
+            quoted_col = preparer.quote_identifier(column.name)
+            col_type = column.type.compile(dialect=dialect)
             default_sql = _column_default_sql(column)
 
             if not column.nullable and default_sql is not None:
                 stmt = (
-                    f"ALTER TABLE {table_name} "
-                    f"ADD COLUMN {column.name} {col_type} "
+                    f"ALTER TABLE {quoted_table} "
+                    f"ADD COLUMN {quoted_col} {col_type} "
                     f"DEFAULT {default_sql} NOT NULL"
-                )
-            elif not column.nullable:
-                # NOT NULL without a usable default – make it nullable so
-                # existing rows are not rejected.
-                stmt = (
-                    f"ALTER TABLE {table_name} "
-                    f"ADD COLUMN {column.name} {col_type}"
                 )
             elif default_sql is not None:
                 stmt = (
-                    f"ALTER TABLE {table_name} "
-                    f"ADD COLUMN {column.name} {col_type} "
+                    f"ALTER TABLE {quoted_table} "
+                    f"ADD COLUMN {quoted_col} {col_type} "
                     f"DEFAULT {default_sql}"
                 )
             else:
                 stmt = (
-                    f"ALTER TABLE {table_name} "
-                    f"ADD COLUMN {column.name} {col_type}"
+                    f"ALTER TABLE {quoted_table} "
+                    f"ADD COLUMN {quoted_col} {col_type}"
                 )
 
             app.logger.info("Auto-migration: %s", stmt)
-            db.session.execute(text(stmt))
-
-    db.session.commit()
+            try:
+                db.session.execute(text(stmt))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                app.logger.exception(
+                    "Auto-migration failed for %s.%s", table_name, column.name
+                )
 
 
 def _column_default_sql(column):
     """Return an SQL-safe default literal for *column*, or ``None``."""
+    # Check server_default first (e.g. server_default=text("now()"))
+    if column.server_default is not None:
+        return column.server_default.arg.text if hasattr(column.server_default.arg, "text") else str(column.server_default.arg)
+
     if column.default is None or not hasattr(column.default, "arg"):
         return None
     val = column.default.arg
