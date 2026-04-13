@@ -1503,8 +1503,7 @@ def api_register():
 
     except Exception as e:
         db.session.rollback()
-        app.logger.error("Registration failed for user %s: %s", username, e)
-        return jsonify({"error": "Registration failed. Please try again later."}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/login", methods=["POST"])
