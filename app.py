@@ -40,6 +40,7 @@ SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products"
 PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.sandbox.paypal.com")
+PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "")
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -92,6 +93,8 @@ class User(db.Model):
     token = db.Column(db.String(64), unique=True, nullable=True, index=True)
     is_pro = db.Column(db.Boolean, default=False, nullable=False)
     paypal_order_id = db.Column(db.String(255), nullable=True)
+    paypal_subscription_id = db.Column(db.String(255), nullable=True)
+    paypal_plan_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     analyses = db.relationship("SavedAnalysis", backref="user", lazy=True)
@@ -1453,6 +1456,11 @@ def optimize_product_router(product, lang="en"):
     return result
 
 
+@app.route("/api/config", methods=["GET"])
+def api_config():
+    return jsonify({"paypal_plan_id": PAYPAL_PLAN_ID})
+
+
 @app.route("/")
 def home():
     return send_file("index.html")
@@ -1535,58 +1543,21 @@ def api_me(user):
         "analysis_count": analysis_count,
         "analysis_limit": limit,
         "is_pro": user.is_pro,
+        "subscription_id": user.paypal_subscription_id,
     })
 
 
-@app.route("/api/paypal/create-order", methods=["POST"])
+@app.route("/api/paypal/activate-subscription", methods=["POST"])
 @login_required
-def paypal_create_order(user):
-    try:
-        access_token = get_paypal_access_token()
-    except Exception as exc:
-        app.logger.error("PayPal auth failed: %s", exc)
-        return jsonify({"error": "PayPal authentication failed"}), 502
-
-    order_payload = {
-        "intent": "CAPTURE",
-        "purchase_units": [
-            {
-                "amount": {
-                    "currency_code": "USD",
-                    "value": "10.00",
-                },
-            }
-        ],
-    }
-
-    resp = requests.post(
-        f"{PAYPAL_API_BASE}/v2/checkout/orders",
-        json=order_payload,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {access_token}",
-        },
-        timeout=30,
-    )
-    if resp.status_code not in (200, 201):
-        app.logger.error("PayPal create-order failed: %s %s", resp.status_code, resp.text)
-        return jsonify({"error": "Failed to create PayPal order"}), 502
-
-    order_data = resp.json()
-    return jsonify({"id": order_data["id"]})
-
-
-@app.route("/api/paypal/capture-order", methods=["POST"])
-@login_required
-def paypal_capture_order(user):
+def paypal_activate_subscription(user):
     body = request.get_json(force=True, silent=True) or {}
-    order_id = (body.get("orderID") or "").strip()
-    if not order_id:
-        return jsonify({"error": "orderID is required"}), 400
+    subscription_id = (body.get("subscriptionID") or "").strip()
+    if not subscription_id:
+        return jsonify({"error": "subscriptionID is required"}), 400
 
-    # Idempotency: if this order was already processed, return success
-    if user.is_pro and user.paypal_order_id == order_id:
-        return jsonify({"message": "Payment already processed.", "is_pro": True})
+    # Idempotency: if this subscription was already activated, return success
+    if user.is_pro and user.paypal_subscription_id == subscription_id:
+        return jsonify({"message": "Subscription already active.", "is_pro": True})
 
     try:
         access_token = get_paypal_access_token()
@@ -1594,27 +1565,29 @@ def paypal_capture_order(user):
         app.logger.error("PayPal auth failed: %s", exc)
         return jsonify({"error": "PayPal authentication failed"}), 502
 
-    resp = requests.post(
-        f"{PAYPAL_API_BASE}/v2/checkout/orders/{order_id}/capture",
+    resp = requests.get(
+        f"{PAYPAL_API_BASE}/v1/billing/subscriptions/{subscription_id}",
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {access_token}",
         },
         timeout=30,
     )
-    if resp.status_code not in (200, 201):
-        app.logger.error("PayPal capture failed: %s %s", resp.status_code, resp.text)
-        return jsonify({"error": "Failed to capture PayPal order"}), 502
+    if resp.status_code != 200:
+        app.logger.error("PayPal subscription check failed: %s %s", resp.status_code, resp.text)
+        return jsonify({"error": "Failed to verify subscription"}), 502
 
-    capture_data = resp.json()
-    if capture_data.get("status") != "COMPLETED":
-        return jsonify({"error": "Payment was not completed"}), 400
+    sub_data = resp.json()
+    status = sub_data.get("status", "")
+    if status not in ("ACTIVE", "APPROVED"):
+        return jsonify({"error": f"Subscription status is {status}, not active"}), 400
 
     user.is_pro = True
-    user.paypal_order_id = order_id
+    user.paypal_subscription_id = subscription_id
+    user.paypal_plan_id = sub_data.get("plan_id", "")
     db.session.commit()
 
-    return jsonify({"message": "Payment successful. Pro activated!", "is_pro": True})
+    return jsonify({"message": "Subscription activated! Pro enabled.", "is_pro": True})
 
 
 @app.route("/api/save-analysis", methods=["POST"])

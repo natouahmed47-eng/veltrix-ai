@@ -626,35 +626,29 @@ document.addEventListener("DOMContentLoaded", function () {
         return html;
     }
 });
-paypal.Buttons({
-  createOrder: function() {
-    var token = localStorage.getItem("veltrix_token") || "";
-    return fetch("/api/paypal/create-order", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      }
-    }).then(function(res) { return res.json(); })
-      .then(function(data) {
-        if (data.error) { throw new Error(data.error); }
-        return data.id;
+fetch("/api/config").then(function(r) { return r.json(); }).then(function(cfg) {
+  window.PAYPAL_PLAN_ID = cfg.paypal_plan_id || "";
+  paypal.Buttons({
+    createSubscription: function(data, actions) {
+      return actions.subscription.create({
+        plan_id: window.PAYPAL_PLAN_ID
       });
-  },
-  onApprove: function(data) {
-    var token = localStorage.getItem("veltrix_token") || "";
-    return fetch("/api/paypal/capture-order", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + token
-      },
-      body: JSON.stringify({ orderID: data.orderID })
-    }).then(function(res) { return res.json(); })
-      .then(function(details) {
-        if (details.error) { alert("Payment failed: " + details.error); return; }
-        alert("Payment successful! Pro activated.");
-        window.location.reload();
-      });
-  }
-}).render('#paypal-button-container');
+    },
+    onApprove: function(data) {
+      var token = localStorage.getItem("veltrix_token") || "";
+      return fetch("/api/paypal/activate-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ subscriptionID: data.subscriptionID })
+      }).then(function(res) { return res.json(); })
+        .then(function(details) {
+          if (details.error) { alert("Subscription failed: " + details.error); return; }
+          alert("Subscription activated! Pro enabled.");
+          window.location.reload();
+        });
+    }
+  }).render('#paypal-button-container');
+});
