@@ -1503,7 +1503,8 @@ def api_register():
 
     except Exception as e:
         db.session.rollback()
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("Registration failed for user %s: %s", username, e)
+        return jsonify({"error": "Registration failed. Please try again later."}), 500
 
 
 @app.route("/api/login", methods=["POST"])
@@ -1640,7 +1641,7 @@ def admin_reset_db():
     """
     auth_header = request.headers.get("Authorization", "")
     provided = auth_header.replace("Bearer ", "").strip()
-    if not ADMIN_SECRET or provided != ADMIN_SECRET:
+    if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
         return jsonify({"error": "Unauthorized"}), 403
 
     try:
@@ -1648,7 +1649,8 @@ def admin_reset_db():
         db.create_all()
         return jsonify({"success": True, "message": "Database tables reset successfully"}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("Database reset failed: %s", e)
+        return jsonify({"error": "Database reset failed"}), 500
 
 
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
