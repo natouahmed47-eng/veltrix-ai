@@ -1543,7 +1543,8 @@ def api_me(user):
 def paypal_create_order(user):
     try:
         access_token = get_paypal_access_token()
-    except Exception:
+    except Exception as exc:
+        app.logger.error("PayPal auth failed: %s", exc)
         return jsonify({"error": "PayPal authentication failed"}), 502
 
     order_payload = {
@@ -1568,6 +1569,7 @@ def paypal_create_order(user):
         timeout=30,
     )
     if resp.status_code not in (200, 201):
+        app.logger.error("PayPal create-order failed: %s %s", resp.status_code, resp.text)
         return jsonify({"error": "Failed to create PayPal order"}), 502
 
     order_data = resp.json()
@@ -1582,9 +1584,14 @@ def paypal_capture_order(user):
     if not order_id:
         return jsonify({"error": "orderID is required"}), 400
 
+    # Idempotency: if this order was already processed, return success
+    if user.is_pro and user.paypal_order_id == order_id:
+        return jsonify({"message": "Payment already processed.", "is_pro": True})
+
     try:
         access_token = get_paypal_access_token()
-    except Exception:
+    except Exception as exc:
+        app.logger.error("PayPal auth failed: %s", exc)
         return jsonify({"error": "PayPal authentication failed"}), 502
 
     resp = requests.post(
@@ -1596,6 +1603,7 @@ def paypal_capture_order(user):
         timeout=30,
     )
     if resp.status_code not in (200, 201):
+        app.logger.error("PayPal capture failed: %s %s", resp.status_code, resp.text)
         return jsonify({"error": "Failed to capture PayPal order"}), 502
 
     capture_data = resp.json()
