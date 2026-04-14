@@ -1467,6 +1467,11 @@ def serve_script():
     return send_file("script.js")
 
 
+@app.route("/style.css")
+def serve_style():
+    return send_file("style.css")
+
+
 @app.route("/dashboard")
 def dashboard():
     return send_file("dashboard.html")
