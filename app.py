@@ -1824,7 +1824,7 @@ def paypal_activate_subscription(user):
     return jsonify({"message": "Subscription activated. Pro enabled!", "is_pro": True})
 
 
-def _verify_paypal_webhook(headers, body_bytes):
+def _verify_paypal_webhook(headers, event_body):
     """Verify a PayPal webhook using the verify-webhook-signature API.
 
     Returns ``True`` when the signature is valid, ``False`` otherwise.
@@ -1846,7 +1846,7 @@ def _verify_paypal_webhook(headers, body_bytes):
         "transmission_sig": headers.get("PAYPAL-TRANSMISSION-SIG", ""),
         "transmission_time": headers.get("PAYPAL-TRANSMISSION-TIME", ""),
         "webhook_id": PAYPAL_WEBHOOK_ID,
-        "webhook_event": json.loads(body_bytes),
+        "webhook_event": event_body,
     }
 
     resp = requests.post(
@@ -1876,16 +1876,17 @@ def paypal_webhook():
 
     This is the source of truth for subscription lifecycle and payments.
     """
-    body_bytes = request.get_data(as_text=True)
-    if not body_bytes:
+    body_text = request.get_data(as_text=True)
+    if not body_text:
         return jsonify({"error": "Empty body"}), 400
 
+    event = json.loads(body_text)
+
     # --- Verify webhook signature ---
-    if not _verify_paypal_webhook(request.headers, body_bytes):
+    if not _verify_paypal_webhook(request.headers, event):
         app.logger.warning("PayPal webhook signature verification failed")
         return jsonify({"error": "Webhook verification failed"}), 403
 
-    event = json.loads(body_bytes)
     event_type = event.get("event_type", "")
     event_id = event.get("id", "")
     resource = event.get("resource", {})
@@ -1908,8 +1909,7 @@ def paypal_webhook():
         user = User.query.filter_by(paypal_subscription_id=subscription_id).first()
         if not user:
             app.logger.info(
-                "No user found for subscription %s (event %s)",
-                subscription_id, event_type,
+                "No user found for subscription event %s", event_type,
             )
             return jsonify({"status": "no_user"}), 200
 
@@ -1954,8 +1954,7 @@ def paypal_webhook():
         user = User.query.filter_by(paypal_subscription_id=subscription_id).first()
         if not user:
             app.logger.info(
-                "No user found for subscription %s (payment event %s)",
-                subscription_id, event_type,
+                "No user found for payment event %s", event_type,
             )
             return jsonify({"status": "no_user"}), 200
 
