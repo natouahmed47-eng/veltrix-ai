@@ -638,10 +638,18 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       paypal.Buttons({
         style: { label: "subscribe" },
+        onInit: function(data, actions) {
+          console.log("PayPal init", data);
+        },
+        onClick: function(data, actions) {
+          console.log("PayPal click", data);
+        },
         createSubscription: function(data, actions) {
+          console.log("Creating subscription with plan:", planId);
           return actions.subscription.create({ plan_id: planId });
         },
         onApprove: function(data) {
+          console.log("PayPal approved", data);
           var token = localStorage.getItem("veltrix_token") || "";
           return fetch("/api/paypal/activate-subscription", {
             method: "POST",
@@ -656,6 +664,14 @@ document.addEventListener("DOMContentLoaded", function () {
               alert("Subscription activated! Pro enabled.");
               window.location.reload();
             });
+        },
+        onCancel: function(data) {
+          console.log("PayPal cancelled", data);
+          alert("Subscription cancelled");
+        },
+        onError: function(err) {
+          console.error("PayPal error full object:", err);
+          alert("PayPal runtime error");
         }
       }).render('#paypal-button-container');
     })
