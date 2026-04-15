@@ -157,7 +157,12 @@ document.addEventListener("DOMContentLoaded", function () {
             var data = await response.json();
 
             if (!response.ok) {
-                messageEl.innerHTML = '<div class="error">' + (data.error || "Analysis failed") + '</div>';
+                // TEMPORARY DEBUG: show real backend error details
+                var errMsg = data.message || data.error || "Analysis failed";
+                if (data.trace) {
+                    console.error("Backend trace:", data.trace);
+                }
+                messageEl.innerHTML = '<div class="error">' + errMsg + '</div>';
                 console.error("API error:", data);
                 analyzeBtn.disabled = false;
                 return;
