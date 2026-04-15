@@ -10,3 +10,6 @@ services:
       name: data
       mountPath: /var/data
       sizeGB: 1
+    envVars:
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
