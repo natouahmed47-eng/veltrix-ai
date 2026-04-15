@@ -154,11 +154,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({ idea: idea })
             });
 
+            var rawText = await response.text();
             var data;
             try {
-                data = await response.json();
+                data = JSON.parse(rawText);
             } catch (jsonErr) {
-                var rawText = await response.text().catch(function () { return ""; });
                 messageEl.innerHTML = '<div class="error">Server returned non-JSON response (HTTP ' + response.status + '): ' + (rawText || "Unknown error") + '</div>';
                 console.error("Non-JSON response:", response.status, rawText);
                 analyzeBtn.disabled = false;
