@@ -1822,6 +1822,7 @@ def paypal_activate_subscription(user):
 
 
 
+@app.route("/api/save-analysis", methods=["POST"])
 @login_required
 def api_save_analysis(user):
     analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
