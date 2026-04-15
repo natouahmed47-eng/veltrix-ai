@@ -658,9 +658,11 @@ document.addEventListener("DOMContentLoaded", function () {
           }).then(function(res) { return res.json(); })
             .then(function(details) {
               if (details.error) { alert("Subscription failed: " + details.error); return; }
-              alert("Subscription activated! Pro enabled.");
-              window.location.reload();
+              window.location.href = "/success";
             });
+        },
+        onCancel: function() {
+          window.location.href = "/cancel";
         }
       }).render('#paypal-button-container');
     })

@@ -1481,6 +1481,16 @@ def dashboard():
     return send_file("dashboard.html")
 
 
+@app.route("/success")
+def payment_success():
+    return send_file("success.html")
+
+
+@app.route("/cancel")
+def payment_cancel():
+    return send_file("cancel.html")
+
+
 # ── Auth & SaaS Endpoints ──
 
 @app.route("/api/register", methods=["POST"])
