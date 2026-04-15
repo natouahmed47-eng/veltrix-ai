@@ -2911,60 +2911,59 @@ def optimize_product():
 
 @app.route("/api/analyze-product", methods=["POST"])
 def analyze_product():
-    data = request.get_json(force=True, silent=True)
-    if data is None:
-        return jsonify({"error": "Invalid or missing JSON body"}), 400
+    try:
+        data = request.get_json(force=True, silent=True)
+        if data is None:
+            return jsonify({"error": "Invalid or missing JSON body"}), 400
 
-    idea = (data.get("idea") or "").strip()
-    if not idea:
-        return jsonify({"error": "Field 'idea' is required"}), 400
+        idea = (data.get("idea") or "").strip()
+        if not idea:
+            return jsonify({"error": "Field 'idea' is required"}), 400
 
-    # Usage limit for logged-in users
-    current_user = get_current_user()
-    if current_user:
-        analysis_count = SavedAnalysis.query.filter_by(user_id=current_user.id).count()
-        if not current_user.is_pro and analysis_count >= FREE_ANALYSIS_LIMIT:
-            return jsonify({
-                "error": f"Free plan limit reached ({FREE_ANALYSIS_LIMIT} analyses). Upgrade for unlimited access.",
-                "limit_reached": True,
-            }), 403
+        # Usage limit for logged-in users
+        current_user = get_current_user()
+        if current_user:
+            analysis_count = SavedAnalysis.query.filter_by(user_id=current_user.id).count()
+            if not current_user.is_pro and analysis_count >= FREE_ANALYSIS_LIMIT:
+                return jsonify({
+                    "error": f"Free plan limit reached ({FREE_ANALYSIS_LIMIT} analyses). Upgrade for unlimited access.",
+                    "limit_reached": True,
+                }), 403
 
-    if not client:
-        # Fallback: return static demo data when OpenAI is not configured
-        response_data = {
-            "title": idea,
-            "category": "fragrance",
-            "short_summary": f"AI analysis for \"{idea}\" is not available because OpenAI is not configured. This is a demo response.",
-            "technical_analysis": "",
-            "target_audience": "Fragrance enthusiasts",
-            "key_benefits": ["Premium quality", "Long-lasting scent", "Unique composition"],
-            "selling_points": ["Luxury positioning", "Distinctive character"],
-            "use_cases": ["Evening wear", "Special occasions", "Signature scent"],
-            "performance": {"longevity": "6-8 hours", "projection": "Moderate to strong"},
-            "specifications": {"concentration": "Eau de Parfum", "volume": "100ml"},
-            "category_specific": {
+        if not client:
+            # Fallback: return static demo data when OpenAI is not configured
+            response_data = {
+                "title": idea,
+                "category": "fragrance",
+                "short_summary": f"AI analysis for \"{idea}\" is not available because OpenAI is not configured. This is a demo response.",
+                "technical_analysis": "",
+                "target_audience": "Fragrance enthusiasts",
+                "key_benefits": ["Premium quality", "Long-lasting scent", "Unique composition"],
+                "selling_points": ["Luxury positioning", "Distinctive character"],
+                "use_cases": ["Evening wear", "Special occasions", "Signature scent"],
+                "performance": {"longevity": "6-8 hours", "projection": "Moderate to strong"},
+                "specifications": {"concentration": "Eau de Parfum", "volume": "100ml"},
+                "category_specific": {
+                    "scent_family": "Oriental",
+                    "fragrance_notes": {"top": ["Bergamot"], "heart": ["Rose"], "base": ["Sandalwood"]},
+                    "projection": "Moderate to strong",
+                    "longevity": "6-8 hours",
+                    "best_season": "Fall / Winter",
+                    "best_occasions": ["Evening events", "Date night"],
+                },
+                "long_description": f"<p><strong>{html.escape(idea)}</strong> — demo analysis (OpenAI not configured).</p>",
+                "meta_description": f"Discover {html.escape(idea)} — a premium fragrance experience.",
+                "keywords": idea.lower(),
+                # Backward-compat flat fields
                 "scent_family": "Oriental",
                 "fragrance_notes": {"top": ["Bergamot"], "heart": ["Rose"], "base": ["Sandalwood"]},
                 "projection": "Moderate to strong",
                 "longevity": "6-8 hours",
                 "best_season": "Fall / Winter",
                 "best_occasions": ["Evening events", "Date night"],
-            },
-            "long_description": f"<p><strong>{html.escape(idea)}</strong> — demo analysis (OpenAI not configured).</p>",
-            "meta_description": f"Discover {html.escape(idea)} — a premium fragrance experience.",
-            "keywords": idea.lower(),
-            # Backward-compat flat fields
-            "scent_family": "Oriental",
-            "fragrance_notes": {"top": ["Bergamot"], "heart": ["Rose"], "base": ["Sandalwood"]},
-            "projection": "Moderate to strong",
-            "longevity": "6-8 hours",
-            "best_season": "Fall / Winter",
-            "best_occasions": ["Evening events", "Date night"],
-        }
-        return jsonify(response_data)
+            }
+            return jsonify(response_data)
 
-    # --- TEMPORARY DEBUG PATCH: full error reporting ---
-    try:
         result = analyze_product_with_ai(idea)
 
         long_desc = result.get("long_description", "")
@@ -2995,16 +2994,15 @@ def analyze_product():
                 response_data[field] = result[field]
 
         return jsonify(response_data)
-    except Exception as exc:
+    except Exception as e:
         tb = traceback.format_exc()
-        print(f"[ANALYZE DEBUG] Exception in /api/analyze-product: {exc}")
+        print(f"[ANALYZE ERROR] Exception in /api/analyze-product: {e}")
         print(tb)
         return jsonify({
-            "error": "Analysis failed",
-            "message": str(exc),
+            "error": "Internal Server Error",
+            "message": str(e),
             "trace": tb,
         }), 500
-    # --- END TEMPORARY DEBUG PATCH ---
 
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])

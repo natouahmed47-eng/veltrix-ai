@@ -154,10 +154,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({ idea: idea })
             });
 
-            var data = await response.json();
+            var rawText = await response.text();
+            var data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (jsonErr) {
+                messageEl.innerHTML = '<div class="error">Server returned non-JSON response (HTTP ' + response.status + '): ' + (rawText || "Unknown error") + '</div>';
+                console.error("Non-JSON response:", response.status, rawText);
+                analyzeBtn.disabled = false;
+                return;
+            }
 
             if (!response.ok) {
-                // TEMPORARY DEBUG: show real backend error details
                 var errMsg = data.message || data.error || "Analysis failed";
                 if (data.trace) {
                     console.error("Backend trace:", data.trace);
