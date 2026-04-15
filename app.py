@@ -41,6 +41,7 @@ PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "AXII0NIu0wnEJwazRqZ5Usowk
 PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.paypal.com")
 PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "P-5FK62061DH6777518NHPN64A")
+PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -96,6 +97,8 @@ class User(db.Model):
     paypal_order_id = db.Column(db.String(255), nullable=True)
     paypal_subscription_id = db.Column(db.String(255), nullable=True)
     paypal_plan_id = db.Column(db.String(255), nullable=True)
+    subscription_status = db.Column(db.String(50), nullable=True)
+    paypal_last_event_id = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     analyses = db.relationship("SavedAnalysis", backref="user", lazy=True)
@@ -1657,6 +1660,51 @@ def admin_reset_db():
         return jsonify({"error": "Database reset failed"}), 500
 
 
+@app.route("/api/admin/migrate-db", methods=["POST"])
+def admin_migrate_db():
+    """One-time admin helper: add any missing columns to existing tables.
+
+    Requires ``Authorization: Bearer <ADMIN_SECRET>`` header.
+    Safe to run multiple times — skips columns that already exist.
+    Uses ALTER TABLE ADD COLUMN for each missing column.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    provided = auth_header.replace("Bearer ", "").strip()
+    if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+    added = []
+    skipped = []
+    try:
+        inspector = sa_inspect(db.engine)
+        for model in (User, ShopifyStore, SavedAnalysis):
+            table = model.__tablename__
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for col in model.__table__.columns:
+                if col.name not in existing:
+                    col_type = col.type.compile(db.engine.dialect)
+                    stmt = f'ALTER TABLE "{table}" ADD COLUMN "{col.name}" {col_type}'
+                    try:
+                        db.session.execute(sa_text(stmt))
+                        db.session.commit()
+                        added.append(f"{table}.{col.name}")
+                    except Exception as col_exc:
+                        db.session.rollback()
+                        skipped.append({"column": f"{table}.{col.name}"})
+    except Exception as e:
+        app.logger.error("Migration failed: %s", e)
+        return jsonify({"error": "Migration failed"}), 500
+
+    return jsonify({
+        "success": True,
+        "added": added,
+        "skipped": skipped,
+        "message": f"Migration complete. {len(added)} column(s) added.",
+    })
+
+
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
 def admin_create_paypal_plan():
     """One-time admin helper: create PayPal Product + Billing Plan via API.
@@ -1819,6 +1867,170 @@ def paypal_activate_subscription(user):
     db.session.commit()
 
     return jsonify({"message": "Subscription activated. Pro enabled!", "is_pro": True})
+
+
+def _verify_paypal_webhook(headers, event_body):
+    """Verify a PayPal webhook using the verify-webhook-signature API.
+
+    Returns ``True`` when the signature is valid, ``False`` otherwise.
+    """
+    if not PAYPAL_WEBHOOK_ID:
+        app.logger.error("PAYPAL_WEBHOOK_ID not configured")
+        return False
+
+    try:
+        access_token = get_paypal_access_token()
+    except Exception as exc:
+        app.logger.error("PayPal auth failed during webhook verification: %s", exc)
+        return False
+
+    verify_payload = {
+        "auth_algo": headers.get("PAYPAL-AUTH-ALGO", ""),
+        "cert_url": headers.get("PAYPAL-CERT-URL", ""),
+        "transmission_id": headers.get("PAYPAL-TRANSMISSION-ID", ""),
+        "transmission_sig": headers.get("PAYPAL-TRANSMISSION-SIG", ""),
+        "transmission_time": headers.get("PAYPAL-TRANSMISSION-TIME", ""),
+        "webhook_id": PAYPAL_WEBHOOK_ID,
+        "webhook_event": event_body,
+    }
+
+    resp = requests.post(
+        f"{PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature",
+        json=verify_payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        },
+        timeout=30,
+    )
+
+    if resp.status_code != 200:
+        app.logger.error(
+            "PayPal webhook verification request failed: %s %s",
+            resp.status_code, resp.text,
+        )
+        return False
+
+    verification_status = resp.json().get("verification_status", "")
+    return verification_status == "SUCCESS"
+
+
+@app.route("/api/paypal/webhook", methods=["POST"])
+def paypal_webhook():
+    """Receive and process PayPal webhook events.
+
+    This is the source of truth for subscription lifecycle and payments.
+    """
+    body_text = request.get_data(as_text=True)
+    if not body_text:
+        return jsonify({"error": "Empty body"}), 400
+
+    try:
+        event = json.loads(body_text)
+    except (json.JSONDecodeError, ValueError):
+        return jsonify({"error": "Invalid JSON body"}), 400
+
+    # --- Verify webhook signature ---
+    if not _verify_paypal_webhook(request.headers, event):
+        app.logger.warning("PayPal webhook signature verification failed")
+        return jsonify({"error": "Webhook verification failed"}), 403
+
+    event_type = event.get("event_type", "")
+    event_id = event.get("id", "")
+    resource = event.get("resource", {})
+
+    app.logger.info("PayPal webhook received: %s (id=%s)", event_type, event_id)
+
+    # ---- Subscription events ----
+    if event_type in (
+        "BILLING.SUBSCRIPTION.ACTIVATED",
+        "BILLING.SUBSCRIPTION.CANCELLED",
+        "BILLING.SUBSCRIPTION.SUSPENDED",
+        "BILLING.SUBSCRIPTION.EXPIRED",
+    ):
+        subscription_id = resource.get("id", "")
+        status = resource.get("status", "")
+        if not subscription_id:
+            app.logger.warning("Webhook %s missing subscription id", event_type)
+            return jsonify({"status": "ignored"}), 200
+
+        user = User.query.filter_by(paypal_subscription_id=subscription_id).first()
+        if not user:
+            app.logger.info(
+                "No user found for subscription event %s", event_type,
+            )
+            return jsonify({"status": "no_user"}), 200
+
+        # Idempotency: skip if we already processed this event
+        if user.paypal_last_event_id == event_id:
+            return jsonify({"status": "already_processed"}), 200
+
+        user.subscription_status = status
+        user.paypal_last_event_id = event_id
+
+        if event_type == "BILLING.SUBSCRIPTION.ACTIVATED":
+            user.is_pro = True
+        elif event_type in (
+            "BILLING.SUBSCRIPTION.CANCELLED",
+            "BILLING.SUBSCRIPTION.SUSPENDED",
+            "BILLING.SUBSCRIPTION.EXPIRED",
+        ):
+            user.is_pro = False
+
+        db.session.commit()
+        app.logger.info(
+            "User %s updated: is_pro=%s subscription_status=%s (event %s)",
+            user.username, user.is_pro, user.subscription_status, event_type,
+        )
+        return jsonify({"status": "ok"}), 200
+
+    # ---- Payment events ----
+    if event_type in (
+        "PAYMENT.SALE.COMPLETED",
+        "PAYMENT.SALE.DENIED",
+        "PAYMENT.SALE.REFUNDED",
+        "PAYMENT.SALE.REVERSED",
+    ):
+        # PayPal sale resources include billing_agreement_id for subscriptions
+        subscription_id = resource.get("billing_agreement_id", "")
+        if not subscription_id:
+            app.logger.info(
+                "Payment event %s has no billing_agreement_id; skipping", event_type,
+            )
+            return jsonify({"status": "ignored"}), 200
+
+        user = User.query.filter_by(paypal_subscription_id=subscription_id).first()
+        if not user:
+            app.logger.info(
+                "No user found for payment event %s", event_type,
+            )
+            return jsonify({"status": "no_user"}), 200
+
+        if user.paypal_last_event_id == event_id:
+            return jsonify({"status": "already_processed"}), 200
+
+        user.paypal_last_event_id = event_id
+
+        if event_type == "PAYMENT.SALE.COMPLETED":
+            user.is_pro = True
+            user.subscription_status = "ACTIVE"
+        elif event_type in (
+            "PAYMENT.SALE.DENIED",
+            "PAYMENT.SALE.REFUNDED",
+            "PAYMENT.SALE.REVERSED",
+        ):
+            user.is_pro = False
+
+        db.session.commit()
+        app.logger.info(
+            "User %s payment update: is_pro=%s (event %s)",
+            user.username, user.is_pro, event_type,
+        )
+        return jsonify({"status": "ok"}), 200
+
+    # Unhandled event types — acknowledge receipt
+    app.logger.info("Unhandled PayPal webhook event type: %s", event_type)
+    return jsonify({"status": "ignored"}), 200
 
 
 
