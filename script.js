@@ -658,11 +658,11 @@ document.addEventListener("DOMContentLoaded", function () {
           }).then(function(res) { return res.json(); })
             .then(function(details) {
               if (details.error) { alert("Subscription failed: " + details.error); return; }
-              window.location.href = "/success";
+              window.location.href = "https://veltrix-ai-fx5c.onrender.com/success";
             });
         },
         onCancel: function() {
-          window.location.href = "/cancel";
+          window.location.href = "https://veltrix-ai-fx5c.onrender.com/cancel";
         }
       }).render('#paypal-button-container');
     })
