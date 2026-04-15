@@ -37,10 +37,10 @@ SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
 SHOPIFY_REDIRECT_URI = os.environ.get("SHOPIFY_REDIRECT_URI")
 SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products")
 
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "AXII0NIu0wnEJwazRqZ5UsowkdJWxJdVYxrxUT84kYljpayOSUFC76fMRyvJbIFMuzYjZMv3gP53U4C3")
 PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
-PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.sandbox.paypal.com")
-PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "")
+PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.paypal.com")
+PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "P-5FK62061DH6777518NHPN64A")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
