@@ -1660,6 +1660,51 @@ def admin_reset_db():
         return jsonify({"error": "Database reset failed"}), 500
 
 
+@app.route("/api/admin/migrate-db", methods=["POST"])
+def admin_migrate_db():
+    """One-time admin helper: add any missing columns to existing tables.
+
+    Requires ``Authorization: Bearer <ADMIN_SECRET>`` header.
+    Safe to run multiple times — skips columns that already exist.
+    Uses ALTER TABLE ADD COLUMN for each missing column.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    provided = auth_header.replace("Bearer ", "").strip()
+    if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+    added = []
+    skipped = []
+    try:
+        inspector = sa_inspect(db.engine)
+        for model in (User, ShopifyStore, SavedAnalysis):
+            table = model.__tablename__
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for col in model.__table__.columns:
+                if col.name not in existing:
+                    col_type = col.type.compile(db.engine.dialect)
+                    stmt = f'ALTER TABLE "{table}" ADD COLUMN "{col.name}" {col_type}'
+                    try:
+                        db.session.execute(sa_text(stmt))
+                        db.session.commit()
+                        added.append(f"{table}.{col.name}")
+                    except Exception as col_exc:
+                        db.session.rollback()
+                        skipped.append({"column": f"{table}.{col.name}", "error": str(col_exc)})
+    except Exception as e:
+        app.logger.error("Migration failed: %s", e)
+        return jsonify({"error": "Migration failed", "details": str(e)}), 500
+
+    return jsonify({
+        "success": True,
+        "added": added,
+        "skipped": skipped,
+        "message": f"Migration complete. {len(added)} column(s) added.",
+    })
+
+
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
 def admin_create_paypal_plan():
     """One-time admin helper: create PayPal Product + Billing Plan via API.
@@ -3046,28 +3091,6 @@ def internal_error(error):
 
 with app.app_context():
     db.create_all()
-
-    # Lightweight migration: add any missing columns to existing tables.
-    # db.create_all() only creates new tables; it does not ALTER existing ones.
-    from sqlalchemy import inspect as sa_inspect, text as sa_text
-
-    _inspector = sa_inspect(db.engine)
-    for _model in (User, ShopifyStore, SavedAnalysis):
-        _table = _model.__tablename__
-        _existing = {c["name"] for c in _inspector.get_columns(_table)}
-        for _col in _model.__table__.columns:
-            if _col.name not in _existing:
-                _col_type = _col.type.compile(db.engine.dialect)
-                _stmt = f'ALTER TABLE "{_table}" ADD COLUMN "{_col.name}" {_col_type}'
-                try:
-                    db.session.execute(sa_text(_stmt))
-                    db.session.commit()
-                    app.logger.info("Added column %s.%s", _table, _col.name)
-                except Exception as _exc:
-                    db.session.rollback()
-                    app.logger.warning(
-                        "Could not add column %s.%s: %s", _table, _col.name, _exc
-                    )
 
 
 if __name__ == "__main__":
