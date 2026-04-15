@@ -1692,10 +1692,10 @@ def admin_migrate_db():
                         added.append(f"{table}.{col.name}")
                     except Exception as col_exc:
                         db.session.rollback()
-                        skipped.append({"column": f"{table}.{col.name}", "error": str(col_exc)})
+                        skipped.append({"column": f"{table}.{col.name}"})
     except Exception as e:
         app.logger.error("Migration failed: %s", e)
-        return jsonify({"error": "Migration failed", "details": str(e)}), 500
+        return jsonify({"error": "Migration failed"}), 500
 
     return jsonify({
         "success": True,
@@ -1925,7 +1925,10 @@ def paypal_webhook():
     if not body_text:
         return jsonify({"error": "Empty body"}), 400
 
-    event = json.loads(body_text)
+    try:
+        event = json.loads(body_text)
+    except (json.JSONDecodeError, ValueError):
+        return jsonify({"error": "Invalid JSON body"}), 400
 
     # --- Verify webhook signature ---
     if not _verify_paypal_webhook(request.headers, event):
