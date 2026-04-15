@@ -563,3 +563,45 @@ body {
     .container { padding: 0 12px; }
     .modal-box { padding: 24px; }
 }
+
+/* ── Status Pages (Success / Cancel) ── */
+.status-page {
+    max-width: 520px;
+    margin: 80px auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    padding: 48px 40px;
+    text-align: center;
+}
+.status-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+.status-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0 0 12px;
+}
+.status-message {
+    font-size: 15px;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 0 32px;
+}
+.status-btn {
+    display: inline-block;
+    padding: 12px 32px;
+    border-radius: 10px;
+    border: none;
+    background: #6366f1;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+.status-btn:hover { background: #4f46e5; }
