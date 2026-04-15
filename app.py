@@ -3,6 +3,7 @@ import os
 import re
 import json
 import secrets
+import traceback
 import requests
 from datetime import datetime
 from functools import wraps
@@ -2952,36 +2953,48 @@ def analyze_product():
         }
         return jsonify(response_data)
 
-    result = analyze_product_with_ai(idea)
+    # --- TEMPORARY DEBUG PATCH: full error reporting ---
+    try:
+        result = analyze_product_with_ai(idea)
 
-    long_desc = result.get("long_description", "")
+        long_desc = result.get("long_description", "")
 
-    # Build response with unified fields
-    response_data = {
-        "title": result.get("title", idea),
-        "category": result.get("category", "general"),
-        "short_summary": result.get("short_summary", ""),
-        "technical_analysis": result.get("technical_analysis", ""),
-        "target_audience": result.get("target_audience", ""),
-        "key_benefits": result.get("key_benefits", []),
-        "selling_points": result.get("selling_points", []),
-        "use_cases": result.get("use_cases", []),
-        "performance": result.get("performance", {}),
-        "specifications": result.get("specifications", {}),
-        "category_specific": result.get("category_specific", {}),
-        "long_description": long_desc,
-        "meta_description": result.get("meta_description", ""),
-        "keywords": result.get("keywords", ""),
-        "has_ul": "<ul>" in long_desc.lower(),
-        "li_count": long_desc.lower().count("<li>"),
-    }
+        # Build response with unified fields
+        response_data = {
+            "title": result.get("title", idea),
+            "category": result.get("category", "general"),
+            "short_summary": result.get("short_summary", ""),
+            "technical_analysis": result.get("technical_analysis", ""),
+            "target_audience": result.get("target_audience", ""),
+            "key_benefits": result.get("key_benefits", []),
+            "selling_points": result.get("selling_points", []),
+            "use_cases": result.get("use_cases", []),
+            "performance": result.get("performance", {}),
+            "specifications": result.get("specifications", {}),
+            "category_specific": result.get("category_specific", {}),
+            "long_description": long_desc,
+            "meta_description": result.get("meta_description", ""),
+            "keywords": result.get("keywords", ""),
+            "has_ul": "<ul>" in long_desc.lower(),
+            "li_count": long_desc.lower().count("<li>"),
+        }
 
-    # Include all category-specific fields dynamically (backward compat)
-    for field in CATEGORY_SPECIFIC_FIELDS:
-        if field in result and field not in response_data:
-            response_data[field] = result[field]
+        # Include all category-specific fields dynamically (backward compat)
+        for field in CATEGORY_SPECIFIC_FIELDS:
+            if field in result and field not in response_data:
+                response_data[field] = result[field]
 
-    return jsonify(response_data)
+        return jsonify(response_data)
+    except Exception as exc:
+        tb = traceback.format_exc()
+        print(f"[ANALYZE DEBUG] Exception in /api/analyze-product: {exc}")
+        print(tb)
+        return jsonify({
+            "error": "Analysis failed",
+            "message": str(exc),
+            "trace": tb,
+        }), 500
+    # --- END TEMPORARY DEBUG PATCH ---
 
 
 @app.route("/optimize-all-products", methods=["GET", "POST"])
