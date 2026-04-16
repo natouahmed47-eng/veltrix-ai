@@ -63,6 +63,7 @@
         }
         .plan-badge.active { background: #dcfce7; color: #166534; }
         .plan-badge.cancelled { background: #fef3c7; color: #92400e; }
+        .plan-badge.suspended { background: #fef3c7; color: #92400e; }
         .plan-badge.expired { background: #fee2e2; color: #991b1b; }
         .plan-badge.free { background: #f1f5f9; color: #475569; }
         .empty-state {
@@ -225,7 +226,7 @@
                 } else if (subStatus === "SUSPENDED") {
                     planName = "Free Plan";
                     icon = "📦";
-                    badgeCls = "cancelled";
+                    badgeCls = "suspended";
                     badgeLabel = "Suspended";
                     statusText = "Your subscription is suspended. Please check your PayPal account.";
                 } else {
