@@ -2247,6 +2247,68 @@ def admin_analyses():
         return jsonify({"error": "Failed to load analyses"}), 500
 
 
+@app.route("/api/admin/analytics/funnel", methods=["GET"])
+@admin_required
+def admin_analytics_funnel():
+    """Return conversion funnel counts, derived rates, and recent tracking events."""
+    try:
+        funnel_events = [
+            "pricing_view",
+            "upgrade_click",
+            "paypal_button_rendered",
+            "paypal_subscription_approved",
+            "payment_success_page_view",
+            "payment_cancel_page_view",
+        ]
+        counts = {}
+        for evt in funnel_events:
+            counts[evt] = TrackingEvent.query.filter_by(event_name=evt).count()
+
+        pricing = counts["pricing_view"] or 0
+        clicks = counts["upgrade_click"] or 0
+        approvals = counts["paypal_subscription_approved"] or 0
+        successes = counts["payment_success_page_view"] or 0
+        cancels = counts["payment_cancel_page_view"] or 0
+
+        def _rate(numerator, denominator):
+            if denominator == 0:
+                return 0.0
+            return round(numerator / denominator * 100, 2)
+
+        derived = {
+            "pricing_to_click_rate": _rate(clicks, pricing),
+            "click_to_approval_rate": _rate(approvals, clicks),
+            "pricing_to_success_rate": _rate(successes, pricing),
+            "cancel_rate": _rate(cancels, pricing),
+        }
+
+        recent_events = (
+            TrackingEvent.query
+            .order_by(TrackingEvent.created_at.desc())
+            .limit(20)
+            .all()
+        )
+
+        return jsonify({
+            "funnel_counts": counts,
+            "derived_metrics": derived,
+            "recent_events": [
+                {
+                    "id": e.id,
+                    "event_name": e.event_name,
+                    "username": e.username,
+                    "user_id": e.user_id,
+                    "source": e.source,
+                    "created_at": e.created_at.isoformat() if e.created_at else None,
+                }
+                for e in recent_events
+            ],
+        })
+    except Exception as e:
+        app.logger.error("Admin analytics funnel failed: %s", e)
+        return jsonify({"error": "Failed to load funnel analytics"}), 500
+
+
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
 @admin_required
 @csrf_protected

@@ -187,6 +187,37 @@
             </table>
         </div>
 
+        <!-- Conversion Funnel Analytics -->
+        <h3 class="section-header">Conversion Funnel Analytics</h3>
+        <div class="stats-grid" id="funnelCardsGrid">
+            <div class="stat-card"><div class="label">Pricing Views</div><div class="value" id="funnelPricingView">—</div></div>
+            <div class="stat-card"><div class="label">Upgrade Clicks</div><div class="value" id="funnelUpgradeClick">—</div></div>
+            <div class="stat-card"><div class="label">PayPal Rendered</div><div class="value" id="funnelPaypalRendered">—</div></div>
+            <div class="stat-card pro"><div class="label">Subscriptions Approved</div><div class="value" id="funnelApproved">—</div></div>
+            <div class="stat-card analyses"><div class="label">Payment Success</div><div class="value" id="funnelSuccess">—</div></div>
+            <div class="stat-card"><div class="label">Payment Cancelled</div><div class="value" id="funnelCancel" style="color:#f87171;">—</div></div>
+        </div>
+
+        <h3 class="section-header">Conversion Rates</h3>
+        <div class="stats-grid" id="funnelRatesGrid">
+            <div class="stat-card"><div class="label">Pricing → Click</div><div class="value" id="ratePricingToClick">—</div></div>
+            <div class="stat-card"><div class="label">Click → Approval</div><div class="value" id="rateClickToApproval">—</div></div>
+            <div class="stat-card analyses"><div class="label">Pricing → Success</div><div class="value" id="ratePricingToSuccess">—</div></div>
+            <div class="stat-card"><div class="label">Cancel Rate</div><div class="value" id="rateCancelRate" style="color:#f87171;">—</div></div>
+        </div>
+
+        <h3 class="section-header">Recent Tracking Events</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Event</th><th>Username</th><th>User ID</th><th>Source</th><th>Created</th></tr>
+                </thead>
+                <tbody id="recentEventsBody">
+                    <tr><td colspan="6" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- All Users (paginated) -->
         <h3 class="section-header">All Users</h3>
         <div class="table-wrap">
@@ -321,6 +352,39 @@
             : '<tr><td colspan="5" class="loading-text">No subscriptions yet</td></tr>';
     }
 
+    // ── Render Funnel Analytics ──
+    async function loadFunnelAnalytics() {
+        try {
+            const data = await apiFetch("/api/admin/analytics/funnel");
+            const counts = data.funnel_counts;
+            document.getElementById("funnelPricingView").textContent = counts.pricing_view;
+            document.getElementById("funnelUpgradeClick").textContent = counts.upgrade_click;
+            document.getElementById("funnelPaypalRendered").textContent = counts.paypal_button_rendered;
+            document.getElementById("funnelApproved").textContent = counts.paypal_subscription_approved;
+            document.getElementById("funnelSuccess").textContent = counts.payment_success_page_view;
+            document.getElementById("funnelCancel").textContent = counts.payment_cancel_page_view;
+
+            const metrics = data.derived_metrics;
+            document.getElementById("ratePricingToClick").textContent = metrics.pricing_to_click_rate + "%";
+            document.getElementById("rateClickToApproval").textContent = metrics.click_to_approval_rate + "%";
+            document.getElementById("ratePricingToSuccess").textContent = metrics.pricing_to_success_rate + "%";
+            document.getElementById("rateCancelRate").textContent = metrics.cancel_rate + "%";
+
+            document.getElementById("recentEventsBody").innerHTML = data.recent_events.length
+                ? data.recent_events.map(function(e) {
+                    return "<tr><td>" + e.id + "</td><td>" + escapeHtml(e.event_name) +
+                        "</td><td>" + escapeHtml(e.username || "—") +
+                        "</td><td>" + (e.user_id != null ? e.user_id : "—") +
+                        "</td><td>" + escapeHtml(e.source || "—") +
+                        "</td><td>" + formatDate(e.created_at) + "</td></tr>";
+                }).join("")
+                : '<tr><td colspan="6" class="loading-text">No tracking events yet</td></tr>';
+        } catch (e) {
+            document.getElementById("recentEventsBody").innerHTML =
+                '<tr><td colspan="6" class="loading-text">Failed to load funnel data</td></tr>';
+        }
+    }
+
     // ── Paginated Users ──
     async function loadUsers(page) {
         usersPage = page;
@@ -382,6 +446,7 @@
             })
             .then(function(data) {
                 renderOverview(data);
+                loadFunnelAnalytics();
                 loadUsers(1);
                 loadAnalyses(1);
             })
