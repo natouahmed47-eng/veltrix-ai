@@ -2493,7 +2493,7 @@ def _build_time_to_conversion(events, experiment_name):
         # Earliest view (first view in session for this experiment+variant)
         earliest_view_time = min(view_times)
         # First conversion AFTER the earliest view
-        valid_convs = [t for t in conv_times if t >= earliest_view_time]
+        valid_convs = [t for t in conv_times if t > earliest_view_time]
         if not valid_convs:
             continue  # All conversions before view — skip
 
