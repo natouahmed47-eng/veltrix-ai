@@ -2461,7 +2461,8 @@ def admin_analytics_experiments():
             variants[variant][e.event_name] += 1
 
             # Group by source + variant
-            source = (e.source or meta.get("source") or "unknown").strip() or "unknown"
+            raw_source = (e.source or meta.get("source") or "").strip()
+            source = raw_source if raw_source else "unknown"
             if source not in source_variants:
                 source_variants[source] = {}
             if variant not in source_variants[source]:
