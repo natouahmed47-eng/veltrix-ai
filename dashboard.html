@@ -46,6 +46,26 @@
             padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
             background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0;
         }
+        .plan-card {
+            background: #fff; border-radius: 14px; padding: 20px 24px;
+            margin-bottom: 20px; border: 1px solid #f1f5f9;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+            display: flex; align-items: center; gap: 16px;
+        }
+        .plan-icon { font-size: 28px; flex-shrink: 0; }
+        .plan-info { flex: 1; }
+        .plan-name { font-size: 16px; font-weight: 700; color: #0f172a; }
+        .plan-status { font-size: 13px; color: #64748b; margin-top: 2px; }
+        .plan-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 6px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .plan-badge.active { background: #dcfce7; color: #166534; }
+        .plan-badge.cancelled { background: #fef3c7; color: #92400e; }
+        .plan-badge.suspended { background: #fef3c7; color: #92400e; }
+        .plan-badge.expired { background: #fee2e2; color: #991b1b; }
+        .plan-badge.free { background: #f1f5f9; color: #475569; }
         .empty-state {
             text-align: center; padding: 60px 20px; color: #64748b;
         }
@@ -119,6 +139,7 @@
             <button onclick="window.location.href='/'">Go to Home</button>
         </div>
         <div id="dashboardContent" style="display:none;">
+            <div id="planCard" class="plan-card" style="display:none;"></div>
             <div class="page-header">
                 <h1>Your Analyses</h1>
                 <span class="usage-badge" id="usageBadge"></span>
@@ -173,6 +194,60 @@
         }
 
         var allAnalyses = [];
+
+        /* ── Fetch plan / subscription status ── */
+        fetch("/api/me", { headers: { "Authorization": "Bearer " + token } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                if (d.error) return;
+                var card = document.getElementById("planCard");
+                var isPro = d.is_pro;
+                var subStatus = (d.subscription_status || "").toUpperCase();
+                var planName, icon, badgeCls, badgeLabel, statusText;
+
+                if (isPro) {
+                    planName = "Veltrix AI Pro";
+                    icon = "⚡";
+                    badgeCls = "active";
+                    badgeLabel = "Active";
+                    statusText = "Unlimited analyses · All Pro features enabled";
+                } else if (subStatus === "CANCELLED") {
+                    planName = "Free Plan";
+                    icon = "📦";
+                    badgeCls = "cancelled";
+                    badgeLabel = "Cancelled";
+                    statusText = "Your Pro subscription was cancelled. Resubscribe anytime from the home page.";
+                } else if (subStatus === "EXPIRED") {
+                    planName = "Free Plan";
+                    icon = "📦";
+                    badgeCls = "expired";
+                    badgeLabel = "Expired";
+                    statusText = "Your Pro subscription has expired. Resubscribe to restore Pro features.";
+                } else if (subStatus === "SUSPENDED") {
+                    planName = "Free Plan";
+                    icon = "📦";
+                    badgeCls = "suspended";
+                    badgeLabel = "Suspended";
+                    statusText = "Your subscription is suspended. Please check your PayPal account.";
+                } else {
+                    planName = "Free Plan";
+                    icon = "📦";
+                    badgeCls = "free";
+                    badgeLabel = "Free";
+                    statusText = d.analysis_count + " / " + d.analysis_limit + " analyses used";
+                }
+
+                card.innerHTML =
+                    '<div class="plan-icon">' + icon + '</div>' +
+                    '<div class="plan-info">' +
+                        '<div class="plan-name">' + esc(planName) +
+                            ' <span class="plan-badge ' + badgeCls + '">' + badgeLabel + '</span>' +
+                        '</div>' +
+                        '<div class="plan-status">' + esc(statusText) + '</div>' +
+                    '</div>';
+                card.style.display = "flex";
+            })
+            .catch(function () { /* ignore */ });
 
         fetch("/api/my-analyses", { headers: { "Authorization": "Bearer " + token } })
             .then(function (r) { return r.json(); })

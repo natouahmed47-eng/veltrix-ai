@@ -5,18 +5,35 @@ import json
 import secrets
 import traceback
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlencode
 
 from flask import Flask, jsonify, make_response, redirect, request, render_template_string, send_file, session
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI, OpenAIError
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-CORS(app)
+
+# ── CORS — restrict to the app's own origin(s) ──
+_allowed_origins = os.environ.get("ALLOWED_ORIGINS", "").strip()
+if _allowed_origins:
+    CORS(app, origins=[o.strip() for o in _allowed_origins.split(",") if o.strip()])
+else:
+    # Same-origin only: no cross-origin requests allowed when env var is unset.
+    CORS(app, origins=[])
+
+# ── Rate limiting ──
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],            # no blanket limit; applied per-route
+    storage_uri="memory://",
+)
 
 # ── Session / cookie security ──
 _flask_secret = os.environ.get("FLASK_SECRET_KEY")
@@ -26,6 +43,7 @@ app.secret_key = _flask_secret
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=2)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
@@ -56,6 +74,54 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 MAX_AI_GENERATION_RETRIES = 3
 FREE_ANALYSIS_LIMIT = 5
+
+
+# ── Secure browser headers ──
+@app.after_request
+def _set_security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Strict-Transport-Security"] = (
+        "max-age=63072000; includeSubDomains; preload"
+    )
+    response.headers["Referrer-Policy"] = "same-origin"
+    return response
+
+
+# ── CSRF protection helpers ──
+def _generate_csrf_token():
+    """Create a new CSRF token and store it in the session."""
+    token = secrets.token_hex(32)
+    session["csrf_token"] = token
+    return token
+
+
+def csrf_protected(f):
+    """Decorator that enforces CSRF token on session-authenticated admin POSTs.
+
+    Bearer-token requests (API tools) are exempt because they carry a secret
+    that already proves intent.
+    """
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # If the caller authenticated via Bearer token, skip CSRF check.
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            provided = auth_header.replace("Bearer ", "").strip()
+            if ADMIN_SECRET and secrets.compare_digest(provided, ADMIN_SECRET):
+                return f(*args, **kwargs)
+
+        # Session-based callers must present a valid CSRF token.
+        token_in_session = session.get("csrf_token", "")
+        token_in_header = request.headers.get("X-CSRF-Token", "")
+        if (
+            not token_in_session
+            or not token_in_header
+            or not secrets.compare_digest(token_in_session, token_in_header)
+        ):
+            return jsonify({"error": "CSRF token missing or invalid"}), 403
+        return f(*args, **kwargs)
+    return decorated
 
 # Category-specific fields that may be present in AI analysis results.
 # Used by API endpoints to dynamically pass through category data.
@@ -1687,20 +1753,34 @@ def admin_page():
 
 
 @app.route("/api/admin/login", methods=["POST"])
+@limiter.limit("5 per minute")
 def admin_login():
     """Verify the admin secret and set a secure session cookie."""
     data = request.get_json(silent=True) or {}
     provided = (data.get("secret") or "").strip()
     if not ADMIN_SECRET or not provided or not secrets.compare_digest(provided, ADMIN_SECRET):
         return render_template_string(ADMIN_LOGIN_HTML, error=True), 403
+    session.permanent = True
     session["admin_authenticated"] = True
+    _generate_csrf_token()
     return redirect("/admin")
 
 
+@app.route("/api/admin/csrf-token", methods=["GET"])
+def admin_csrf_token():
+    """Return the current CSRF token for session-authenticated admins."""
+    if not session.get("admin_authenticated"):
+        return jsonify({"error": "Unauthorized"}), 403
+    token = session.get("csrf_token") or _generate_csrf_token()
+    return jsonify({"csrf_token": token})
+
+
 @app.route("/api/admin/logout", methods=["POST"])
+@csrf_protected
 def admin_logout():
     """Clear the admin session and redirect to the login page."""
     session.pop("admin_authenticated", None)
+    session.pop("csrf_token", None)
     return redirect("/admin")
 
 
@@ -1826,11 +1906,24 @@ def api_login():
 def api_me(user):
     analysis_count = SavedAnalysis.query.filter_by(user_id=user.id).count()
     limit = "unlimited" if user.is_pro else FREE_ANALYSIS_LIMIT
+
+    # Derive a clean plan label for the frontend
+    sub_status = user.subscription_status or ""
+    if user.is_pro:
+        plan = "pro"
+    elif sub_status.upper() in ("CANCELLED", "SUSPENDED", "EXPIRED"):
+        plan = "free"
+    else:
+        plan = "free"
+
     return jsonify({
         "username": user.username,
         "analysis_count": analysis_count,
         "analysis_limit": limit,
         "is_pro": user.is_pro,
+        "plan": plan,
+        "subscription_status": sub_status or None,
+        "paypal_subscription_id": user.paypal_subscription_id or None,
     })
 
 
@@ -1924,6 +2017,7 @@ def api_config():
 
 @app.route("/api/admin/reset-db", methods=["POST"])
 @admin_required
+@csrf_protected
 def admin_reset_db():
     """One-time admin helper: drop and recreate all database tables.
 
@@ -1942,6 +2036,7 @@ def admin_reset_db():
 
 @app.route("/api/admin/migrate-db", methods=["POST"])
 @admin_required
+@csrf_protected
 def admin_migrate_db():
     """One-time admin helper: add any missing columns to existing tables.
 
@@ -1972,44 +2067,6 @@ def admin_migrate_db():
     except Exception as e:
         app.logger.error("Migration failed: %s", e)
         return jsonify({"error": "Migration failed"}), 500
-
-    return jsonify({
-        "success": True,
-        "added": added,
-        "skipped": skipped,
-        "message": f"Migration complete. {len(added)} column(s) added.",
-    })
-
-
-@app.route("/api/debug/migrate-db", methods=["POST"])
-def debug_migrate_db():
-    """TEMPORARY unprotected route to add missing columns.
-
-    Remove this route after running it once.
-    """
-    from sqlalchemy import inspect as sa_inspect, text as sa_text
-
-    added = []
-    skipped = []
-    try:
-        inspector = sa_inspect(db.engine)
-        for model in (User, ShopifyStore, SavedAnalysis):
-            table = model.__tablename__
-            existing = {c["name"] for c in inspector.get_columns(table)}
-            for col in model.__table__.columns:
-                if col.name not in existing:
-                    col_type = col.type.compile(db.engine.dialect)
-                    stmt = f'ALTER TABLE "{table}" ADD COLUMN "{col.name}" {col_type}'
-                    try:
-                        db.session.execute(sa_text(stmt))
-                        db.session.commit()
-                        added.append(f"{table}.{col.name}")
-                    except Exception:
-                        db.session.rollback()
-                        skipped.append(f"{table}.{col.name}")
-    except Exception as e:
-        app.logger.error("Debug migration failed: %s", e)
-        return jsonify({"error": "Migration failed", "details": str(e)}), 500
 
     return jsonify({
         "success": True,
@@ -2164,6 +2221,7 @@ def admin_analyses():
 
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
 @admin_required
+@csrf_protected
 def admin_create_paypal_plan():
     """One-time admin helper: create PayPal Product + Billing Plan via API.
 
@@ -2317,6 +2375,7 @@ def paypal_activate_subscription(user):
 
     user.is_pro = True
     user.paypal_subscription_id = subscription_id
+    user.subscription_status = "ACTIVE"
     db.session.commit()
 
     return jsonify({"message": "Subscription activated. Pro enabled!", "is_pro": True})
@@ -2473,6 +2532,7 @@ def paypal_webhook():
             "PAYMENT.SALE.REVERSED",
         ):
             user.is_pro = False
+            user.subscription_status = "SUSPENDED"
 
         db.session.commit()
         app.logger.info(
@@ -3352,6 +3412,7 @@ def optimize_product():
 
 
 @app.route("/api/analyze-product", methods=["POST"])
+@limiter.limit("30 per minute")
 def analyze_product():
     try:
         data = request.get_json(force=True, silent=True)
@@ -3453,12 +3514,9 @@ def analyze_product():
         return jsonify(response_data)
     except Exception as e:
         tb = traceback.format_exc()
-        print(f"[ANALYZE ERROR] Exception in /api/analyze-product: {e}")
-        print(tb)
+        app.logger.error("[ANALYZE ERROR] Exception in /api/analyze-product: %s\n%s", e, tb)
         return jsonify({
             "error": "Internal Server Error",
-            "message": str(e),
-            "trace": tb,
         }), 500
 
 

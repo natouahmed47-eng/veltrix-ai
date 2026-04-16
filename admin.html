@@ -234,6 +234,21 @@
         return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
     }
 
+    // ── CSRF token management ──
+    var _csrfToken = "";
+
+    function fetchCsrfToken() {
+        return fetch("/api/admin/csrf-token", { credentials: "same-origin" })
+            .then(function(resp) {
+                if (!resp.ok) throw new Error("Failed to fetch CSRF token");
+                return resp.json();
+            })
+            .then(function(data) {
+                _csrfToken = data.csrf_token || "";
+                return _csrfToken;
+            });
+    }
+
     async function apiFetch(url) {
         const resp = await fetch(url, {
             credentials: "same-origin",
@@ -247,8 +262,11 @@
     }
 
     function adminLogout() {
-        fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" })
-            .finally(function() { window.location.href = "/admin"; });
+        fetch("/api/admin/logout", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "X-CSRF-Token": _csrfToken },
+        }).finally(function() { window.location.href = "/admin"; });
     }
 
     // ── Render Overview ──
@@ -358,7 +376,10 @@
 
     // ── Auto-load dashboard on page ready ──
     (function() {
-        apiFetch("/api/admin/overview")
+        fetchCsrfToken()
+            .then(function() {
+                return apiFetch("/api/admin/overview");
+            })
             .then(function(data) {
                 renderOverview(data);
                 loadUsers(1);

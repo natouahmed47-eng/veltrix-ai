@@ -27,7 +27,11 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (d.analysis_count !== undefined) {
-                    document.getElementById("usageInfo").textContent = d.analysis_count + "/" + d.analysis_limit + " analyses";
+                    var label = d.analysis_count + "/" + d.analysis_limit + " analyses";
+                    if (d.plan === "pro") {
+                        label = "Pro · " + label;
+                    }
+                    document.getElementById("usageInfo").textContent = label;
                 }
             })
             .catch(function () { /* ignore */ });
