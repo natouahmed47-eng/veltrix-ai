@@ -688,7 +688,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var container = document.getElementById("paypal-button-container");
         if (!container) return;
         paypal.Buttons({
-          style: { label: "subscribe" },
+          style: { label: "pay" },
           createSubscription: function(data, actions) {
             return actions.subscription.create({ plan_id: planId });
           },
