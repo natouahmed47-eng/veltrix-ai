@@ -549,6 +549,192 @@ body {
     margin: 24px auto;
 }
 
+/* ── Pricing Section ── */
+.pricing-section {
+    max-width: 860px;
+    margin: 48px auto 32px;
+    padding: 0 20px;
+}
+.pricing-section-title {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0 0 6px;
+}
+.pricing-section-sub {
+    text-align: center;
+    font-size: 15px;
+    color: #64748b;
+    margin: 0 0 32px;
+    line-height: 1.6;
+}
+.pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+.pricing-card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1.5px solid #e2e8f0;
+    padding: 32px 28px 28px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+    transition: box-shadow 0.2s, transform 0.15s;
+    position: relative;
+}
+.pricing-card:hover {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+.pricing-card.pricing-pro {
+    border-color: #6366f1;
+    box-shadow: 0 2px 12px rgba(99,102,241,0.12), 0 4px 20px rgba(0,0,0,0.04);
+}
+.pricing-card.pricing-pro:hover {
+    box-shadow: 0 4px 24px rgba(99,102,241,0.18), 0 6px 28px rgba(0,0,0,0.06);
+    transform: translateY(-2px);
+}
+.pricing-popular {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.pricing-plan-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+}
+.pricing-plan-name {
+    font-size: 20px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px;
+}
+.pricing-price {
+    font-size: 32px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 8px 0 4px;
+    letter-spacing: -0.5px;
+}
+.pricing-price span {
+    font-size: 15px;
+    font-weight: 500;
+    color: #64748b;
+}
+.pricing-price-note {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0 0 20px;
+}
+.pricing-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+    flex: 1;
+}
+.pricing-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #334155;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+.pricing-features li .pf-icon {
+    flex-shrink: 0;
+    font-size: 15px;
+    line-height: 1.4;
+}
+.pricing-features li .pf-icon.check { color: #22c55e; }
+.pricing-features li .pf-icon.x { color: #cbd5e1; }
+.pricing-cta {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: center;
+    text-decoration: none;
+    transition: opacity 0.15s, transform 0.1s;
+}
+.pricing-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+.pricing-cta:active { transform: translateY(0); }
+.pricing-cta-free {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1.5px solid #e2e8f0;
+}
+.pricing-cta-pro {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff;
+}
+.pricing-trust {
+    text-align: center;
+    padding: 20px 0 0;
+}
+.pricing-trust p {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0 0 6px;
+    line-height: 1.5;
+}
+.pricing-trust p strong {
+    color: #64748b;
+}
+.pricing-pro-active-msg {
+    text-align: center;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 32px auto 0;
+    max-width: 520px;
+}
+.pricing-pro-active-msg .pam-icon { font-size: 28px; margin-bottom: 8px; }
+.pricing-pro-active-msg .pam-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #166534;
+    margin: 0 0 4px;
+}
+.pricing-pro-active-msg .pam-text {
+    font-size: 14px;
+    color: #15803d;
+    margin: 0;
+    line-height: 1.5;
+}
+/* PayPal in pricing */
+.pricing-paypal-wrap {
+    max-width: 400px;
+    margin: 0 auto;
+    padding-top: 12px;
+}
+
+@media (max-width: 640px) {
+    .pricing-grid { grid-template-columns: 1fr; }
+    .pricing-section-title { font-size: 22px; }
+    .pricing-card { padding: 24px 20px 20px; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 640px) {
     .top-bar {

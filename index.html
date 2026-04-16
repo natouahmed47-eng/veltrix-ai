@@ -64,9 +64,68 @@
 
         <!-- Analysis results rendered here by script.js -->
         <div id="results"></div>
+    </div>
 
-        <!-- PayPal subscription button rendered here by script.js -->
-        <div id="paypal-button-container"></div>
+    <!-- ── Pricing Section ── -->
+    <div class="pricing-section" id="pricingSection" style="display:none;">
+        <h2 class="pricing-section-title">Choose Your Plan</h2>
+        <p class="pricing-section-sub">Unlock the full power of Veltrix AI product intelligence.</p>
+
+        <!-- Pro active message (shown only when user is Pro) -->
+        <div class="pricing-pro-active-msg" id="pricingProActive" style="display:none;">
+            <div class="pam-icon">✅</div>
+            <div class="pam-title">You're on the Pro plan</div>
+            <p class="pam-text">You have unlimited access to all Pro features. Manage your subscription from your <a href="/dashboard" style="color:#166534;font-weight:600;">Dashboard</a>.</p>
+        </div>
+
+        <!-- Pricing grid (hidden when Pro) -->
+        <div id="pricingGrid">
+            <div class="pricing-grid">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div class="pricing-plan-icon">📦</div>
+                    <div class="pricing-plan-name">Free</div>
+                    <div class="pricing-price">$0 <span>/ forever</span></div>
+                    <div class="pricing-price-note">No credit card required</div>
+                    <ul class="pricing-features">
+                        <li><span class="pf-icon check">✓</span> 5 product analyses</li>
+                        <li><span class="pf-icon check">✓</span> Basic AI insights</li>
+                        <li><span class="pf-icon check">✓</span> Standard AI model</li>
+                        <li><span class="pf-icon x">—</span> No category-specific analysis</li>
+                        <li><span class="pf-icon x">—</span> No saved analysis history</li>
+                        <li><span class="pf-icon x">—</span> No priority support</li>
+                    </ul>
+                    <div class="pricing-cta pricing-cta-free" id="pricingFreeCta">Your Current Plan</div>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="pricing-card pricing-pro">
+                    <div class="pricing-popular">Most Popular</div>
+                    <div class="pricing-plan-icon">⚡</div>
+                    <div class="pricing-plan-name">Pro</div>
+                    <div class="pricing-price">$9.99 <span>/ month</span></div>
+                    <div class="pricing-price-note">Billed monthly · Cancel anytime</div>
+                    <ul class="pricing-features">
+                        <li><span class="pf-icon check">✓</span> <strong>Unlimited</strong> analyses</li>
+                        <li><span class="pf-icon check">✓</span> Premium AI insights</li>
+                        <li><span class="pf-icon check">✓</span> Category-specific analysis</li>
+                        <li><span class="pf-icon check">✓</span> Saved analysis history</li>
+                        <li><span class="pf-icon check">✓</span> Priority support</li>
+                        <li><span class="pf-icon check">✓</span> Full export capabilities</li>
+                    </ul>
+                    <!-- PayPal subscription button rendered here -->
+                    <div class="pricing-paypal-wrap">
+                        <div id="paypal-button-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pricing-trust">
+                <p>🔒 <strong>Secure checkout</strong> via PayPal — no card details stored on our servers.</p>
+                <p>After upgrading, Pro features activate instantly. Your subscription renews monthly until you cancel.</p>
+                <p>You can manage or cancel your subscription anytime from PayPal or your Dashboard.</p>
+            </div>
+        </div>
     </div>
 
     <!-- PayPal SDK — Live client-id -->
