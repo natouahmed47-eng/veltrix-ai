@@ -19,6 +19,17 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
             authArea.style.display = "flex";
             userArea.style.display = "none";
+            /* Show pricing section for logged-out visitors */
+            var pricingSection = document.getElementById("pricingSection");
+            var pricingGrid = document.getElementById("pricingGrid");
+            var proActive = document.getElementById("pricingProActive");
+            var freeCta = document.getElementById("pricingFreeCta");
+            if (pricingSection) {
+                pricingSection.style.display = "block";
+                if (pricingGrid) pricingGrid.style.display = "block";
+                if (proActive) proActive.style.display = "none";
+                if (freeCta) freeCta.textContent = "Get Started Free";
+            }
         }
     }
 
@@ -32,6 +43,24 @@ document.addEventListener("DOMContentLoaded", function () {
                         label = "Pro · " + label;
                     }
                     document.getElementById("usageInfo").textContent = label;
+                }
+                /* ── Update pricing section visibility ── */
+                var pricingSection = document.getElementById("pricingSection");
+                var pricingGrid = document.getElementById("pricingGrid");
+                var proActive = document.getElementById("pricingProActive");
+                var freeCta = document.getElementById("pricingFreeCta");
+                if (pricingSection) {
+                    pricingSection.style.display = "block";
+                    if (d.plan === "pro") {
+                        /* Pro user: hide comparison grid, show active message */
+                        if (pricingGrid) pricingGrid.style.display = "none";
+                        if (proActive) proActive.style.display = "block";
+                    } else {
+                        /* Free user: show comparison grid */
+                        if (pricingGrid) pricingGrid.style.display = "block";
+                        if (proActive) proActive.style.display = "none";
+                        if (freeCta) freeCta.textContent = "Your Current Plan";
+                    }
                 }
             })
             .catch(function () { /* ignore */ });
@@ -645,40 +674,57 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 /* ── PayPal Subscription Button ── */
 (function() {
-  fetch("/api/config")
-    .then(function(res) { return res.json(); })
-    .then(function(cfg) {
-      var planId = cfg.paypal_plan_id;
-      if (!planId) {
-        console.warn("PayPal plan_id not configured — subscription button disabled.");
-        return;
-      }
-      paypal.Buttons({
-        style: { label: "subscribe" },
-        createSubscription: function(data, actions) {
-          return actions.subscription.create({ plan_id: planId });
-        },
-        onApprove: function(data) {
-          var token = localStorage.getItem("veltrix_token") || "";
-          return fetch("/api/paypal/activate-subscription", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({ subscriptionID: data.subscriptionID })
-          }).then(function(res) { return res.json(); })
-            .then(function(details) {
-              if (details.error) { alert("Subscription failed: " + details.error); return; }
-              window.location.href = "/success";
-            });
-        },
-        onCancel: function() {
-          window.location.href = "/cancel";
+  /* Skip rendering PayPal button if user is already Pro */
+  var token = localStorage.getItem("veltrix_token") || "";
+  function renderPayPal() {
+    fetch("/api/config")
+      .then(function(res) { return res.json(); })
+      .then(function(cfg) {
+        var planId = cfg.paypal_plan_id;
+        if (!planId) {
+          console.warn("PayPal plan_id not configured — subscription button disabled.");
+          return;
         }
-      }).render('#paypal-button-container');
-    })
-    .catch(function(err) {
-      console.warn("Failed to load PayPal config:", err);
-    });
+        var container = document.getElementById("paypal-button-container");
+        if (!container) return;
+        paypal.Buttons({
+          style: { label: "subscribe" },
+          createSubscription: function(data, actions) {
+            return actions.subscription.create({ plan_id: planId });
+          },
+          onApprove: function(data) {
+            var t = localStorage.getItem("veltrix_token") || "";
+            return fetch("/api/paypal/activate-subscription", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + t
+              },
+              body: JSON.stringify({ subscriptionID: data.subscriptionID })
+            }).then(function(res) { return res.json(); })
+              .then(function(details) {
+                if (details.error) { alert("Subscription failed: " + details.error); return; }
+                window.location.href = "/success";
+              });
+          },
+          onCancel: function() {
+            window.location.href = "/cancel";
+          }
+        }).render('#paypal-button-container');
+      })
+      .catch(function(err) {
+        console.warn("Failed to load PayPal config:", err);
+      });
+  }
+
+  if (token) {
+    fetch("/api/me", { headers: { "Authorization": "Bearer " + token } })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (d.plan !== "pro") { renderPayPal(); }
+      })
+      .catch(function() { renderPayPal(); });
+  } else {
+    renderPayPal();
+  }
 })();
