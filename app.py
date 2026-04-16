@@ -2247,45 +2247,66 @@ def admin_analyses():
         return jsonify({"error": "Failed to load analyses"}), 500
 
 
+# ── Shared funnel analytics helpers ──
+_FUNNEL_EVENTS = [
+    "pricing_view",
+    "upgrade_click",
+    "paypal_button_rendered",
+    "paypal_subscription_approved",
+    "payment_success_page_view",
+    "payment_cancel_page_view",
+]
+
+
+def _funnel_rate(numerator, denominator):
+    """Return percentage rate rounded to 2 decimals, or 0.0 if denominator is zero."""
+    if denominator == 0:
+        return 0.0
+    return round(numerator / denominator * 100, 2)
+
+
+def _parse_funnel_date_filter():
+    """Build a SQLAlchemy filter clause from request query params (range, start_date, end_date).
+
+    Returns None when no time constraint should be applied ("all" range).
+    Raises a (message, status_code) tuple on invalid input.
+    """
+    start_date_param = request.args.get("start_date")
+    end_date_param = request.args.get("end_date")
+    range_param = request.args.get("range", "all")
+
+    now = datetime.utcnow()
+
+    if start_date_param and end_date_param:
+        try:
+            start_dt = datetime.fromisoformat(start_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
+            end_dt = datetime.fromisoformat(end_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
+            return TrackingEvent.created_at.between(start_dt, end_dt)
+        except (ValueError, TypeError):
+            raise ValueError("Invalid start_date or end_date format")
+    elif range_param == "today":
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return TrackingEvent.created_at >= midnight
+    elif range_param == "7d":
+        return TrackingEvent.created_at >= (now - timedelta(days=7))
+    elif range_param == "30d":
+        return TrackingEvent.created_at >= (now - timedelta(days=30))
+    # "all" or unrecognised → no filter
+    return None
+
+
 @app.route("/api/admin/analytics/funnel", methods=["GET"])
 @admin_required
 def admin_analytics_funnel():
     """Return conversion funnel counts, derived rates, and recent tracking events."""
     try:
-        # ── Date-range filtering ──
-        start_date_param = request.args.get("start_date")
-        end_date_param = request.args.get("end_date")
-        range_param = request.args.get("range", "all")
+        try:
+            date_filter = _parse_funnel_date_filter()
+        except ValueError as ve:
+            return jsonify({"error": str(ve)}), 400
 
-        date_filter = None
-        now = datetime.utcnow()
-
-        if start_date_param and end_date_param:
-            try:
-                start_dt = datetime.fromisoformat(start_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
-                end_dt = datetime.fromisoformat(end_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
-                date_filter = TrackingEvent.created_at.between(start_dt, end_dt)
-            except (ValueError, TypeError):
-                return jsonify({"error": "Invalid start_date or end_date format"}), 400
-        elif range_param == "today":
-            midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            date_filter = TrackingEvent.created_at >= midnight
-        elif range_param == "7d":
-            date_filter = TrackingEvent.created_at >= (now - timedelta(days=7))
-        elif range_param == "30d":
-            date_filter = TrackingEvent.created_at >= (now - timedelta(days=30))
-        # "all" or unrecognised → no filter
-
-        funnel_events = [
-            "pricing_view",
-            "upgrade_click",
-            "paypal_button_rendered",
-            "paypal_subscription_approved",
-            "payment_success_page_view",
-            "payment_cancel_page_view",
-        ]
         counts = {}
-        for evt in funnel_events:
+        for evt in _FUNNEL_EVENTS:
             q = TrackingEvent.query.filter_by(event_name=evt)
             if date_filter is not None:
                 q = q.filter(date_filter)
@@ -2297,16 +2318,11 @@ def admin_analytics_funnel():
         successes = counts["payment_success_page_view"] or 0
         cancels = counts["payment_cancel_page_view"] or 0
 
-        def _rate(numerator, denominator):
-            if denominator == 0:
-                return 0.0
-            return round(numerator / denominator * 100, 2)
-
         derived = {
-            "pricing_to_click_rate": _rate(clicks, pricing),
-            "click_to_approval_rate": _rate(approvals, clicks),
-            "pricing_to_success_rate": _rate(successes, pricing),
-            "cancel_rate": _rate(cancels, pricing),
+            "pricing_to_click_rate": _funnel_rate(clicks, pricing),
+            "click_to_approval_rate": _funnel_rate(approvals, clicks),
+            "pricing_to_success_rate": _funnel_rate(successes, pricing),
+            "cancel_rate": _funnel_rate(cancels, pricing),
         }
 
         recent_q = TrackingEvent.query
@@ -2344,42 +2360,10 @@ def admin_analytics_funnel():
 def admin_analytics_funnel_breakdown():
     """Return funnel counts and derived rates broken down by user_state and source."""
     try:
-        # ── Date-range filtering (same logic as /funnel) ──
-        start_date_param = request.args.get("start_date")
-        end_date_param = request.args.get("end_date")
-        range_param = request.args.get("range", "all")
-
-        date_filter = None
-        now = datetime.utcnow()
-
-        if start_date_param and end_date_param:
-            try:
-                start_dt = datetime.fromisoformat(start_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
-                end_dt = datetime.fromisoformat(end_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
-                date_filter = TrackingEvent.created_at.between(start_dt, end_dt)
-            except (ValueError, TypeError):
-                return jsonify({"error": "Invalid start_date or end_date format"}), 400
-        elif range_param == "today":
-            midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-            date_filter = TrackingEvent.created_at >= midnight
-        elif range_param == "7d":
-            date_filter = TrackingEvent.created_at >= (now - timedelta(days=7))
-        elif range_param == "30d":
-            date_filter = TrackingEvent.created_at >= (now - timedelta(days=30))
-
-        funnel_events = [
-            "pricing_view",
-            "upgrade_click",
-            "paypal_button_rendered",
-            "paypal_subscription_approved",
-            "payment_success_page_view",
-            "payment_cancel_page_view",
-        ]
-
-        def _rate(numerator, denominator):
-            if denominator == 0:
-                return 0.0
-            return round(numerator / denominator * 100, 2)
+        try:
+            date_filter = _parse_funnel_date_filter()
+        except ValueError as ve:
+            return jsonify({"error": str(ve)}), 400
 
         def _build_breakdown(group_column):
             """Build per-group funnel counts + derived metrics."""
@@ -2387,7 +2371,7 @@ def admin_analytics_funnel_breakdown():
                 group_column,
                 TrackingEvent.event_name,
                 db.func.count(TrackingEvent.id),
-            ).filter(TrackingEvent.event_name.in_(funnel_events))
+            ).filter(TrackingEvent.event_name.in_(_FUNNEL_EVENTS))
             if date_filter is not None:
                 base_q = base_q.filter(date_filter)
             rows = base_q.group_by(group_column, TrackingEvent.event_name).all()
@@ -2396,7 +2380,7 @@ def admin_analytics_funnel_breakdown():
             for raw_group, event_name, cnt in rows:
                 group = raw_group if raw_group else "unknown"
                 if group not in groups:
-                    groups[group] = {evt: 0 for evt in funnel_events}
+                    groups[group] = {evt: 0 for evt in _FUNNEL_EVENTS}
                 groups[group][event_name] = cnt
 
             result = {}
@@ -2409,10 +2393,10 @@ def admin_analytics_funnel_breakdown():
                 result[group] = {
                     "funnel_counts": counts,
                     "derived_metrics": {
-                        "pricing_to_click_rate": _rate(clicks, pricing),
-                        "click_to_approval_rate": _rate(approvals, clicks),
-                        "pricing_to_success_rate": _rate(successes, pricing),
-                        "cancel_rate": _rate(cancels, pricing),
+                        "pricing_to_click_rate": _funnel_rate(clicks, pricing),
+                        "click_to_approval_rate": _funnel_rate(approvals, clicks),
+                        "pricing_to_success_rate": _funnel_rate(successes, pricing),
+                        "cancel_rate": _funnel_rate(cancels, pricing),
                     },
                 }
             return result
