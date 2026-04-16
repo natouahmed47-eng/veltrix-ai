@@ -115,6 +115,52 @@ BRAND_CORRECTIONS = {
     "microsft": "Microsoft",
 }
 
+# ---------------------------------------------------------------------------
+# Brand → category mapping (applied AFTER preprocessing, BEFORE final response)
+# Keys are canonical brand names (title-case); values are SUPPORTED_CATEGORIES.
+# ---------------------------------------------------------------------------
+BRAND_CATEGORY_MAP = {
+    "Dior": "fashion",
+    "Nike": "fashion",
+    "Apple": "electronics",
+    "IKEA": "home",
+    "CeraVe": "beauty",
+    "Samsung": "electronics",
+    "Gucci": "fashion",
+    "Chanel": "fashion",
+    "Louis Vuitton": "fashion",
+    "Adidas": "fashion",
+    "Versace": "fashion",
+    "Dolce & Gabbana": "fashion",
+    "Yves Saint Laurent": "fashion",
+    "Zara": "fashion",
+    "H&M": "fashion",
+    "Google": "electronics",
+    "Sony": "electronics",
+    "Lenovo": "electronics",
+    "Microsoft": "electronics",
+}
+
+# Pre-sorted brand list (longest first) for deterministic matching
+_SORTED_BRANDS = sorted(BRAND_CATEGORY_MAP, key=len, reverse=True)
+
+
+def get_brand_category(interpreted_input: str) -> str:
+    """Return the mapped category for a known brand found in *interpreted_input*.
+
+    Checks whether any key in BRAND_CATEGORY_MAP appears (case-insensitive,
+    word-boundary match) in the interpreted input.  Longer brand names are
+    checked first so that "Louis Vuitton" matches before a single-word entry.
+
+    Returns the mapped category string, or an empty string if no brand matches.
+    """
+    text_lower = interpreted_input.lower()
+    for brand in _SORTED_BRANDS:
+        # Use word-boundary regex to avoid false positives
+        if re.search(r"(?<!\w)" + re.escape(brand.lower()) + r"(?!\w)", text_lower):
+            return BRAND_CATEGORY_MAP[brand]
+    return ""
+
 
 def preprocess_product_input(raw_input: str):
     """Normalize and correct common brand/product misspellings.
@@ -1049,6 +1095,13 @@ def analyze_product_with_ai(idea: str):
     else:
         detected_category = "general"
 
+    # --- STEP 0b: Brand-to-category mapping override ---
+    # If the (possibly corrected) input contains a known brand, use its
+    # mapped category instead of the keyword-based detection above.
+    brand_cat = get_brand_category(idea)
+    if brand_cat:
+        detected_category = brand_cat
+
     # --- Build category-specific prompt sections ---
     if detected_category == "fragrance":
         category_instructions = """
@@ -1159,6 +1212,12 @@ STRICT RULES:
    - Only auto-correct when the intended brand/product is reasonably obvious.
    - If confidence is low, explicitly state that the interpretation is uncertain.
    - Do NOT hallucinate aggressively — only correct when the match is strong.
+8) CATEGORY CLASSIFICATION — CRITICAL:
+   - If the product is a well-known brand, classify it into the most relevant
+     domain (fashion, electronics, beauty, home, fragrance). NEVER default to
+     "general" when a strong category can be inferred from the brand.
+   - Only use "general" if the product is truly unknown or ambiguous after
+     correction and no specific category can reasonably be determined.
 
 ---
 UNIVERSAL FIELDS (always required):
@@ -1213,6 +1272,8 @@ long_description HTML structure:
                             "If information is missing from the input, derive it using domain expertise and state it directly. "
                             "If the input looks like a misspelled well-known brand or product, infer the correct name and analyze it. "
                             "Only auto-correct when the match is reasonably obvious; if unsure, state the uncertainty. "
+                            "IMPORTANT: If the product belongs to a well-known brand, always classify it into the correct domain "
+                            "(fashion, electronics, beauty, home, fragrance). Never default to 'general' when the brand clearly belongs to a specific category. "
                             "You return clean, valid JSON only — no markdown, no code fences, no extra text."
                         ),
                     },
@@ -3110,6 +3171,15 @@ def analyze_product():
         idea = interpreted  # use corrected input for AI analysis
 
         result = analyze_product_with_ai(idea)
+
+        # --- Brand-category safety net ---
+        # If the AI still returned "general" but the interpreted input
+        # contains a known brand, override the category deterministically.
+        ai_category = result.get("category", "general")
+        if ai_category == "general":
+            brand_override = get_brand_category(interpreted)
+            if brand_override:
+                result["category"] = brand_override
 
         long_desc = result.get("long_description", "")
 
