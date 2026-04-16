@@ -300,8 +300,8 @@
                         subtitle: "Previously subscribed to Pro",
                         msgCls: "msg-cancelled",
                         msgIcon: "⚠️",
-                        msgText: "Your subscription has been cancelled. You still have access until the end of your billing period, then you'll be downgraded to the Free plan.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Subscribe Again</a>'
+                        msgText: "Your subscription will end soon. You still have access until the end of your billing period.",
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Unlock Pro Features</a>'
                     };
                 } else if (subStatus === "SUSPENDED") {
                     cfg = {
@@ -312,9 +312,9 @@
                         subtitle: "Payment issue detected",
                         msgCls: "msg-suspended",
                         msgIcon: "🚨",
-                        msgText: "A payment issue was detected with your subscription. Please update your payment method on PayPal to restore Pro access.",
+                        msgText: "Payment issue detected — update your payment method on PayPal to restore Pro access.",
                         btnHtml: '<a href="https://www.paypal.com/myaccount/autopay" target="_blank" rel="noopener" class="btn-billing btn-billing-warning">Fix Payment on PayPal ↗</a>' +
-                                 '<a href="/" class="btn-billing btn-billing-outline">Re-subscribe</a>'
+                                 '<a href="/" class="btn-billing btn-billing-outline">Start Pro Now</a>'
                     };
                 } else if (subStatus === "EXPIRED") {
                     cfg = {
@@ -325,8 +325,8 @@
                         subtitle: "Your Pro access has ended",
                         msgCls: "msg-expired",
                         msgIcon: "⏰",
-                        msgText: "Your Pro subscription has expired. Subscribe again to unlock unlimited analyses and all Pro features.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Subscribe Again</a>'
+                        msgText: "Your Pro access has ended. Upgrade to Pro to unlock unlimited analyses and all Pro features.",
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Upgrade to Pro</a>'
                     };
                 } else {
                     cfg = {
@@ -337,7 +337,7 @@
                         subtitle: (d.analysis_count || 0) + " / " + (d.analysis_limit || 0) + " analyses used",
                         msgCls: "msg-free",
                         msgIcon: "💡",
-                        msgText: "You're on the Free plan. Upgrade to Pro to unlock unlimited analyses and premium features.",
+                        msgText: "You're on the Free plan. Unlock Pro to get unlimited analyses and premium features.",
                         btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Upgrade to Pro</a>'
                     };
                 }
