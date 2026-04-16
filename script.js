@@ -721,7 +721,7 @@ document.addEventListener("DOMContentLoaded", function () {
     fetch("/api/me", { headers: { "Authorization": "Bearer " + token } })
       .then(function(r) { return r.json(); })
       .then(function(d) {
-        if (d.plan !== "pro") { renderPayPal(); }
+        if (!d.is_pro) { renderPayPal(); }
       })
       .catch(function() { renderPayPal(); });
   } else {
