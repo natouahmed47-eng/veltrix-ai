@@ -131,6 +131,12 @@
         /* ── Experiment Winner Highlight ── */
         .exp-winner { color: #34d399; font-weight: 700; }
         .exp-loser { color: #94a3b8; }
+        .exp-banner {
+            border-radius: 10px; padding: 14px 20px; margin-bottom: 16px;
+            font-size: 14px; font-weight: 600; display: none;
+        }
+        .exp-banner-winner { background: #14532d; border: 1px solid #22c55e; color: #86efac; }
+        .exp-banner-tie { background: #1e293b; border: 1px solid #475569; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -276,7 +282,7 @@
             <button data-range="30d" onclick="setExperimentRange('30d')">Last 30 Days</button>
             <button data-range="all" onclick="setExperimentRange('all')">All Time</button>
         </div>
-        <div id="experimentWinnerBanner" style="display:none;background:#14532d;border:1px solid #22c55e;border-radius:10px;padding:14px 20px;margin-bottom:16px;font-size:14px;font-weight:600;color:#86efac;"></div>
+        <div id="experimentWinnerBanner" class="exp-banner"></div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -531,13 +537,12 @@
             var banner = document.getElementById("experimentWinnerBanner");
             if (winner) {
                 banner.style.display = "block";
+                banner.className = "exp-banner exp-banner-winner";
                 banner.textContent = "\uD83C\uDFC6 Winner: Variant " + escapeHtml(winner) + " (higher view \u2192 conversion rate)";
             } else {
                 if (keys.length >= 2) {
                     banner.style.display = "block";
-                    banner.style.background = "#1e293b";
-                    banner.style.borderColor = "#475569";
-                    banner.style.color = "#94a3b8";
+                    banner.className = "exp-banner exp-banner-tie";
                     banner.textContent = "No clear winner \u2014 both variants have equal conversion rates";
                 } else {
                     banner.style.display = "none";

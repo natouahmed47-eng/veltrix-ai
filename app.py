@@ -2474,7 +2474,7 @@ def admin_analytics_experiments():
                 "view_to_conversion_rate": _funnel_rate(conversions, views),
             }
 
-        # Determine winner by highest view_to_conversion_rate
+        # Determine winner by highest view_to_conversion_rate (tie → no winner)
         winner = None
         if len(results) >= 2:
             sorted_variants = sorted(
