@@ -137,6 +137,8 @@
         }
         .exp-banner-winner { background: #14532d; border: 1px solid #22c55e; color: #86efac; }
         .exp-banner-tie { background: #1e293b; border: 1px solid #475569; color: #94a3b8; }
+        .exp-banner-waiting { background: #1e293b; border: 1px solid #f59e0b; color: #fcd34d; }
+        .exp-sample-progress { font-size: 13px; color: #94a3b8; margin-top: 6px; }
 
         /* ── Experiment Source Breakdown ── */
         .source-breakdown-grid {
@@ -556,15 +558,32 @@
         loadExperimentResults();
     }
 
+    function buildSampleProgressHtml(varA, countA, varB, countB, minSample) {
+        return escapeHtml(varA) + ": " + (countA != null ? countA : 0) + " / " + minSample +
+            " &nbsp;\u2022&nbsp; " +
+            escapeHtml(varB) + ": " + (countB != null ? countB : 0) + " / " + minSample;
+    }
+
     async function loadExperimentResults() {
         try {
             var data = await apiFetch("/api/admin/analytics/experiments?range=" + encodeURIComponent(experimentRange));
             var variants = data.variants || {};
             var winner = data.winner;
+            var sampleOk = data.sample_size_ok;
+            var minSample = data.minimum_sample_required || 50;
+            var sampleA = data.current_sample_A;
+            var sampleB = data.current_sample_B;
             var keys = Object.keys(variants).sort();
 
             var banner = document.getElementById("experimentWinnerBanner");
-            if (winner) {
+            if (!sampleOk && keys.length >= 2) {
+                banner.style.display = "block";
+                banner.className = "exp-banner exp-banner-waiting";
+                banner.innerHTML = "\u26A0\uFE0F Not enough data yet to determine a reliable winner" +
+                    '<div class="exp-sample-progress">' +
+                    buildSampleProgressHtml(keys[0], sampleA, keys[1], sampleB, minSample) +
+                    '</div>';
+            } else if (winner) {
                 banner.style.display = "block";
                 banner.className = "exp-banner exp-banner-winner";
                 banner.textContent = "\uD83C\uDFC6 Winner: Variant " + escapeHtml(winner) + " (higher view \u2192 conversion rate)";
@@ -636,6 +655,10 @@
             var info = bySource[src];
             var srcVariants = info.variants || {};
             var srcWinner = info.winner;
+            var srcSampleOk = info.sample_size_ok;
+            var srcMinSample = info.minimum_sample_required || 50;
+            var srcSampleA = info.current_sample_A;
+            var srcSampleB = info.current_sample_B;
             var vKeys = Object.keys(srcVariants).sort();
             var vA = vKeys[0] || "A";
             var vB = vKeys[1] || "B";
@@ -645,7 +668,12 @@
             var cB = (srcWinner === vB) ? "exp-winner" : ((srcWinner && srcWinner !== vB) ? "exp-loser" : "");
 
             var winnerHtml = "";
-            if (srcWinner) {
+            if (!srcSampleOk && vKeys.length >= 2) {
+                winnerHtml = '<div class="source-card-winner source-card-winner-tie">\u26A0\uFE0F Not enough data' +
+                    '<div class="exp-sample-progress">' +
+                    buildSampleProgressHtml(vA, srcSampleA, vB, srcSampleB, srcMinSample) +
+                    '</div></div>';
+            } else if (srcWinner) {
                 winnerHtml = '<div class="source-card-winner source-card-winner-green">\uD83C\uDFC6 Winner: Variant ' + escapeHtml(srcWinner) + '</div>';
             } else if (vKeys.length >= 2) {
                 winnerHtml = '<div class="source-card-winner source-card-winner-tie">Tie \u2014 no clear winner</div>';

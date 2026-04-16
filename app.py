@@ -2419,6 +2419,7 @@ def admin_analytics_funnel_breakdown():
 
 
 _EXPERIMENT_EVENTS = ["experiment_view", "cta_primary_click", "experiment_conversion"]
+MIN_EXPERIMENT_SAMPLE = 50
 
 
 @app.route("/api/admin/analytics/experiments", methods=["GET"])
@@ -2486,36 +2487,66 @@ def admin_analytics_experiments():
                 }
             return metrics
 
+        def _sample_info(metrics):
+            """Return sorted variant keys and their experiment_view counts."""
+            sorted_keys = sorted(metrics.keys())
+            sample_counts = {k: metrics[k].get("experiment_view", 0) for k in sorted_keys}
+            return sorted_keys, sample_counts
+
         def _pick_winner(metrics):
-            """Determine winner by highest view_to_conversion_rate (tie → None)."""
-            if len(metrics) < 2:
-                return None
-            sorted_v = sorted(
-                metrics.items(),
-                key=lambda x: x[1]["view_to_conversion_rate"],
-                reverse=True,
-            )
-            if sorted_v[0][1]["view_to_conversion_rate"] > sorted_v[1][1]["view_to_conversion_rate"]:
-                return sorted_v[0][0]
-            return None
+            """Determine winner by highest view_to_conversion_rate with min-sample guard."""
+            sorted_keys, sample_counts = _sample_info(metrics)
+            has_multiple_variants = len(metrics) >= 2
+            sample_ok = all(c >= MIN_EXPERIMENT_SAMPLE for c in sample_counts.values()) if has_multiple_variants else False
+
+            winner = None
+            if sample_ok and has_multiple_variants:
+                sorted_v = sorted(
+                    metrics.items(),
+                    key=lambda x: x[1]["view_to_conversion_rate"],
+                    reverse=True,
+                )
+                if sorted_v[0][1]["view_to_conversion_rate"] > sorted_v[1][1]["view_to_conversion_rate"]:
+                    winner = sorted_v[0][0]
+
+            result = {
+                "winner": winner,
+                "sample_size_ok": sample_ok,
+                "minimum_sample_required": MIN_EXPERIMENT_SAMPLE,
+            }
+            # Attach current_sample_A / current_sample_B
+            if len(sorted_keys) >= 1:
+                result["current_sample_A"] = sample_counts[sorted_keys[0]]
+            if len(sorted_keys) >= 2:
+                result["current_sample_B"] = sample_counts[sorted_keys[1]]
+            return result
 
         # Build overall per-variant metrics
         results = _build_variant_metrics(variants)
-        winner = _pick_winner(results)
+        winner_info = _pick_winner(results)
 
         # Build per-source breakdown
         by_source = {}
         for source, sv_map in sorted(source_variants.items()):
             src_metrics = _build_variant_metrics(sv_map)
+            src_winner_info = _pick_winner(src_metrics)
             by_source[source] = {
                 "variants": src_metrics,
-                "winner": _pick_winner(src_metrics),
+                "winner": src_winner_info["winner"],
+                "sample_size_ok": src_winner_info["sample_size_ok"],
+                "minimum_sample_required": src_winner_info["minimum_sample_required"],
+                "current_sample_A": src_winner_info.get("current_sample_A"),
+                "current_sample_B": src_winner_info.get("current_sample_B"),
             }
 
         return jsonify({
             "experiment": experiment_name,
             "variants": results,
-            "winner": winner,
+            "winner": winner_info["winner"],
+            "sample_size_ok": winner_info["sample_size_ok"],
+            "minimum_sample_required": winner_info["minimum_sample_required"],
+            "current_sample_A": winner_info.get("current_sample_A"),
+            "current_sample_B": winner_info.get("current_sample_B"),
             "by_source": by_source,
         })
     except Exception as e:
