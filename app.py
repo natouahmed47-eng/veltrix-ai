@@ -2302,8 +2302,8 @@ def admin_analytics_funnel():
     try:
         try:
             date_filter = _parse_funnel_date_filter()
-        except ValueError as ve:
-            return jsonify({"error": str(ve)}), 400
+        except ValueError:
+            return jsonify({"error": "Invalid start_date or end_date format"}), 400
 
         counts = {}
         for evt in _FUNNEL_EVENTS:
@@ -2362,8 +2362,8 @@ def admin_analytics_funnel_breakdown():
     try:
         try:
             date_filter = _parse_funnel_date_filter()
-        except ValueError as ve:
-            return jsonify({"error": str(ve)}), 400
+        except ValueError:
+            return jsonify({"error": "Invalid start_date or end_date format"}), 400
 
         def _build_breakdown(group_column):
             """Build per-group funnel counts + derived metrics."""
