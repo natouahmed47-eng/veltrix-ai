@@ -19,7 +19,10 @@ app = Flask(__name__)
 CORS(app)
 
 # ── Session / cookie security ──
-app.secret_key = os.environ.get("FLASK_SECRET_KEY") or secrets.token_hex(32)
+_flask_secret = os.environ.get("FLASK_SECRET_KEY")
+if not _flask_secret:
+    raise RuntimeError("FLASK_SECRET_KEY environment variable is required")
+app.secret_key = _flask_secret
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
