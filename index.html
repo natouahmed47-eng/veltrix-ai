@@ -143,6 +143,17 @@
             data || {}
         );
         console.log("[TRACK]", name, payload);
+        /* POST to backend — fire-and-forget, fail silently */
+        try {
+            var headers = { "Content-Type": "application/json" };
+            var token = localStorage.getItem("veltrix_token");
+            if (token) headers["Authorization"] = "Bearer " + token;
+            fetch("/api/track-event", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        } catch(e) {}
     };
 
     /* Track pricing_view when #pricingSection scrolls into view */

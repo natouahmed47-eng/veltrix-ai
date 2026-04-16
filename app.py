@@ -326,6 +326,34 @@ class SavedAnalysis(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class TrackingEvent(db.Model):
+    __tablename__ = "tracking_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    event_name = db.Column(db.String(100), nullable=False, index=True)
+    source = db.Column(db.String(100), nullable=True)
+    plan = db.Column(db.String(50), nullable=True)
+    user_state = db.Column(db.String(50), nullable=True)
+    username = db.Column(db.String(80), nullable=True)
+    user_id = db.Column(db.Integer, nullable=True)
+    metadata_json = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+# Allowed event names for the tracking endpoint
+_ALLOWED_TRACKING_EVENTS = frozenset({
+    "pricing_view",
+    "upgrade_click",
+    "paypal_button_rendered",
+    "paypal_subscription_approved",
+    "payment_success_page_view",
+    "payment_cancel_page_view",
+})
+
+# Maximum request body size for the tracking endpoint (2 KB)
+_TRACK_EVENT_MAX_BYTES = 2048
+
+
 def get_current_user():
     """Extract user from Authorization header (Bearer token)."""
     auth_header = request.headers.get("Authorization", "")
@@ -3620,6 +3648,56 @@ def optimize_all_products():
         "language_used": lang,
         "results": results,
     })
+
+
+@app.route("/api/track-event", methods=["POST"])
+@limiter.limit("30/minute")
+def track_event():
+    """Store a frontend conversion event in the database."""
+    # ── Cap payload size ──
+    content_length = request.content_length or 0
+    if content_length > _TRACK_EVENT_MAX_BYTES:
+        return jsonify({"error": "Payload too large"}), 413
+
+    body = request.get_data(as_text=True)
+    if len(body) > _TRACK_EVENT_MAX_BYTES:
+        return jsonify({"error": "Payload too large"}), 413
+
+    try:
+        data = json.loads(body)
+    except (json.JSONDecodeError, ValueError):
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid payload"}), 400
+
+    event_name = data.get("event", "").strip()
+    if event_name not in _ALLOWED_TRACKING_EVENTS:
+        return jsonify({"error": "Unknown event name"}), 400
+
+    # ── Resolve user identity server-side (do not trust frontend) ──
+    user = get_current_user()
+    username = user.username if user else None
+    uid = user.id if user else None
+
+    # ── Build optional metadata (exclude known top-level keys) ──
+    known_keys = {"event", "source", "plan", "user_state", "timestamp"}
+    extra = {k: v for k, v in data.items() if k not in known_keys}
+    metadata = json.dumps(extra) if extra else None
+
+    evt = TrackingEvent(
+        event_name=event_name,
+        source=data.get("source", "")[:100] if data.get("source") else None,
+        plan=data.get("plan", "")[:50] if data.get("plan") else None,
+        user_state=data.get("user_state", "")[:50] if data.get("user_state") else None,
+        username=username,
+        user_id=uid,
+        metadata_json=metadata,
+    )
+    db.session.add(evt)
+    db.session.commit()
+
+    return jsonify({"ok": True}), 201
 
 
 @app.errorhandler(500)
