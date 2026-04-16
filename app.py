@@ -70,6 +70,101 @@ CATEGORY_SPECIFIC_FIELDS = [
 # Supported product categories
 SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home", "general"]
 
+# ---------------------------------------------------------------------------
+# Lightweight brand/product spelling corrections
+# Keys are lowercase misspellings; values are the canonical form.
+# ---------------------------------------------------------------------------
+BRAND_CORRECTIONS = {
+    "doir": "Dior",
+    "dior perfume": "Dior fragrance",
+    "nik": "Nike",
+    "nikee": "Nike",
+    "nkie": "Nike",
+    "aple": "Apple",
+    "appel": "Apple",
+    "aplle": "Apple",
+    "cerve": "CeraVe",
+    "cerave": "CeraVe",
+    "ikea kalax": "IKEA Kallax",
+    "ikea callax": "IKEA Kallax",
+    "addidas": "Adidas",
+    "adiddas": "Adidas",
+    "samung": "Samsung",
+    "samsng": "Samsung",
+    "samsumg": "Samsung",
+    "gucchi": "Gucci",
+    "guuci": "Gucci",
+    "chanle": "Chanel",
+    "chnal": "Chanel",
+    "chanel": "Chanel",
+    "versache": "Versace",
+    "versac": "Versace",
+    "dolce gabana": "Dolce & Gabbana",
+    "dolce gabanna": "Dolce & Gabbana",
+    "ysl": "Yves Saint Laurent",
+    "lous vuitton": "Louis Vuitton",
+    "luis vuitton": "Louis Vuitton",
+    "loui vuitton": "Louis Vuitton",
+    "prada": "Prada",
+    "zarra": "Zara",
+    "h and m": "H&M",
+    "gogle": "Google",
+    "googel": "Google",
+    "soney": "Sony",
+    "sonny": "Sony",
+    "lenevo": "Lenovo",
+    "lenvoo": "Lenovo",
+    "micrsoft": "Microsoft",
+    "microsft": "Microsoft",
+}
+
+
+def preprocess_product_input(raw_input: str):
+    """Normalize and correct common brand/product misspellings.
+
+    Returns a tuple of (corrected_input, original_input).
+    The corrected_input has dictionary-based fixes applied.
+    The original_input is the trimmed but otherwise unchanged value.
+    """
+    original = raw_input.strip()
+    if not original:
+        return original, original
+
+    normalized = original.lower()
+
+    # Try full-string match first, then token-level replacements
+    if normalized in BRAND_CORRECTIONS:
+        corrected = BRAND_CORRECTIONS[normalized]
+        return corrected, original
+
+    # Token-level: replace any token (or bigram) that matches a known typo
+    tokens = normalized.split()
+    corrected_tokens = original.split()  # keep original casing for non-matched tokens
+    changed = False
+    i = 0
+    while i < len(tokens):
+        # Try bigram first (e.g. "ikea kalax")
+        if i + 1 < len(tokens):
+            bigram = f"{tokens[i]} {tokens[i + 1]}"
+            if bigram in BRAND_CORRECTIONS:
+                replacement = BRAND_CORRECTIONS[bigram]
+                corrected_tokens[i] = replacement
+                corrected_tokens[i + 1] = ""
+                changed = True
+                i += 2
+                continue
+        # Single token
+        if tokens[i] in BRAND_CORRECTIONS:
+            corrected_tokens[i] = BRAND_CORRECTIONS[tokens[i]]
+            changed = True
+        i += 1
+
+    if changed:
+        corrected = " ".join(t for t in corrected_tokens if t).strip()
+        return corrected, original
+
+    return original, original
+
 
 class ShopifyStore(db.Model):
     __tablename__ = "shopify_stores"
@@ -1061,6 +1156,12 @@ STRICT RULES:
 5) If a detail is not in the input, derive it from domain expertise with concrete values.
    Do NOT hedge — state the derived value directly.
 6) All data must be specific to THIS product. No generic filler.
+7) MISSPELLING / AMBIGUOUS INPUT HANDLING:
+   - If the input appears to be a misspelled well-known brand or product name,
+     infer the most probable intended brand/product and analyze that.
+   - Only auto-correct when the intended brand/product is reasonably obvious.
+   - If confidence is low, explicitly state that the interpretation is uncertain.
+   - Do NOT hallucinate aggressively — only correct when the match is strong.
 
 ---
 UNIVERSAL FIELDS (always required):
@@ -1113,6 +1214,8 @@ long_description HTML structure:
                             "NEVER use vague hedging language like 'Likely', 'based on context', 'not specified'. "
                             "NEVER use marketing filler like 'luxurious', 'elegant', 'sophisticated'. "
                             "If information is missing from the input, derive it using domain expertise and state it directly. "
+                            "If the input looks like a misspelled well-known brand or product, infer the correct name and analyze it. "
+                            "Only auto-correct when the match is reasonably obvious; if unsure, state the uncertainty. "
                             "You return clean, valid JSON only — no markdown, no code fences, no extra text."
                         ),
                     },
@@ -1440,6 +1543,9 @@ def optimize_product_router(product, lang="en"):
         f"Tags: {tags}\n"
         f"Product Description / Body HTML:\n{body_html}"
     ).strip()
+
+    # Preprocess: normalize and correct misspellings in the idea string
+    idea, _ = preprocess_product_input(idea)
 
     result = analyze_product_with_ai(idea)
     print("PRODUCT ROUTER RESULT:", result.get("category"), result.get("title"))
@@ -3002,12 +3108,18 @@ def analyze_product():
             }
             return jsonify(response_data)
 
+        # Preprocess: normalize and correct misspellings
+        interpreted, original_raw = preprocess_product_input(idea)
+        idea = interpreted  # use corrected input for AI analysis
+
         result = analyze_product_with_ai(idea)
 
         long_desc = result.get("long_description", "")
 
         # Build response with unified fields
         response_data = {
+            "original_input": original_raw,
+            "interpreted_input": interpreted,
             "title": result.get("title", idea),
             "category": result.get("category", "general"),
             "short_summary": result.get("short_summary", ""),
