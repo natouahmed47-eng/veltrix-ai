@@ -1669,7 +1669,56 @@ def payment_cancel():
 
 @app.route("/admin")
 def admin_page():
+    """Serve the admin dashboard only after server-side secret verification.
+
+    Accepts the admin secret via ``?token=`` query parameter.
+    If the token is missing or invalid, a minimal login form is returned instead.
+    """
+    provided = (request.args.get("token") or "").strip()
+    if not ADMIN_SECRET or not provided or not secrets.compare_digest(provided, ADMIN_SECRET):
+        status = 403 if provided else 200
+        return render_template_string(ADMIN_LOGIN_HTML), status
     return send_file("admin.html")
+
+
+# Minimal login page served when admin auth is missing / invalid.
+ADMIN_LOGIN_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Admin Login — Veltrix AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0f172a;margin:0;display:flex;
+align-items:center;justify-content:center;min-height:100vh;color:#e2e8f0}
+.box{background:#1e293b;border-radius:16px;padding:40px;width:100%;max-width:400px;
+text-align:center;border:1px solid #334155}
+h1{font-size:22px;font-weight:800;margin:0 0 8px}
+h1 span{color:#818cf8}
+p{font-size:13px;color:#94a3b8;margin:0 0 24px}
+input{width:100%;padding:12px 16px;border-radius:10px;border:1px solid #475569;
+background:#0f172a;color:#e2e8f0;font-size:14px;font-family:inherit;margin-bottom:16px;outline:none}
+input:focus{border-color:#818cf8}
+button{width:100%;padding:12px;border-radius:10px;border:none;background:#818cf8;
+color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+button:hover{background:#6366f1}
+.err{color:#f87171;font-size:13px;margin-top:12px;display:none}
+</style>
+</head>
+<body>
+<div class="box">
+<h1>Veltrix<span>AI</span></h1>
+<p>Admin Dashboard &mdash; Enter your admin secret to continue</p>
+<form method="GET" action="/admin" autocomplete="off">
+<input type="password" name="token" placeholder="Admin Secret" required autofocus/>
+<button type="submit">Authenticate</button>
+</form>
+{% if request.args.get('token') %}<div class="err" style="display:block">Invalid admin secret. Access denied.</div>{% endif %}
+</div>
+</body>
+</html>"""
 
 
 # ── Auth & SaaS Endpoints ──
