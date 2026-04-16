@@ -124,7 +124,6 @@ BRAND_CATEGORY_MAP = {
     "Nike": "fashion",
     "Apple": "electronics",
     "IKEA": "home",
-    "IKEA Kallax": "home",
     "CeraVe": "beauty",
     "Samsung": "electronics",
     "Gucci": "fashion",
@@ -142,20 +141,23 @@ BRAND_CATEGORY_MAP = {
     "Microsoft": "electronics",
 }
 
+# Pre-sorted brand list (longest first) for deterministic matching
+_SORTED_BRANDS = sorted(BRAND_CATEGORY_MAP, key=len, reverse=True)
+
 
 def get_brand_category(interpreted_input: str) -> str:
     """Return the mapped category for a known brand found in *interpreted_input*.
 
-    Checks whether any key in BRAND_CATEGORY_MAP appears (case-insensitive) in
-    the interpreted input.  Longer brand names are checked first so that
-    "Louis Vuitton" matches before a hypothetical single-word entry.
+    Checks whether any key in BRAND_CATEGORY_MAP appears (case-insensitive,
+    word-boundary match) in the interpreted input.  Longer brand names are
+    checked first so that "Louis Vuitton" matches before a single-word entry.
 
     Returns the mapped category string, or an empty string if no brand matches.
     """
     text_lower = interpreted_input.lower()
-    # Sort by descending key length so multi-word brands match first
-    for brand in sorted(BRAND_CATEGORY_MAP, key=len, reverse=True):
-        if brand.lower() in text_lower:
+    for brand in _SORTED_BRANDS:
+        # Use word-boundary regex to avoid false positives
+        if re.search(r"(?<!\w)" + re.escape(brand.lower()) + r"(?!\w)", text_lower):
             return BRAND_CATEGORY_MAP[brand]
     return ""
 
