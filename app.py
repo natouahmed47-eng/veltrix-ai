@@ -2252,6 +2252,30 @@ def admin_analyses():
 def admin_analytics_funnel():
     """Return conversion funnel counts, derived rates, and recent tracking events."""
     try:
+        # ── Date-range filtering ──
+        start_date_param = request.args.get("start_date")
+        end_date_param = request.args.get("end_date")
+        range_param = request.args.get("range", "all")
+
+        date_filter = None
+        now = datetime.utcnow()
+
+        if start_date_param and end_date_param:
+            try:
+                start_dt = datetime.fromisoformat(start_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
+                end_dt = datetime.fromisoformat(end_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
+                date_filter = TrackingEvent.created_at.between(start_dt, end_dt)
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid start_date or end_date format"}), 400
+        elif range_param == "today":
+            midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            date_filter = TrackingEvent.created_at >= midnight
+        elif range_param == "7d":
+            date_filter = TrackingEvent.created_at >= (now - timedelta(days=7))
+        elif range_param == "30d":
+            date_filter = TrackingEvent.created_at >= (now - timedelta(days=30))
+        # "all" or unrecognised → no filter
+
         funnel_events = [
             "pricing_view",
             "upgrade_click",
@@ -2262,7 +2286,10 @@ def admin_analytics_funnel():
         ]
         counts = {}
         for evt in funnel_events:
-            counts[evt] = TrackingEvent.query.filter_by(event_name=evt).count()
+            q = TrackingEvent.query.filter_by(event_name=evt)
+            if date_filter is not None:
+                q = q.filter(date_filter)
+            counts[evt] = q.count()
 
         pricing = counts["pricing_view"] or 0
         clicks = counts["upgrade_click"] or 0
@@ -2282,8 +2309,11 @@ def admin_analytics_funnel():
             "cancel_rate": _rate(cancels, pricing),
         }
 
+        recent_q = TrackingEvent.query
+        if date_filter is not None:
+            recent_q = recent_q.filter(date_filter)
         recent_events = (
-            TrackingEvent.query
+            recent_q
             .order_by(TrackingEvent.created_at.desc())
             .limit(20)
             .all()
