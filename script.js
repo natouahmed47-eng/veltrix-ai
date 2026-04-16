@@ -687,7 +687,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         var container = document.getElementById("paypal-button-container");
         if (!container) return;
-        /* Track click on the PayPal / upgrade area */
+        /* Track click on the PayPal / upgrade area (once per render) */
         container.addEventListener("click", function() {
           if (window.trackEvent) {
             window.trackEvent("upgrade_click", {
@@ -696,7 +696,7 @@ document.addEventListener("DOMContentLoaded", function () {
               user_state: (localStorage.getItem("veltrix_token") ? "logged_in" : "logged_out")
             });
           }
-        });
+        }, { once: true });
 
         paypal.Buttons({
           style: { label: "pay" },
