@@ -127,6 +127,16 @@
         .filter-bar button.active {
             background: #312e81; border-color: #818cf8; color: #a5b4fc;
         }
+
+        /* ── Experiment Winner Highlight ── */
+        .exp-winner { color: #34d399; font-weight: 700; }
+        .exp-loser { color: #94a3b8; }
+        .exp-banner {
+            border-radius: 10px; padding: 14px 20px; margin-bottom: 16px;
+            font-size: 14px; font-weight: 600; display: none;
+        }
+        .exp-banner-winner { background: #14532d; border: 1px solid #22c55e; color: #86efac; }
+        .exp-banner-tie { background: #1e293b; border: 1px solid #475569; color: #94a3b8; }
     </style>
 </head>
 <body>
@@ -260,6 +270,30 @@
                 </thead>
                 <tbody id="breakdownSourceBody">
                     <tr><td colspan="11" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- A/B Experiment Results -->
+        <h3 class="section-header">A/B Experiment Results</h3>
+        <div class="filter-bar" id="experimentFilterBar">
+            <button data-range="today" onclick="setExperimentRange('today')">Today</button>
+            <button data-range="7d" class="active" onclick="setExperimentRange('7d')">Last 7 Days</button>
+            <button data-range="30d" onclick="setExperimentRange('30d')">Last 30 Days</button>
+            <button data-range="all" onclick="setExperimentRange('all')">All Time</button>
+        </div>
+        <div id="experimentWinnerBanner" class="exp-banner"></div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th id="expColA">Variant A</th>
+                        <th id="expColB">Variant B</th>
+                    </tr>
+                </thead>
+                <tbody id="experimentResultsBody">
+                    <tr><td colspan="3" class="loading-text">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -481,6 +515,80 @@
         }
     }
 
+    // ── A/B Experiment Results ──
+    let experimentRange = "7d";
+
+    function setExperimentRange(range) {
+        experimentRange = range;
+        var buttons = document.querySelectorAll("#experimentFilterBar button");
+        buttons.forEach(function(btn) {
+            btn.classList.toggle("active", btn.getAttribute("data-range") === range);
+        });
+        loadExperimentResults();
+    }
+
+    async function loadExperimentResults() {
+        try {
+            var data = await apiFetch("/api/admin/analytics/experiments?range=" + encodeURIComponent(experimentRange));
+            var variants = data.variants || {};
+            var winner = data.winner;
+            var keys = Object.keys(variants).sort();
+
+            var banner = document.getElementById("experimentWinnerBanner");
+            if (winner) {
+                banner.style.display = "block";
+                banner.className = "exp-banner exp-banner-winner";
+                banner.textContent = "\uD83C\uDFC6 Winner: Variant " + escapeHtml(winner) + " (higher view \u2192 conversion rate)";
+            } else {
+                if (keys.length >= 2) {
+                    banner.style.display = "block";
+                    banner.className = "exp-banner exp-banner-tie";
+                    banner.textContent = "No clear winner \u2014 both variants have equal conversion rates";
+                } else {
+                    banner.style.display = "none";
+                }
+            }
+
+            if (keys.length === 0) {
+                document.getElementById("experimentResultsBody").innerHTML =
+                    '<tr><td colspan="3" class="loading-text">No experiment data yet</td></tr>';
+                return;
+            }
+
+            var colA = keys[0] || "A";
+            var colB = keys[1] || "B";
+            document.getElementById("expColA").textContent = "Variant " + escapeHtml(colA);
+            document.getElementById("expColB").textContent = keys.length > 1 ? "Variant " + escapeHtml(colB) : "Variant B";
+
+            var a = variants[colA] || {};
+            var b = keys.length > 1 ? (variants[colB] || {}) : {};
+            var clsA = (winner === colA) ? "exp-winner" : ((winner && winner !== colA) ? "exp-loser" : "");
+            var clsB = (winner === colB) ? "exp-winner" : ((winner && winner !== colB) ? "exp-loser" : "");
+
+            var metrics = [
+                { label: "Experiment Views", key: "experiment_view", fmt: false },
+                { label: "CTA Clicks", key: "cta_primary_click", fmt: false },
+                { label: "Conversions", key: "experiment_conversion", fmt: false },
+                { label: "View \u2192 Click Rate", key: "view_to_click_rate", fmt: true },
+                { label: "Click \u2192 Conversion Rate", key: "click_to_conversion_rate", fmt: true },
+                { label: "View \u2192 Conversion Rate", key: "view_to_conversion_rate", fmt: true },
+            ];
+
+            document.getElementById("experimentResultsBody").innerHTML = metrics.map(function(m) {
+                var valA = (a[m.key] != null) ? a[m.key] : "—";
+                var valB = (b[m.key] != null) ? b[m.key] : "—";
+                if (m.fmt && valA !== "—") valA = valA + "%";
+                if (m.fmt && valB !== "—") valB = valB + "%";
+                return "<tr><td><strong>" + escapeHtml(m.label) + "</strong></td>" +
+                    '<td class="' + clsA + '">' + valA + "</td>" +
+                    '<td class="' + clsB + '">' + valB + "</td></tr>";
+            }).join("");
+        } catch (e) {
+            document.getElementById("experimentResultsBody").innerHTML =
+                '<tr><td colspan="3" class="loading-text">Failed to load experiment data</td></tr>';
+        }
+    }
+
     // ── Paginated Users ──
     async function loadUsers(page) {
         usersPage = page;
@@ -544,6 +652,7 @@
                 renderOverview(data);
                 loadFunnelAnalytics();
                 loadFunnelBreakdown();
+                loadExperimentResults();
                 loadUsers(1);
                 loadAnalyses(1);
             })
