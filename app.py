@@ -3,6 +3,7 @@ import os
 import re
 import json
 import secrets
+import statistics
 import traceback
 import requests
 from datetime import datetime, timedelta
@@ -2422,6 +2423,94 @@ _EXPERIMENT_EVENTS = ["experiment_view", "cta_primary_click", "experiment_conver
 MIN_EXPERIMENT_SAMPLE = 50
 
 
+def _compute_time_to_conversion_stats(durations_seconds):
+    """Return summary stats dict for a list of durations (in seconds). Returns None if empty."""
+    if not durations_seconds:
+        return None
+    return {
+        "average_time_to_conversion_seconds": round(statistics.mean(durations_seconds), 1),
+        "median_time_to_conversion_seconds": round(statistics.median(durations_seconds), 1),
+        "fastest_conversion_seconds": round(min(durations_seconds), 1),
+        "slowest_conversion_seconds": round(max(durations_seconds), 1),
+        "total_conversions_measured": len(durations_seconds),
+    }
+
+
+def _build_time_to_conversion(events, experiment_name):
+    """Calculate time-to-conversion from experiment_view to experiment_conversion.
+
+    Matches by user_id first, then by username. For each converting user/session,
+    finds the earliest experiment_view and the corresponding experiment_conversion,
+    calculates the time difference.
+
+    Returns dict with 'overall' and 'by_variant' breakdowns.
+    """
+    # Separate views and conversions, keyed by user identity
+    # Each entry: {identity: [(created_at, variant), ...]}
+    views_by_user = {}   # identity -> [(created_at, variant)]
+    conversions_by_user = {}  # identity -> [(created_at, variant)]
+
+    for e in events:
+        meta = {}
+        if e.metadata_json:
+            try:
+                meta = json.loads(e.metadata_json)
+            except (json.JSONDecodeError, ValueError):
+                pass
+
+        if meta.get("experiment") != experiment_name:
+            continue
+
+        # Determine user identity: prefer user_id, fall back to username
+        identity = None
+        if e.user_id:
+            identity = ("uid", e.user_id)
+        elif e.username:
+            identity = ("uname", e.username)
+        else:
+            continue  # Cannot match without identity
+
+        variant = meta.get("variant", "unknown")
+
+        if e.event_name == "experiment_view":
+            views_by_user.setdefault(identity, []).append((e.created_at, variant))
+        elif e.event_name == "experiment_conversion":
+            conversions_by_user.setdefault(identity, []).append((e.created_at, variant))
+
+    # Calculate durations
+    all_durations = []
+    variant_durations = {}  # variant -> [duration_seconds]
+
+    for identity, conv_list in conversions_by_user.items():
+        if identity not in views_by_user:
+            continue
+        view_list = views_by_user[identity]
+
+        # Earliest view
+        earliest_view = min(view_list, key=lambda x: x[0])
+        # Earliest conversion
+        earliest_conv = min(conv_list, key=lambda x: x[0])
+
+        if earliest_conv[0] < earliest_view[0]:
+            continue  # Conversion before view — skip
+
+        duration = (earliest_conv[0] - earliest_view[0]).total_seconds()
+        all_durations.append(duration)
+
+        # Use the variant from the view event for breakdown
+        variant = earliest_view[1]
+        variant_durations.setdefault(variant, []).append(duration)
+
+    result = {
+        "overall": _compute_time_to_conversion_stats(all_durations),
+        "by_variant": {},
+    }
+    for v, durations in sorted(variant_durations.items()):
+        result["by_variant"][v] = _compute_time_to_conversion_stats(durations)
+
+    return result
+
+
 @app.route("/api/admin/analytics/experiments", methods=["GET"])
 @admin_required
 def admin_analytics_experiments():
@@ -2525,6 +2614,9 @@ def admin_analytics_experiments():
         results = _build_variant_metrics(variants)
         winner_info = _pick_winner(results)
 
+        # Build time-to-conversion analytics
+        time_to_conversion = _build_time_to_conversion(events, experiment_name)
+
         # Build per-source breakdown
         by_source = {}
         for source, sv_map in sorted(source_variants.items()):
@@ -2548,6 +2640,7 @@ def admin_analytics_experiments():
             "current_sample_A": winner_info.get("current_sample_A"),
             "current_sample_B": winner_info.get("current_sample_B"),
             "by_source": by_source,
+            "time_to_conversion": time_to_conversion,
         })
     except Exception as e:
         app.logger.error("Admin analytics experiments failed: %s", e)
