@@ -278,6 +278,13 @@
             }).catch(function() {});
         } catch(e) {}
     };
+
+    /* ── A/B Experiment: upsell_v1 ── */
+    (function() {
+        var v = localStorage.getItem("upsell_variant");
+        if (!v) { v = Math.random() < 0.5 ? "A" : "B"; localStorage.setItem("upsell_variant", v); }
+        window._upsellVariant = v;
+    })();
     </script>
     <script>
     (function () {
@@ -356,7 +363,7 @@
                         btnHtml: (function() {
                             var html = '';
                             if (ctx.ctaHref) {
-                                html += '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'pro_active\',action:\'manage\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>';
+                                html += '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'pro_active\',action:\'manage\',variant:window._upsellVariant,source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>';
                             }
                             return html;
                         })()
@@ -372,7 +379,7 @@
                         msgIcon: "⚠️",
                         msgText: ctx.message,
                         extraHtml: buildLostFeaturesHtml(ctx.lostFeatures),
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'cancelled\',action:\'keep_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'cancelled\',action:\'keep_pro\',variant:window._upsellVariant,source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
                     };
                 } else if (ctx.state === "suspended") {
                     cfg = {
@@ -385,7 +392,7 @@
                         msgIcon: "🚨",
                         msgText: ctx.message,
                         extraHtml: "",
-                        btnHtml: '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'suspended\',action:\'fix_payment\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>' +
+                        btnHtml: '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'suspended\',action:\'fix_payment\',variant:window._upsellVariant,source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>' +
                                  '<a href="/" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'suspended\',action:\'resubscribe\',source:\'dashboard\'})">' + esc(ctx.secondaryCta) + '</a>'
                     };
                 } else if (ctx.state === "expired") {
@@ -399,7 +406,7 @@
                         msgIcon: "⏰",
                         msgText: ctx.message,
                         extraHtml: buildLostFeaturesHtml(ctx.lostFeatures),
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'expired\',action:\'restore_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'expired\',action:\'restore_pro\',variant:window._upsellVariant,source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
                     };
                 } else {
                     /* free user — simplified message */
@@ -413,7 +420,7 @@
                         msgIcon: ctx.atLimit ? "🚫" : (ctx.nearLimit ? "⚠️" : "💡"),
                         msgText: ctx.message,
                         extraHtml: buildProgressBarHtml(ctx),
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'free\',action:\'upgrade\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'free\',action:\'upgrade\',variant:window._upsellVariant,source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
                     };
                 }
 
