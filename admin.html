@@ -726,7 +726,7 @@
         if (m < 60) return m + "m " + (sec < 10 ? "0" : "") + sec + "s";
         var h = Math.floor(m / 60);
         var min = m % 60;
-        return h + "h " + (min < 10 ? "0" : "") + min + "m";
+        return h + "h " + (min < 10 ? "0" : "") + min + "m " + (sec < 10 ? "0" : "") + sec + "s";
     }
 
     function ttcStatCard(label, seconds, colorClass) {

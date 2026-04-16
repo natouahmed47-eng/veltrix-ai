@@ -2428,7 +2428,7 @@ def _compute_time_to_conversion_stats(durations_seconds):
     if not durations_seconds:
         return None
     return {
-        "average_time_to_conversion_seconds": round(sum(durations_seconds) / len(durations_seconds), 1),
+        "average_time_to_conversion_seconds": round(statistics.mean(durations_seconds), 1),
         "median_time_to_conversion_seconds": round(statistics.median(durations_seconds), 1),
         "fastest_conversion_seconds": round(min(durations_seconds), 1),
         "slowest_conversion_seconds": round(max(durations_seconds), 1),
