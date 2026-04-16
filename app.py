@@ -2490,16 +2490,17 @@ def admin_analytics_experiments():
         def _sample_info(metrics):
             """Return sorted variant keys and their experiment_view counts."""
             sorted_keys = sorted(metrics.keys())
-            counts = {k: metrics[k].get("experiment_view", 0) for k in sorted_keys}
-            return sorted_keys, counts
+            sample_counts = {k: metrics[k].get("experiment_view", 0) for k in sorted_keys}
+            return sorted_keys, sample_counts
 
         def _pick_winner(metrics):
             """Determine winner by highest view_to_conversion_rate with min-sample guard."""
-            sorted_keys, counts = _sample_info(metrics)
-            sample_ok = all(c >= MIN_EXPERIMENT_SAMPLE for c in counts.values()) if len(metrics) >= 2 else False
+            sorted_keys, sample_counts = _sample_info(metrics)
+            has_multiple_variants = len(metrics) >= 2
+            sample_ok = all(c >= MIN_EXPERIMENT_SAMPLE for c in sample_counts.values()) if has_multiple_variants else False
 
             winner = None
-            if sample_ok and len(metrics) >= 2:
+            if sample_ok and has_multiple_variants:
                 sorted_v = sorted(
                     metrics.items(),
                     key=lambda x: x[1]["view_to_conversion_rate"],
@@ -2515,9 +2516,9 @@ def admin_analytics_experiments():
             }
             # Attach current_sample_A / current_sample_B
             if len(sorted_keys) >= 1:
-                result["current_sample_A"] = counts[sorted_keys[0]]
+                result["current_sample_A"] = sample_counts[sorted_keys[0]]
             if len(sorted_keys) >= 2:
-                result["current_sample_B"] = counts[sorted_keys[1]]
+                result["current_sample_B"] = sample_counts[sorted_keys[1]]
             return result
 
         # Build overall per-variant metrics

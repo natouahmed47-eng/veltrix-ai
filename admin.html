@@ -558,6 +558,12 @@
         loadExperimentResults();
     }
 
+    function buildSampleProgressHtml(varA, countA, varB, countB, minSample) {
+        return escapeHtml(varA) + ": " + (countA != null ? countA : 0) + " / " + minSample +
+            " &nbsp;\u2022&nbsp; " +
+            escapeHtml(varB) + ": " + (countB != null ? countB : 0) + " / " + minSample;
+    }
+
     async function loadExperimentResults() {
         try {
             var data = await apiFetch("/api/admin/analytics/experiments?range=" + encodeURIComponent(experimentRange));
@@ -575,9 +581,7 @@
                 banner.className = "exp-banner exp-banner-waiting";
                 banner.innerHTML = "\u26A0\uFE0F Not enough data yet to determine a reliable winner" +
                     '<div class="exp-sample-progress">' +
-                    escapeHtml(keys[0]) + ": " + (sampleA != null ? sampleA : 0) + " / " + minSample +
-                    " &nbsp;\u2022&nbsp; " +
-                    escapeHtml(keys[1]) + ": " + (sampleB != null ? sampleB : 0) + " / " + minSample +
+                    buildSampleProgressHtml(keys[0], sampleA, keys[1], sampleB, minSample) +
                     '</div>';
             } else if (winner) {
                 banner.style.display = "block";
@@ -667,9 +671,7 @@
             if (!srcSampleOk && vKeys.length >= 2) {
                 winnerHtml = '<div class="source-card-winner source-card-winner-tie">\u26A0\uFE0F Not enough data' +
                     '<div class="exp-sample-progress">' +
-                    escapeHtml(vA) + ": " + (srcSampleA != null ? srcSampleA : 0) + " / " + srcMinSample +
-                    " &bull; " +
-                    escapeHtml(vB) + ": " + (srcSampleB != null ? srcSampleB : 0) + " / " + srcMinSample +
+                    buildSampleProgressHtml(vA, srcSampleA, vB, srcSampleB, srcMinSample) +
                     '</div></div>';
             } else if (srcWinner) {
                 winnerHtml = '<div class="source-card-winner source-card-winner-green">\uD83C\uDFC6 Winner: Variant ' + escapeHtml(srcWinner) + '</div>';
