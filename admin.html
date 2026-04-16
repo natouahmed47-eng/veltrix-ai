@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard — Veltrix AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            margin: 0; padding: 0;
+            color: #e2e8f0;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Dashboard Layout ── */
+        .top-bar {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            padding: 16px 32px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid #1e293b;
+        }
+        .top-bar .logo { font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+        .top-bar .logo span { color: #818cf8; }
+        .top-bar .tagline { font-size: 12px; color: #94a3b8; margin-left: 4px; }
+        .top-bar .logout-btn {
+            margin-left: auto; padding: 7px 14px; border-radius: 8px;
+            border: 1px solid #475569; background: transparent; color: #e2e8f0;
+            font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit;
+        }
+        .top-bar .logout-btn:hover { border-color: #818cf8; color: #818cf8; }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+
+        /* ── Stat Cards ── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 32px;
+        }
+        .stat-card {
+            background: #1e293b; border-radius: 12px; padding: 20px;
+            border: 1px solid #334155;
+        }
+        .stat-card .label { font-size: 12px; color: #94a3b8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card .value { font-size: 32px; font-weight: 800; margin-top: 6px; color: #f1f5f9; }
+        .stat-card.pro .value { color: #818cf8; }
+        .stat-card.analyses .value { color: #34d399; }
+
+        /* ── Health Section ── */
+        .health-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px; margin-bottom: 32px;
+        }
+        .health-item {
+            background: #1e293b; border-radius: 10px; padding: 14px 16px;
+            border: 1px solid #334155; font-size: 13px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .health-dot {
+            width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+        }
+        .health-dot.green { background: #34d399; }
+        .health-dot.red { background: #f87171; }
+        .health-dot.yellow { background: #fbbf24; }
+        .health-label { color: #94a3b8; }
+        .health-value { margin-left: auto; font-weight: 600; color: #e2e8f0; }
+
+        /* ── Section Headers ── */
+        .section-header {
+            font-size: 16px; font-weight: 700; margin: 0 0 14px;
+            color: #f1f5f9; letter-spacing: -0.3px;
+        }
+
+        /* ── Tables ── */
+        .table-wrap {
+            background: #1e293b; border-radius: 12px; border: 1px solid #334155;
+            overflow-x: auto; margin-bottom: 28px;
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th {
+            text-align: left; padding: 12px 16px; font-weight: 600;
+            color: #94a3b8; border-bottom: 1px solid #334155;
+            font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        td {
+            padding: 10px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #0f172a; }
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 6px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge-pro { background: #312e81; color: #a5b4fc; }
+        .badge-free { background: #1e3a2f; color: #6ee7b7; }
+        .badge-active { background: #14532d; color: #86efac; }
+        .badge-inactive { background: #451a2e; color: #fca5a5; }
+
+        .loading-text { text-align: center; padding: 40px; color: #94a3b8; font-size: 14px; }
+
+        /* ── Pagination ── */
+        .pagination {
+            display: flex; justify-content: center; gap: 8px; margin-bottom: 28px;
+        }
+        .pagination button {
+            padding: 6px 14px; border-radius: 8px; border: 1px solid #475569;
+            background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 500;
+            cursor: pointer; font-family: inherit;
+        }
+        .pagination button:disabled { opacity: 0.4; cursor: default; }
+        .pagination button:not(:disabled):hover { border-color: #818cf8; color: #818cf8; }
+        .pagination span { font-size: 12px; color: #94a3b8; line-height: 30px; }
+    </style>
+</head>
+<body>
+
+<!-- ── Dashboard ── -->
+<div class="dashboard" id="dashboardView">
+    <div class="top-bar">
+        <div class="logo">Veltrix<span>AI</span></div>
+        <div class="tagline">Admin Dashboard</div>
+        <button class="logout-btn" onclick="adminLogout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="label">Total Users</div>
+                <div class="value" id="totalUsers">—</div>
+            </div>
+            <div class="stat-card pro">
+                <div class="label">Pro Users</div>
+                <div class="value" id="totalPro">—</div>
+            </div>
+            <div class="stat-card analyses">
+                <div class="label">Saved Analyses</div>
+                <div class="value" id="totalAnalyses">—</div>
+            </div>
+        </div>
+
+        <!-- System Health -->
+        <h3 class="section-header">System Health</h3>
+        <div class="health-grid" id="healthGrid">
+            <div class="health-item"><div class="health-dot yellow"></div><span class="health-label">Loading...</span></div>
+        </div>
+
+        <!-- Recent Users -->
+        <h3 class="section-header">Recent Users</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Username</th><th>Plan</th><th>Subscription</th><th>Joined</th></tr>
+                </thead>
+                <tbody id="recentUsersBody">
+                    <tr><td colspan="5" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Analyses -->
+        <h3 class="section-header">Recent Analyses</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>User ID</th><th>Idea</th><th>Created</th></tr>
+                </thead>
+                <tbody id="recentAnalysesBody">
+                    <tr><td colspan="4" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Subscriptions -->
+        <h3 class="section-header">Recent PayPal Subscriptions</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Username</th><th>Subscription ID</th><th>Status</th><th>Pro</th></tr>
+                </thead>
+                <tbody id="recentSubsBody">
+                    <tr><td colspan="5" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- All Users (paginated) -->
+        <h3 class="section-header">All Users</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Username</th><th>Plan</th><th>Subscription</th><th>Joined</th></tr>
+                </thead>
+                <tbody id="allUsersBody">
+                    <tr><td colspan="5" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="usersPagination"></div>
+
+        <!-- All Analyses (paginated) -->
+        <h3 class="section-header">All Analyses</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>User ID</th><th>Idea</th><th>Created</th></tr>
+                </thead>
+                <tbody id="allAnalysesBody">
+                    <tr><td colspan="4" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="analysesPagination"></div>
+    </div>
+</div>
+
+<script>
+    let usersPage = 1;
+    let analysesPage = 1;
+
+    // ── Helpers ──
+    function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str || "";
+        return div.innerHTML;
+    }
+
+    function formatDate(iso) {
+        if (!iso) return "—";
+        const d = new Date(iso);
+        return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    async function apiFetch(url) {
+        const resp = await fetch(url, {
+            credentials: "same-origin",
+        });
+        if (resp.status === 403) {
+            adminLogout();
+            throw new Error("Unauthorized");
+        }
+        if (!resp.ok) throw new Error("API error " + resp.status);
+        return resp.json();
+    }
+
+    function adminLogout() {
+        fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" })
+            .finally(function() { window.location.href = "/admin"; });
+    }
+
+    // ── Render Overview ──
+    function renderOverview(data) {
+        document.getElementById("totalUsers").textContent = data.stats.total_users;
+        document.getElementById("totalPro").textContent = data.stats.total_pro_users;
+        document.getElementById("totalAnalyses").textContent = data.stats.total_analyses;
+
+        // Health
+        const h = data.system_health;
+        const healthItems = [
+            { label: "Database", ok: h.database === "connected" },
+            { label: "OpenAI", ok: h.openai_ready },
+            { label: "Shopify", ok: h.shopify_configured, extra: h.shopify_store },
+            { label: "PayPal", ok: h.paypal_configured },
+        ];
+        document.getElementById("healthGrid").innerHTML = healthItems.map(function(item) {
+            const dot = item.ok ? "green" : "red";
+            const val = item.extra ? escapeHtml(item.extra) : (item.ok ? "Ready" : "Not configured");
+            return '<div class="health-item"><div class="health-dot ' + dot + '"></div>' +
+                   '<span class="health-label">' + escapeHtml(item.label) + '</span>' +
+                   '<span class="health-value">' + val + '</span></div>';
+        }).join("");
+
+        // Recent Users
+        document.getElementById("recentUsersBody").innerHTML = data.recent_users.length
+            ? data.recent_users.map(function(u) {
+                return "<tr><td>" + u.id + "</td><td>" + escapeHtml(u.username) +
+                    '</td><td><span class="badge ' + (u.is_pro ? "badge-pro" : "badge-free") + '">' +
+                    (u.is_pro ? "Pro" : "Free") + "</span></td><td>" +
+                    escapeHtml(u.subscription_status || "—") + "</td><td>" + formatDate(u.created_at) + "</td></tr>";
+            }).join("")
+            : '<tr><td colspan="5" class="loading-text">No users yet</td></tr>';
+
+        // Recent Analyses
+        document.getElementById("recentAnalysesBody").innerHTML = data.recent_analyses.length
+            ? data.recent_analyses.map(function(a) {
+                return "<tr><td>" + a.id + "</td><td>" + a.user_id + "</td><td>" +
+                    escapeHtml(a.idea) + "</td><td>" + formatDate(a.created_at) + "</td></tr>";
+            }).join("")
+            : '<tr><td colspan="4" class="loading-text">No analyses yet</td></tr>';
+
+        // Recent Subscriptions
+        document.getElementById("recentSubsBody").innerHTML = data.recent_subscriptions.length
+            ? data.recent_subscriptions.map(function(s) {
+                return "<tr><td>" + s.id + "</td><td>" + escapeHtml(s.username) +
+                    "</td><td>" + escapeHtml(s.paypal_subscription_id || "—") +
+                    "</td><td>" + escapeHtml(s.subscription_status || "—") +
+                    '</td><td><span class="badge ' + (s.is_pro ? "badge-active" : "badge-inactive") + '">' +
+                    (s.is_pro ? "Yes" : "No") + "</span></td></tr>";
+            }).join("")
+            : '<tr><td colspan="5" class="loading-text">No subscriptions yet</td></tr>';
+    }
+
+    // ── Paginated Users ──
+    async function loadUsers(page) {
+        usersPage = page;
+        try {
+            const data = await apiFetch("/api/admin/users?page=" + page + "&per_page=20");
+            document.getElementById("allUsersBody").innerHTML = data.users.length
+                ? data.users.map(function(u) {
+                    return "<tr><td>" + u.id + "</td><td>" + escapeHtml(u.username) +
+                        '</td><td><span class="badge ' + (u.is_pro ? "badge-pro" : "badge-free") + '">' +
+                        (u.is_pro ? "Pro" : "Free") + "</span></td><td>" +
+                        escapeHtml(u.subscription_status || "—") + "</td><td>" + formatDate(u.created_at) + "</td></tr>";
+                }).join("")
+                : '<tr><td colspan="5" class="loading-text">No users</td></tr>';
+
+            renderPagination("usersPagination", data.page, data.pages, loadUsers);
+        } catch (e) {
+            document.getElementById("allUsersBody").innerHTML =
+                '<tr><td colspan="5" class="loading-text">Failed to load users</td></tr>';
+        }
+    }
+
+    // ── Paginated Analyses ──
+    async function loadAnalyses(page) {
+        analysesPage = page;
+        try {
+            const data = await apiFetch("/api/admin/analyses?page=" + page + "&per_page=20");
+            document.getElementById("allAnalysesBody").innerHTML = data.analyses.length
+                ? data.analyses.map(function(a) {
+                    return "<tr><td>" + a.id + "</td><td>" + a.user_id + "</td><td>" +
+                        escapeHtml(a.idea) + "</td><td>" + formatDate(a.created_at) + "</td></tr>";
+                }).join("")
+                : '<tr><td colspan="4" class="loading-text">No analyses</td></tr>';
+
+            renderPagination("analysesPagination", data.page, data.pages, loadAnalyses);
+        } catch (e) {
+            document.getElementById("allAnalysesBody").innerHTML =
+                '<tr><td colspan="4" class="loading-text">Failed to load analyses</td></tr>';
+        }
+    }
+
+    function renderPagination(containerId, current, total, loadFn) {
+        const el = document.getElementById(containerId);
+        if (total <= 1) { el.innerHTML = ""; return; }
+        el.innerHTML =
+            '<button ' + (current <= 1 ? "disabled" : "") + ' onclick="void(0)" id="' + containerId + 'Prev">← Prev</button>' +
+            '<span>Page ' + current + ' of ' + total + '</span>' +
+            '<button ' + (current >= total ? "disabled" : "") + ' onclick="void(0)" id="' + containerId + 'Next">Next →</button>';
+        var prevBtn = document.getElementById(containerId + "Prev");
+        var nextBtn = document.getElementById(containerId + "Next");
+        if (prevBtn && current > 1) prevBtn.addEventListener("click", function() { loadFn(current - 1); });
+        if (nextBtn && current < total) nextBtn.addEventListener("click", function() { loadFn(current + 1); });
+    }
+
+    // ── Auto-load dashboard on page ready ──
+    (function() {
+        apiFetch("/api/admin/overview")
+            .then(function(data) {
+                renderOverview(data);
+                loadUsers(1);
+                loadAnalyses(1);
+            })
+            .catch(function() {
+                // Session invalid or expired — redirect to login
+                window.location.href = "/admin";
+            });
+    })();
+</script>
+
+</body>
+</html>
