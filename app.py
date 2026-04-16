@@ -1716,6 +1716,44 @@ def admin_migrate_db():
     })
 
 
+@app.route("/api/debug/migrate-db", methods=["POST"])
+def debug_migrate_db():
+    """TEMPORARY unprotected route to add missing columns.
+
+    Remove this route after running it once.
+    """
+    from sqlalchemy import inspect as sa_inspect, text as sa_text
+
+    added = []
+    skipped = []
+    try:
+        inspector = sa_inspect(db.engine)
+        for model in (User, ShopifyStore, SavedAnalysis):
+            table = model.__tablename__
+            existing = {c["name"] for c in inspector.get_columns(table)}
+            for col in model.__table__.columns:
+                if col.name not in existing:
+                    col_type = col.type.compile(db.engine.dialect)
+                    stmt = f'ALTER TABLE "{table}" ADD COLUMN "{col.name}" {col_type}'
+                    try:
+                        db.session.execute(sa_text(stmt))
+                        db.session.commit()
+                        added.append(f"{table}.{col.name}")
+                    except Exception:
+                        db.session.rollback()
+                        skipped.append(f"{table}.{col.name}")
+    except Exception as e:
+        app.logger.error("Debug migration failed: %s", e)
+        return jsonify({"error": "Migration failed", "details": str(e)}), 500
+
+    return jsonify({
+        "success": True,
+        "added": added,
+        "skipped": skipped,
+        "message": f"Migration complete. {len(added)} column(s) added.",
+    })
+
+
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
 def admin_create_paypal_plan():
     """One-time admin helper: create PayPal Product + Billing Plan via API.
@@ -3113,42 +3151,8 @@ def internal_error(error):
     return jsonify({"error": "Internal server error"}), 500
 
 
-def _migrate_missing_columns():
-    """Add any columns defined in models but missing from the live database.
-
-    Safe to run on every startup — skips columns that already exist.
-    """
-    from sqlalchemy import inspect as sa_inspect, text as sa_text
-
-    try:
-        inspector = sa_inspect(db.engine)
-        for model in (User, ShopifyStore, SavedAnalysis):
-            table = model.__tablename__
-            existing = {c["name"] for c in inspector.get_columns(table)}
-            for col in model.__table__.columns:
-                if col.name in existing:
-                    continue
-                col_type = col.type.compile(db.engine.dialect)
-                stmt = f'ALTER TABLE "{table}" ADD COLUMN "{col.name}" {col_type}'
-                try:
-                    db.session.execute(sa_text(stmt))
-                    db.session.commit()
-                    app.logger.info("Added column %s.%s", table, col.name)
-                except Exception as col_exc:
-                    db.session.rollback()
-                    app.logger.warning(
-                        "Could not add column %s.%s: %s",
-                        table,
-                        col.name,
-                        col_exc,
-                    )
-    except Exception as exc:
-        app.logger.error("Startup migration check failed: %s", exc)
-
-
 with app.app_context():
     db.create_all()
-    _migrate_missing_columns()
 
 
 if __name__ == "__main__":
