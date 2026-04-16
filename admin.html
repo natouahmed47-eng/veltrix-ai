@@ -329,6 +329,15 @@
             <p class="loading-text">Loading...</p>
         </div>
 
+        <!-- Time to Conversion -->
+        <h3 class="section-header">Time to Conversion</h3>
+        <div id="timeToConversionSection">
+            <div class="stats-grid" id="ttcOverallCards">
+                <p class="loading-text">Loading...</p>
+            </div>
+            <div id="ttcVariantComparison" class="source-breakdown-grid"></div>
+        </div>
+
         <!-- All Users (paginated) -->
         <h3 class="section-header">All Users</h3>
         <div class="table-wrap">
@@ -602,6 +611,9 @@
                     '<tr><td colspan="3" class="loading-text">No experiment data yet</td></tr>';
                 document.getElementById("experimentSourceBreakdown").innerHTML =
                     '<p class="loading-text">No source breakdown data yet</p>';
+                document.getElementById("ttcOverallCards").innerHTML =
+                    '<p class="loading-text">No conversion timing data yet</p>';
+                document.getElementById("ttcVariantComparison").innerHTML = "";
                 return;
             }
 
@@ -636,11 +648,17 @@
 
             // ── Render source breakdown ──
             renderExperimentSourceBreakdown(data.by_source || {}, metrics);
+
+            // ── Render time to conversion ──
+            renderTimeToConversion(data.time_to_conversion || {});
         } catch (e) {
             document.getElementById("experimentResultsBody").innerHTML =
                 '<tr><td colspan="3" class="loading-text">Failed to load experiment data</td></tr>';
             document.getElementById("experimentSourceBreakdown").innerHTML =
                 '<p class="loading-text">Failed to load source breakdown</p>';
+            document.getElementById("ttcOverallCards").innerHTML =
+                '<p class="loading-text">Failed to load time to conversion</p>';
+            document.getElementById("ttcVariantComparison").innerHTML = "";
         }
     }
 
@@ -695,6 +713,70 @@
                 '<table><thead><tr><th>Metric</th><th>Variant ' + escapeHtml(vA) + '</th>' +
                 '<th>' + (vKeys.length > 1 ? 'Variant ' + escapeHtml(vB) : 'Variant B') + '</th></tr></thead>' +
                 '<tbody>' + rows + '</tbody></table></div>';
+        }).join("");
+    }
+
+    // ── Time to Conversion ──
+    function formatSeconds(s) {
+        if (s == null) return "—";
+        s = Math.round(s);
+        if (s < 60) return s + "s";
+        var m = Math.floor(s / 60);
+        var sec = s % 60;
+        if (m < 60) return m + "m " + (sec < 10 ? "0" : "") + sec + "s";
+        var h = Math.floor(m / 60);
+        var min = m % 60;
+        return h + "h " + (min < 10 ? "0" : "") + min + "m";
+    }
+
+    function ttcStatCard(label, seconds, colorClass) {
+        return '<div class="stat-card' + (colorClass ? " " + colorClass : "") + '">' +
+            '<div class="label">' + escapeHtml(label) + '</div>' +
+            '<div class="value">' + formatSeconds(seconds) + '</div></div>';
+    }
+
+    function renderTimeToConversion(ttc) {
+        var overallEl = document.getElementById("ttcOverallCards");
+        var variantEl = document.getElementById("ttcVariantComparison");
+        var overall = ttc.overall;
+
+        if (!overall) {
+            overallEl.innerHTML = '<p class="loading-text">No conversion timing data yet</p>';
+            variantEl.innerHTML = "";
+            return;
+        }
+
+        overallEl.innerHTML =
+            ttcStatCard("Average", overall.average_time_to_conversion_seconds, "") +
+            ttcStatCard("Median", overall.median_time_to_conversion_seconds, "") +
+            ttcStatCard("Fastest", overall.fastest_conversion_seconds, "analyses") +
+            ttcStatCard("Slowest", overall.slowest_conversion_seconds, "") +
+            ttcStatCard("Conversions Measured", null, "pro");
+        // Override the last card's value with a plain number
+        var cards = overallEl.querySelectorAll(".stat-card");
+        if (cards.length >= 5) {
+            cards[4].querySelector(".value").textContent = overall.total_conversions_measured;
+        }
+
+        var byVariant = ttc.by_variant || {};
+        var vKeys = Object.keys(byVariant).sort();
+        if (vKeys.length === 0) {
+            variantEl.innerHTML = "";
+            return;
+        }
+
+        variantEl.innerHTML = vKeys.map(function(v) {
+            var d = byVariant[v];
+            if (!d) return "";
+            return '<div class="source-card">' +
+                '<div class="source-card-title">Variant ' + escapeHtml(v) + '</div>' +
+                '<table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>' +
+                '<tr><td><strong>Average</strong></td><td>' + formatSeconds(d.average_time_to_conversion_seconds) + '</td></tr>' +
+                '<tr><td><strong>Median</strong></td><td>' + formatSeconds(d.median_time_to_conversion_seconds) + '</td></tr>' +
+                '<tr><td><strong>Fastest</strong></td><td>' + formatSeconds(d.fastest_conversion_seconds) + '</td></tr>' +
+                '<tr><td><strong>Slowest</strong></td><td>' + formatSeconds(d.slowest_conversion_seconds) + '</td></tr>' +
+                '<tr><td><strong>Conversions</strong></td><td>' + d.total_conversions_measured + '</td></tr>' +
+                '</tbody></table></div>';
         }).join("");
     }
 
