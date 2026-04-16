@@ -348,6 +348,8 @@ _ALLOWED_TRACKING_EVENTS = frozenset({
     "paypal_subscription_approved",
     "payment_success_page_view",
     "payment_cancel_page_view",
+    "experiment_view",
+    "experiment_conversion",
 })
 
 # Maximum request body size for the tracking endpoint (2 KB)
