@@ -1741,18 +1741,13 @@ document.getElementById("adminLoginForm").addEventListener("submit", function(e)
         method: "POST",
         headers: {"Content-Type": "application/json"},
         credentials: "same-origin",
-        redirect: "manual",
         body: JSON.stringify({secret: secret})
     }).then(function(resp) {
-        if (resp.type === "opaqueredirect" || resp.status === 302) {
+        if (resp.ok || resp.redirected) {
             window.location.href = "/admin";
             return;
         }
-        if (!resp.ok) {
-            document.querySelector(".err").style.display = "block";
-            return;
-        }
-        window.location.href = "/admin";
+        document.querySelector(".err").style.display = "block";
     }).catch(function() {
         document.querySelector(".err").style.display = "block";
     });
