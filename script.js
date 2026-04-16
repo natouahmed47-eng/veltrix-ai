@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /**
      * applyPricingState — update pricing section on index.html based on user state.
+     * Shows only 1 main message + 1 supporting line per priority logic.
      * @param {Object} ctx — result of getUserStateContext()
      */
     function applyPricingState(ctx) {
@@ -40,7 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     : "Your Current Plan";
             }
 
-            /* Update the state-aware message banner */
+            /* Simplified message banner: 1 main message + 1 supporting line only */
             if (stateMsg) {
                 if (ctx.state === "logged_out") {
                     stateMsg.style.display = "none";
@@ -48,26 +49,22 @@ document.addEventListener("DOMContentLoaded", function () {
                     stateMsg.style.display = "block";
                     var msgHtml = '<span class="psm-text">' + escHtml(ctx.message) + '</span>';
 
-                    /* Usage pressure for free users */
-                    if (ctx.usagePressureMsg) {
-                        var pressureCls = ctx.atLimit ? "psm-pressure-critical" : (ctx.nearLimit ? "psm-pressure-warn" : "");
-                        msgHtml += ' <span class="psm-benefit ' + pressureCls + '">' + escHtml(ctx.usagePressureMsg) + '</span>';
-                    } else if (ctx.benefit) {
-                        msgHtml += ' <span class="psm-benefit">' + escHtml(ctx.benefit) + '</span>';
+                    /* Supporting line */
+                    if (ctx.supportingLine) {
+                        var supportCls = ctx.atLimit ? "psm-pressure-critical" : (ctx.nearLimit ? "psm-pressure-warn" : "");
+                        msgHtml += '<span class="psm-benefit ' + supportCls + '">' + escHtml(ctx.supportingLine) + '</span>';
                     }
 
-                    /* Loss aversion list for cancelled / expired */
-                    if (ctx.lostFeatures && ctx.lostFeatures.length) {
-                        msgHtml += '<div class="psm-lost-features"><span class="psm-lost-title">You\u2019ll lose access to:</span>';
-                        for (var i = 0; i < ctx.lostFeatures.length; i++) {
-                            msgHtml += '<span class="psm-lost-item">\u2717 ' + escHtml(ctx.lostFeatures[i]) + '</span>';
-                        }
-                        msgHtml += '</div>';
+                    /* Progress bar for free users */
+                    if (ctx.state === "free" && ctx.analysisLimit > 0) {
+                        var pct = Math.min(Math.round((ctx.analysisCount / ctx.analysisLimit) * 100), 100);
+                        var barCls = pct >= 100 ? "progress-critical" : (pct >= 80 ? "progress-warn" : "");
+                        msgHtml += '<div class="usage-progress-wrap">' +
+                            '<div class="usage-progress-bar"><div class="usage-progress-fill ' + barCls + '" style="width:' + pct + '%"></div></div>' +
+                            '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' analyses used</span>' +
+                            '</div>';
                     }
 
-                    if (ctx.urgency) {
-                        msgHtml += ' <span class="psm-urgency">' + escHtml(ctx.urgency) + '</span>';
-                    }
                     stateMsg.innerHTML = msgHtml;
                     stateMsg.className = "pricing-state-msg psm-" + ctx.state;
                 }
@@ -110,8 +107,11 @@ document.addEventListener("DOMContentLoaded", function () {
         if (stickyBar) {
             if (ctx.showPricing && ctx.state !== "logged_out" && ctx.state !== "pro_active") {
                 stickyBar.style.display = "flex";
+                /* Add bottom padding so sticky CTA doesn't overlap content */
+                document.body.style.paddingBottom = "64px";
             } else {
                 stickyBar.style.display = "none";
+                document.body.style.paddingBottom = "";
             }
         }
     }
@@ -255,6 +255,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     user_state: "free",
                     source: "analyze"
                 });
+                window.trackEvent("paywall_shown_after_click", {
+                    user_state: "free",
+                    source: "analyze"
+                });
             }
         }
     }
@@ -266,6 +270,15 @@ document.addEventListener("DOMContentLoaded", function () {
     document.addEventListener("click", function(e) {
         if (e.target && e.target.id === "paywallClose") hidePaywallModal();
         if (e.target && e.target.id === "paywallOverlay") hidePaywallModal();
+        /* Track primary CTA clicks */
+        if (e.target && (e.target.classList.contains("paywall-cta") || e.target.classList.contains("sticky-cta-btn"))) {
+            if (window.trackEvent) {
+                window.trackEvent("cta_primary_click", {
+                    user_state: (window._veltrixCtx && window._veltrixCtx.state) || "unknown",
+                    source: e.target.classList.contains("sticky-cta-btn") ? "sticky_cta" : "paywall"
+                });
+            }
+        }
     });
 
     /* ── Analyze Product ── */
@@ -287,10 +300,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        /* ── Soft paywall: block analysis if free user hit limit ── */
+        /* ── Soft paywall: delay 0.5s with loading feel, then show paywall ── */
         var ctx = window._veltrixCtx;
         if (ctx && ctx.atLimit && ctx.state === "free") {
-            showPaywallModal();
+            messageEl.innerHTML = "\u23F3 Analyzing, please wait...";
+            analyzeBtn.disabled = true;
+            setTimeout(function() {
+                messageEl.innerHTML = "";
+                analyzeBtn.disabled = false;
+                showPaywallModal();
+            }, 500);
             return;
         }
 

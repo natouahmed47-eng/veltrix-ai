@@ -13,6 +13,7 @@ window.getUserStateContext = function (user) {
         return {
             state: "logged_out",
             message: "Start free \u2014 then upgrade to Pro",
+            supportingLine: "No credit card required",
             cta: "Get Started Free",
             ctaHref: null,
             ctaClass: "primary",
@@ -40,6 +41,7 @@ window.getUserStateContext = function (user) {
         return {
             state: "pro_active",
             message: "You\u2019re on the Pro plan",
+            supportingLine: "Unlimited analyses \u00b7 All Pro features enabled",
             cta: "Manage Subscription",
             ctaHref: user.paypal_subscription_id
                 ? "https://www.paypal.com/myaccount/autopay"
@@ -72,6 +74,7 @@ window.getUserStateContext = function (user) {
         return {
             state: "cancelled",
             message: "Your Pro access ends soon",
+            supportingLine: "Don\u2019t lose your data access",
             cta: "Keep My Pro Access",
             ctaHref: "/",
             ctaClass: "primary",
@@ -95,7 +98,8 @@ window.getUserStateContext = function (user) {
         return {
             state: "suspended",
             message: "Payment issue detected",
-            cta: "Fix Payment on PayPal",
+            supportingLine: "Update payment to restore Pro access",
+            cta: "Fix Payment & Continue",
             ctaHref: "https://www.paypal.com/myaccount/autopay",
             ctaClass: "warning",
             secondaryCta: "Re-subscribe",
@@ -118,7 +122,8 @@ window.getUserStateContext = function (user) {
         return {
             state: "expired",
             message: "Your Pro access has ended",
-            cta: "Restore My Pro Access",
+            supportingLine: "Restore access to unlimited analyses",
+            cta: "Restore My Access",
             ctaHref: "/",
             ctaClass: "primary",
             secondaryCta: null,
@@ -141,18 +146,23 @@ window.getUserStateContext = function (user) {
     var atLimit = (limit > 0 && count >= limit);
     var nearLimit = (!atLimit && limit > 0 && (count / limit) >= 0.8);
     var usagePressureMsg;
+    var supportingLine;
     if (atLimit) {
         usagePressureMsg = "You\u2019ve reached your limit \u2014 upgrade to continue";
+        supportingLine = "Unlock unlimited analyses now";
     } else if (nearLimit) {
         usagePressureMsg = "You\u2019re about to hit your limit";
+        supportingLine = count + " of " + limit + " analyses used";
     } else {
         usagePressureMsg = "You\u2019ve used " + count + " out of " + limit + " analyses";
+        supportingLine = "Upgrade for unlimited access";
     }
 
     return {
         state: "free",
-        message: "Unlock unlimited analyses",
-        cta: "Get Unlimited Analyses",
+        message: atLimit ? usagePressureMsg : (nearLimit ? usagePressureMsg : "Unlock unlimited analyses"),
+        supportingLine: supportingLine,
+        cta: "Unlock Unlimited Analyses",
         ctaHref: null,
         ctaClass: "primary",
         secondaryCta: null,

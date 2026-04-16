@@ -962,3 +962,43 @@ body {
 .btn-billing.cta-pulse {
     animation: ctaPulse 2s ease-in-out infinite;
 }
+
+/* ── Usage Progress Bar ── */
+.usage-progress-wrap {
+    margin-top: 10px;
+    text-align: center;
+}
+.usage-progress-bar {
+    width: 100%;
+    max-width: 300px;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    margin: 0 auto 6px;
+    overflow: hidden;
+}
+.usage-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: #6366f1;
+    transition: width 0.4s ease;
+}
+.usage-progress-fill.progress-warn {
+    background: #f59e0b;
+}
+.usage-progress-fill.progress-critical {
+    background: #dc2626;
+}
+.usage-progress-label {
+    font-size: 12px;
+    color: inherit;
+    opacity: 0.8;
+}
+
+/* ── Social Proof ── */
+.pricing-social-proof {
+    font-size: 14px !important;
+    font-weight: 600;
+    color: #475569 !important;
+    margin-bottom: 10px !important;
+}
