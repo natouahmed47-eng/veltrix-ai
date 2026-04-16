@@ -912,7 +912,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         });
       })
-      .catch(function() {});
+      .catch(function(err) { if (typeof console !== "undefined") console.warn("PayPal init skipped:", err); });
   }
 
   function renderPayPal() {
