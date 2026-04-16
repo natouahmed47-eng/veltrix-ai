@@ -275,6 +275,18 @@ def login_required(f):
     return decorated
 
 
+def admin_required(f):
+    """Decorator that requires a valid ADMIN_SECRET Bearer token."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get("Authorization", "")
+        provided = auth_header.replace("Bearer ", "").strip()
+        if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
+            return jsonify({"error": "Unauthorized"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 def get_paypal_access_token():
     """Obtain an OAuth2 access token from PayPal."""
     resp = requests.post(
@@ -1655,6 +1667,11 @@ def payment_cancel():
     return send_file("cancel.html")
 
 
+@app.route("/admin")
+def admin_page():
+    return send_file("admin.html")
+
+
 # ── Auth & SaaS Endpoints ──
 
 @app.route("/api/register", methods=["POST"])
@@ -1814,6 +1831,7 @@ def api_config():
 
 
 @app.route("/api/admin/reset-db", methods=["POST"])
+@admin_required
 def admin_reset_db():
     """One-time admin helper: drop and recreate all database tables.
 
@@ -1821,11 +1839,6 @@ def admin_reset_db():
     WARNING: This is destructive and deletes all data. Use only for
     development/testing recovery when the schema is out of sync.
     """
-    auth_header = request.headers.get("Authorization", "")
-    provided = auth_header.replace("Bearer ", "").strip()
-    if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
-        return jsonify({"error": "Unauthorized"}), 403
-
     try:
         db.drop_all()
         db.create_all()
@@ -1836,6 +1849,7 @@ def admin_reset_db():
 
 
 @app.route("/api/admin/migrate-db", methods=["POST"])
+@admin_required
 def admin_migrate_db():
     """One-time admin helper: add any missing columns to existing tables.
 
@@ -1843,11 +1857,6 @@ def admin_migrate_db():
     Safe to run multiple times — skips columns that already exist.
     Uses ALTER TABLE ADD COLUMN for each missing column.
     """
-    auth_header = request.headers.get("Authorization", "")
-    provided = auth_header.replace("Bearer ", "").strip()
-    if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
-        return jsonify({"error": "Unauthorized"}), 403
-
     from sqlalchemy import inspect as sa_inspect, text as sa_text
 
     added = []
@@ -1918,18 +1927,157 @@ def debug_migrate_db():
     })
 
 
+# ── Admin Dashboard API Endpoints ──
+
+@app.route("/api/admin/overview", methods=["GET"])
+@admin_required
+def admin_overview():
+    """Return high-level dashboard statistics and recent activity."""
+    try:
+        total_users = User.query.count()
+        total_pro = User.query.filter_by(is_pro=True).count()
+        total_analyses = SavedAnalysis.query.count()
+
+        recent_users = User.query.order_by(User.created_at.desc()).limit(10).all()
+        recent_analyses = (
+            SavedAnalysis.query
+            .order_by(SavedAnalysis.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
+        # Recent PayPal subscriptions (users with a paypal_subscription_id)
+        recent_subscriptions = (
+            User.query
+            .filter(User.paypal_subscription_id.isnot(None))
+            .order_by(User.created_at.desc())
+            .limit(10)
+            .all()
+        )
+
+        latest_store = get_latest_store()
+
+        return jsonify({
+            "stats": {
+                "total_users": total_users,
+                "total_pro_users": total_pro,
+                "total_analyses": total_analyses,
+            },
+            "recent_users": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "is_pro": u.is_pro,
+                    "subscription_status": u.subscription_status,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                }
+                for u in recent_users
+            ],
+            "recent_analyses": [
+                {
+                    "id": a.id,
+                    "user_id": a.user_id,
+                    "idea": (a.idea[:120] + "...") if len(a.idea) > 120 else a.idea,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                }
+                for a in recent_analyses
+            ],
+            "recent_subscriptions": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "paypal_subscription_id": u.paypal_subscription_id,
+                    "subscription_status": u.subscription_status,
+                    "is_pro": u.is_pro,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                }
+                for u in recent_subscriptions
+            ],
+            "system_health": {
+                "database": "connected",
+                "openai_ready": bool(OPENAI_API_KEY),
+                "shopify_configured": bool(SHOPIFY_API_KEY and SHOPIFY_API_SECRET),
+                "shopify_store": latest_store.shop if latest_store else None,
+                "paypal_configured": bool(PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET),
+            },
+        })
+    except Exception as e:
+        app.logger.error("Admin overview failed: %s", e)
+        return jsonify({"error": "Failed to load overview"}), 500
+
+
+@app.route("/api/admin/users", methods=["GET"])
+@admin_required
+def admin_users():
+    """Return paginated list of all users."""
+    try:
+        page = request.args.get("page", 1, type=int)
+        per_page = min(request.args.get("per_page", 50, type=int), 100)
+        pagination = (
+            User.query
+            .order_by(User.created_at.desc())
+            .paginate(page=page, per_page=per_page, error_out=False)
+        )
+        return jsonify({
+            "users": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "is_pro": u.is_pro,
+                    "paypal_subscription_id": u.paypal_subscription_id,
+                    "subscription_status": u.subscription_status,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                }
+                for u in pagination.items
+            ],
+            "total": pagination.total,
+            "page": pagination.page,
+            "pages": pagination.pages,
+        })
+    except Exception as e:
+        app.logger.error("Admin users failed: %s", e)
+        return jsonify({"error": "Failed to load users"}), 500
+
+
+@app.route("/api/admin/analyses", methods=["GET"])
+@admin_required
+def admin_analyses():
+    """Return paginated list of all saved analyses."""
+    try:
+        page = request.args.get("page", 1, type=int)
+        per_page = min(request.args.get("per_page", 50, type=int), 100)
+        pagination = (
+            SavedAnalysis.query
+            .order_by(SavedAnalysis.created_at.desc())
+            .paginate(page=page, per_page=per_page, error_out=False)
+        )
+        return jsonify({
+            "analyses": [
+                {
+                    "id": a.id,
+                    "user_id": a.user_id,
+                    "idea": (a.idea[:200] + "...") if len(a.idea) > 200 else a.idea,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                }
+                for a in pagination.items
+            ],
+            "total": pagination.total,
+            "page": pagination.page,
+            "pages": pagination.pages,
+        })
+    except Exception as e:
+        app.logger.error("Admin analyses failed: %s", e)
+        return jsonify({"error": "Failed to load analyses"}), 500
+
+
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
+@admin_required
 def admin_create_paypal_plan():
     """One-time admin helper: create PayPal Product + Billing Plan via API.
 
     Requires ``Authorization: Bearer <ADMIN_SECRET>`` header.
     Skips if PAYPAL_PLAN_ID is already set.
     """
-    auth_header = request.headers.get("Authorization", "")
-    provided = auth_header.replace("Bearer ", "").strip()
-    if not ADMIN_SECRET or provided != ADMIN_SECRET:
-        return jsonify({"error": "Unauthorized"}), 403
-
     if PAYPAL_PLAN_ID:
         return jsonify({
             "message": "PAYPAL_PLAN_ID already set",
