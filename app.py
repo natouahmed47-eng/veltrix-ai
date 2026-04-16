@@ -2441,8 +2441,9 @@ def admin_analytics_experiments():
 
         events = q.all()
 
-        # Group counts by variant
+        # Group counts by variant (overall) and by source+variant
         variants = {}
+        source_variants = {}  # {source: {variant: {event: count}}}
         for e in events:
             meta = {}
             if e.metadata_json:
@@ -2459,36 +2460,63 @@ def admin_analytics_experiments():
                 variants[variant] = {evt: 0 for evt in _EXPERIMENT_EVENTS}
             variants[variant][e.event_name] += 1
 
-        # Build per-variant metrics
-        results = {}
-        for variant, counts in variants.items():
-            views = counts.get("experiment_view", 0)
-            clicks = counts.get("cta_primary_click", 0)
-            conversions = counts.get("experiment_conversion", 0)
-            results[variant] = {
-                "experiment_view": views,
-                "cta_primary_click": clicks,
-                "experiment_conversion": conversions,
-                "view_to_click_rate": _funnel_rate(clicks, views),
-                "click_to_conversion_rate": _funnel_rate(conversions, clicks),
-                "view_to_conversion_rate": _funnel_rate(conversions, views),
-            }
+            # Group by source + variant
+            raw_source = (e.source or meta.get("source") or "").strip()
+            source = raw_source if raw_source else "unknown"
+            if source not in source_variants:
+                source_variants[source] = {}
+            if variant not in source_variants[source]:
+                source_variants[source][variant] = {evt: 0 for evt in _EXPERIMENT_EVENTS}
+            source_variants[source][variant][e.event_name] += 1
 
-        # Determine winner by highest view_to_conversion_rate (tie → no winner)
-        winner = None
-        if len(results) >= 2:
-            sorted_variants = sorted(
-                results.items(),
+        def _build_variant_metrics(counts_map):
+            """Build per-variant metrics dict from a {variant: {event: count}} map."""
+            metrics = {}
+            for v, counts in counts_map.items():
+                views = counts.get("experiment_view", 0)
+                clicks = counts.get("cta_primary_click", 0)
+                conversions = counts.get("experiment_conversion", 0)
+                metrics[v] = {
+                    "experiment_view": views,
+                    "cta_primary_click": clicks,
+                    "experiment_conversion": conversions,
+                    "view_to_click_rate": _funnel_rate(clicks, views),
+                    "click_to_conversion_rate": _funnel_rate(conversions, clicks),
+                    "view_to_conversion_rate": _funnel_rate(conversions, views),
+                }
+            return metrics
+
+        def _pick_winner(metrics):
+            """Determine winner by highest view_to_conversion_rate (tie → None)."""
+            if len(metrics) < 2:
+                return None
+            sorted_v = sorted(
+                metrics.items(),
                 key=lambda x: x[1]["view_to_conversion_rate"],
                 reverse=True,
             )
-            if sorted_variants[0][1]["view_to_conversion_rate"] > sorted_variants[1][1]["view_to_conversion_rate"]:
-                winner = sorted_variants[0][0]
+            if sorted_v[0][1]["view_to_conversion_rate"] > sorted_v[1][1]["view_to_conversion_rate"]:
+                return sorted_v[0][0]
+            return None
+
+        # Build overall per-variant metrics
+        results = _build_variant_metrics(variants)
+        winner = _pick_winner(results)
+
+        # Build per-source breakdown
+        by_source = {}
+        for source, sv_map in sorted(source_variants.items()):
+            src_metrics = _build_variant_metrics(sv_map)
+            by_source[source] = {
+                "variants": src_metrics,
+                "winner": _pick_winner(src_metrics),
+            }
 
         return jsonify({
             "experiment": experiment_name,
             "variants": results,
             "winner": winner,
+            "by_source": by_source,
         })
     except Exception as e:
         app.logger.error("Admin analytics experiments failed: %s", e)

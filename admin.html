@@ -137,6 +137,29 @@
         }
         .exp-banner-winner { background: #14532d; border: 1px solid #22c55e; color: #86efac; }
         .exp-banner-tie { background: #1e293b; border: 1px solid #475569; color: #94a3b8; }
+
+        /* ── Experiment Source Breakdown ── */
+        .source-breakdown-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            gap: 16px; margin-top: 8px;
+        }
+        .source-card {
+            background: #1e293b; border-radius: 10px; padding: 16px;
+            border: 1px solid #334155;
+        }
+        .source-card-title {
+            font-size: 14px; font-weight: 700; color: #e2e8f0;
+            margin-bottom: 10px; text-transform: capitalize;
+        }
+        .source-card-winner {
+            font-size: 12px; font-weight: 600; margin-bottom: 8px; padding: 6px 10px;
+            border-radius: 6px; display: inline-block;
+        }
+        .source-card-winner-green { background: #14532d; color: #86efac; }
+        .source-card-winner-tie { background: #1e293b; color: #94a3b8; border: 1px solid #475569; }
+        .source-card table { width: 100%; font-size: 13px; }
+        .source-card th { color: #94a3b8; font-weight: 600; text-align: left; padding: 4px 6px; }
+        .source-card td { padding: 4px 6px; }
     </style>
 </head>
 <body>
@@ -296,6 +319,12 @@
                     <tr><td colspan="3" class="loading-text">Loading...</td></tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- A/B Breakdown by Source -->
+        <h3 class="section-header">A/B Breakdown by Source</h3>
+        <div id="experimentSourceBreakdown" class="source-breakdown-grid">
+            <p class="loading-text">Loading...</p>
         </div>
 
         <!-- All Users (paginated) -->
@@ -552,6 +581,8 @@
             if (keys.length === 0) {
                 document.getElementById("experimentResultsBody").innerHTML =
                     '<tr><td colspan="3" class="loading-text">No experiment data yet</td></tr>';
+                document.getElementById("experimentSourceBreakdown").innerHTML =
+                    '<p class="loading-text">No source breakdown data yet</p>';
                 return;
             }
 
@@ -583,10 +614,60 @@
                     '<td class="' + clsA + '">' + valA + "</td>" +
                     '<td class="' + clsB + '">' + valB + "</td></tr>";
             }).join("");
+
+            // ── Render source breakdown ──
+            renderExperimentSourceBreakdown(data.by_source || {}, metrics);
         } catch (e) {
             document.getElementById("experimentResultsBody").innerHTML =
                 '<tr><td colspan="3" class="loading-text">Failed to load experiment data</td></tr>';
+            document.getElementById("experimentSourceBreakdown").innerHTML =
+                '<p class="loading-text">Failed to load source breakdown</p>';
         }
+    }
+
+    function renderExperimentSourceBreakdown(bySource, metrics) {
+        var container = document.getElementById("experimentSourceBreakdown");
+        var sources = Object.keys(bySource);
+        if (sources.length === 0) {
+            container.innerHTML = '<p class="loading-text">No source breakdown data yet</p>';
+            return;
+        }
+        container.innerHTML = sources.map(function(src) {
+            var info = bySource[src];
+            var srcVariants = info.variants || {};
+            var srcWinner = info.winner;
+            var vKeys = Object.keys(srcVariants).sort();
+            var vA = vKeys[0] || "A";
+            var vB = vKeys[1] || "B";
+            var a = srcVariants[vA] || {};
+            var b = vKeys.length > 1 ? (srcVariants[vB] || {}) : {};
+            var cA = (srcWinner === vA) ? "exp-winner" : ((srcWinner && srcWinner !== vA) ? "exp-loser" : "");
+            var cB = (srcWinner === vB) ? "exp-winner" : ((srcWinner && srcWinner !== vB) ? "exp-loser" : "");
+
+            var winnerHtml = "";
+            if (srcWinner) {
+                winnerHtml = '<div class="source-card-winner source-card-winner-green">\uD83C\uDFC6 Winner: Variant ' + escapeHtml(srcWinner) + '</div>';
+            } else if (vKeys.length >= 2) {
+                winnerHtml = '<div class="source-card-winner source-card-winner-tie">Tie \u2014 no clear winner</div>';
+            }
+
+            var rows = metrics.map(function(m) {
+                var valA = (a[m.key] != null) ? a[m.key] : "\u2014";
+                var valB = (b[m.key] != null) ? b[m.key] : "\u2014";
+                if (m.fmt && valA !== "\u2014") valA = valA + "%";
+                if (m.fmt && valB !== "\u2014") valB = valB + "%";
+                return "<tr><td><strong>" + escapeHtml(m.label) + "</strong></td>" +
+                    '<td class="' + cA + '">' + valA + "</td>" +
+                    '<td class="' + cB + '">' + valB + "</td></tr>";
+            }).join("");
+
+            return '<div class="source-card">' +
+                '<div class="source-card-title">' + escapeHtml(src) + '</div>' +
+                winnerHtml +
+                '<table><thead><tr><th>Metric</th><th>Variant ' + escapeHtml(vA) + '</th>' +
+                '<th>' + (vKeys.length > 1 ? 'Variant ' + escapeHtml(vB) : 'Variant B') + '</th></tr></thead>' +
+                '<tbody>' + rows + '</tbody></table></div>';
+        }).join("");
     }
 
     // ── Paginated Users ──
