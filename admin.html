@@ -218,8 +218,6 @@
 </div>
 
 <script>
-    // Extract admin token from URL query parameter (server already verified it)
-    var adminToken = new URLSearchParams(window.location.search).get("token") || "";
     let usersPage = 1;
     let analysesPage = 1;
 
@@ -238,7 +236,7 @@
 
     async function apiFetch(url) {
         const resp = await fetch(url, {
-            headers: { "Authorization": "Bearer " + adminToken },
+            credentials: "same-origin",
         });
         if (resp.status === 403) {
             adminLogout();
@@ -249,7 +247,8 @@
     }
 
     function adminLogout() {
-        window.location.href = "/admin";
+        fetch("/api/admin/logout", { method: "POST", credentials: "same-origin" })
+            .finally(function() { window.location.href = "/admin"; });
     }
 
     // ── Render Overview ──

@@ -9,7 +9,7 @@ from datetime import datetime
 from functools import wraps
 from urllib.parse import urlencode
 
-from flask import Flask, jsonify, redirect, request, render_template_string, send_file
+from flask import Flask, jsonify, make_response, redirect, request, render_template_string, send_file, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI, OpenAIError
@@ -276,9 +276,13 @@ def login_required(f):
 
 
 def admin_required(f):
-    """Decorator that requires a valid ADMIN_SECRET Bearer token."""
+    """Decorator that requires admin auth via Bearer token OR session cookie."""
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Check session cookie first (set by POST /api/admin/login)
+        if session.get("admin_authenticated"):
+            return f(*args, **kwargs)
+        # Fall back to Authorization header for backward compat / API tools
         auth_header = request.headers.get("Authorization", "")
         provided = auth_header.replace("Bearer ", "").strip()
         if not ADMIN_SECRET or not secrets.compare_digest(provided, ADMIN_SECRET):
@@ -1669,19 +1673,31 @@ def payment_cancel():
 
 @app.route("/admin")
 def admin_page():
-    """Serve the admin dashboard only after server-side secret verification.
-
-    Accepts the admin secret via ``?token=`` query parameter.
-    If the token is missing or invalid, a minimal login form is returned instead.
-    """
-    provided = (request.args.get("token") or "").strip()
-    if not ADMIN_SECRET or not provided or not secrets.compare_digest(provided, ADMIN_SECRET):
-        status = 403 if provided else 200
-        return render_template_string(ADMIN_LOGIN_HTML), status
+    """Serve admin dashboard only if a valid admin session cookie exists."""
+    if not session.get("admin_authenticated"):
+        return render_template_string(ADMIN_LOGIN_HTML, error=False)
     return send_file("admin.html")
 
 
-# Minimal login page served when admin auth is missing / invalid.
+@app.route("/api/admin/login", methods=["POST"])
+def admin_login():
+    """Verify the admin secret and set a secure session cookie."""
+    data = request.get_json(silent=True) or {}
+    provided = (data.get("secret") or "").strip()
+    if not ADMIN_SECRET or not provided or not secrets.compare_digest(provided, ADMIN_SECRET):
+        return render_template_string(ADMIN_LOGIN_HTML, error=True), 403
+    session["admin_authenticated"] = True
+    return redirect("/admin")
+
+
+@app.route("/api/admin/logout", methods=["POST"])
+def admin_logout():
+    """Clear the admin session and redirect to the login page."""
+    session.pop("admin_authenticated", None)
+    return redirect("/admin")
+
+
+# Minimal login page served when admin session is absent / invalid.
 ADMIN_LOGIN_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1711,12 +1727,37 @@ button:hover{background:#6366f1}
 <div class="box">
 <h1>Veltrix<span>AI</span></h1>
 <p>Admin Dashboard &mdash; Enter your admin secret to continue</p>
-<form method="GET" action="/admin" autocomplete="off">
-<input type="password" name="token" placeholder="Admin Secret" required autofocus/>
+<form id="adminLoginForm" autocomplete="off">
+<input type="password" id="secretField" placeholder="Admin Secret" required autofocus/>
 <button type="submit">Authenticate</button>
 </form>
-{% if request.args.get('token') %}<div class="err" style="display:block">Invalid admin secret. Access denied.</div>{% endif %}
+{% if error %}<div class="err" style="display:block">Invalid admin secret. Access denied.</div>{% endif %}
 </div>
+<script>
+document.getElementById("adminLoginForm").addEventListener("submit", function(e) {
+    e.preventDefault();
+    var secret = document.getElementById("secretField").value;
+    fetch("/api/admin/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        credentials: "same-origin",
+        redirect: "manual",
+        body: JSON.stringify({secret: secret})
+    }).then(function(resp) {
+        if (resp.type === "opaqueredirect" || resp.status === 302) {
+            window.location.href = "/admin";
+            return;
+        }
+        if (!resp.ok) {
+            document.querySelector(".err").style.display = "block";
+            return;
+        }
+        window.location.href = "/admin";
+    }).catch(function() {
+        document.querySelector(".err").style.display = "block";
+    });
+});
+</script>
 </body>
 </html>"""
 
