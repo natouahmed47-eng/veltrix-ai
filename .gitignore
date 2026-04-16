@@ -2,5 +2,6 @@ __pycache__/
      copilot/add-validation-to-ai-output
 *.pyc
 *.pyo
+instance/
 
       main
