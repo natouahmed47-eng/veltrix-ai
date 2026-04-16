@@ -64,12 +64,14 @@ SHOPIFY_API_SECRET = os.environ.get("SHOPIFY_API_SECRET")
 SHOPIFY_REDIRECT_URI = os.environ.get("SHOPIFY_REDIRECT_URI")
 SHOPIFY_SCOPES = os.environ.get("SHOPIFY_SCOPES", "read_products,write_products")
 
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "AXII0NIu0wnEJwazRqZ5UsowkdJWxJdVYxrxUT84kYljpayOSUFC76fMRyvJbIFMuzYjZMv3gP53U4C3")
+PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.paypal.com")
-PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "P-5FK62061DH6777518NHPN64A")
+PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "")
 PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -830,7 +832,7 @@ Description: {description}
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
         response = client.chat.completions.create(
-            model="gpt-4.1-mini",
+            model=OPENAI_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -1379,7 +1381,7 @@ long_description HTML structure:
     for _ in range(MAX_AI_GENERATION_RETRIES):
         try:
             response = client.chat.completions.create(
-                model="gpt-4.1-mini",
+                model=OPENAI_MODEL,
                 messages=[
                     {
                         "role": "system",
@@ -1406,7 +1408,7 @@ long_description HTML structure:
                 temperature=0.4,
             )
         except (OpenAIError, ConnectionError, TimeoutError) as exc:
-            print(f"analyze_product_with_ai: API call failed, retrying: {exc}")
+            app.logger.warning("analyze_product_with_ai: API call failed, retrying: %s", exc)
             continue
 
         content = response.choices[0].message.content
@@ -1423,8 +1425,8 @@ long_description HTML structure:
         try:
             data = json.loads(cleaned)
         except Exception as e:
-            print("JSON PARSE ERROR:", str(e))
-            print("RAW OUTPUT:", content)
+            app.logger.warning("JSON parse error: %s", e)
+            app.logger.debug("Raw AI output: %s", content)
 
             # fallback safe structure
             data = {
@@ -1633,7 +1635,7 @@ long_description HTML structure:
 
             return enforce_no_empty_fields(output, idea)
         except Exception as exc:
-            print("ANALYZE ERROR:", str(exc))
+            app.logger.warning("analyze_product_with_ai: post-processing error: %s", exc)
             continue
 
     fallback = {
@@ -1655,7 +1657,7 @@ long_description HTML structure:
     try:
         return enforce_no_empty_fields(fallback, idea)
     except Exception as e:
-        print("ANALYZE ERROR:", str(e))
+        app.logger.warning("analyze_product_with_ai: fallback enforce_no_empty_fields error: %s", e)
         return fallback
 
 
@@ -1694,7 +1696,6 @@ def looks_like_fragrance_product(product: dict) -> bool:
 
     matched = [k for k in keywords if k in text]
     is_frag = len(matched) > 0
-    print(f"[FRAGRANCE DEBUG] title={product.get('title')!r} | is_fragrance={is_frag} | matched_keywords={matched}")
     return is_frag
 
 
@@ -1727,7 +1728,7 @@ def optimize_product_router(product, lang="en"):
     idea, _ = preprocess_product_input(idea)
 
     result = analyze_product_with_ai(idea)
-    print("PRODUCT ROUTER RESULT:", result.get("category"), result.get("title"))
+    app.logger.info("Product router result: category=%s title=%s", result.get("category"), result.get("title"))
 
     result.setdefault("title", product.get("title", ""))
     result.setdefault("category", "general")
