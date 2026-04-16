@@ -238,6 +238,32 @@
             </table>
         </div>
 
+        <!-- Funnel Breakdown by User State -->
+        <h3 class="section-header">Breakdown by User State</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>User State</th><th>Pricing Views</th><th>Upgrade Clicks</th><th>PayPal Rendered</th><th>Approved</th><th>Success</th><th>Cancelled</th><th>Pricing→Click</th><th>Click→Approval</th><th>Pricing→Success</th><th>Cancel Rate</th></tr>
+                </thead>
+                <tbody id="breakdownUserStateBody">
+                    <tr><td colspan="11" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Funnel Breakdown by Source -->
+        <h3 class="section-header">Breakdown by Source</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Source</th><th>Pricing Views</th><th>Upgrade Clicks</th><th>PayPal Rendered</th><th>Approved</th><th>Success</th><th>Cancelled</th><th>Pricing→Click</th><th>Click→Approval</th><th>Pricing→Success</th><th>Cancel Rate</th></tr>
+                </thead>
+                <tbody id="breakdownSourceBody">
+                    <tr><td colspan="11" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- All Users (paginated) -->
         <h3 class="section-header">All Users</h3>
         <div class="table-wrap">
@@ -381,6 +407,7 @@
             btn.classList.toggle("active", btn.getAttribute("data-range") === range);
         });
         loadFunnelAnalytics();
+        loadFunnelBreakdown();
     }
 
     // ── Render Funnel Analytics ──
@@ -413,6 +440,44 @@
         } catch (e) {
             document.getElementById("recentEventsBody").innerHTML =
                 '<tr><td colspan="6" class="loading-text">Failed to load funnel data</td></tr>';
+        }
+    }
+
+    // ── Render Funnel Breakdown ──
+    function renderBreakdownTable(containerId, groups) {
+        var keys = Object.keys(groups).sort();
+        if (!keys.length) {
+            document.getElementById(containerId).innerHTML =
+                '<tr><td colspan="11" class="loading-text">No data</td></tr>';
+            return;
+        }
+        document.getElementById(containerId).innerHTML = keys.map(function(group) {
+            var c = groups[group].funnel_counts;
+            var m = groups[group].derived_metrics;
+            return "<tr><td><strong>" + escapeHtml(group) + "</strong></td>" +
+                "<td>" + c.pricing_view + "</td>" +
+                "<td>" + c.upgrade_click + "</td>" +
+                "<td>" + c.paypal_button_rendered + "</td>" +
+                "<td>" + c.paypal_subscription_approved + "</td>" +
+                "<td>" + c.payment_success_page_view + "</td>" +
+                "<td>" + c.payment_cancel_page_view + "</td>" +
+                "<td>" + m.pricing_to_click_rate + "%</td>" +
+                "<td>" + m.click_to_approval_rate + "%</td>" +
+                "<td>" + m.pricing_to_success_rate + "%</td>" +
+                "<td>" + m.cancel_rate + "%</td></tr>";
+        }).join("");
+    }
+
+    async function loadFunnelBreakdown() {
+        try {
+            var data = await apiFetch("/api/admin/analytics/funnel-breakdown?range=" + encodeURIComponent(currentRange));
+            renderBreakdownTable("breakdownUserStateBody", data.by_user_state);
+            renderBreakdownTable("breakdownSourceBody", data.by_source);
+        } catch (e) {
+            document.getElementById("breakdownUserStateBody").innerHTML =
+                '<tr><td colspan="11" class="loading-text">Failed to load breakdown</td></tr>';
+            document.getElementById("breakdownSourceBody").innerHTML =
+                '<tr><td colspan="11" class="loading-text">Failed to load breakdown</td></tr>';
         }
     }
 
@@ -478,6 +543,7 @@
             .then(function(data) {
                 renderOverview(data);
                 loadFunnelAnalytics();
+                loadFunnelBreakdown();
                 loadUsers(1);
                 loadAnalyses(1);
             })
