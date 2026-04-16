@@ -687,12 +687,30 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         var container = document.getElementById("paypal-button-container");
         if (!container) return;
+        /* Track click on the PayPal / upgrade area */
+        container.addEventListener("click", function() {
+          if (window.trackEvent) {
+            window.trackEvent("upgrade_click", {
+              plan: "pro",
+              source: "pricing",
+              user_state: (localStorage.getItem("veltrix_token") ? "logged_in" : "logged_out")
+            });
+          }
+        });
+
         paypal.Buttons({
           style: { label: "pay" },
           createSubscription: function(data, actions) {
             return actions.subscription.create({ plan_id: planId });
           },
           onApprove: function(data) {
+            if (window.trackEvent) {
+              window.trackEvent("paypal_subscription_approved", {
+                plan: "pro",
+                source: "pricing",
+                subscription_id: data.subscriptionID
+              });
+            }
             var t = localStorage.getItem("veltrix_token") || "";
             return fetch("/api/paypal/activate-subscription", {
               method: "POST",
@@ -710,7 +728,14 @@ document.addEventListener("DOMContentLoaded", function () {
           onCancel: function() {
             window.location.href = "/cancel";
           }
-        }).render('#paypal-button-container');
+        }).render('#paypal-button-container').then(function() {
+          if (window.trackEvent) {
+            window.trackEvent("paypal_button_rendered", {
+              plan: "pro",
+              source: "pricing"
+            });
+          }
+        });
       })
       .catch(function(err) {
         console.warn("Failed to load PayPal config:", err);

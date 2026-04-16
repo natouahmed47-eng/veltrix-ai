@@ -27,5 +27,19 @@
         </div>
         <p class="status-reassurance">You can cancel anytime from PayPal or your dashboard. No hidden fees.</p>
     </div>
+    <script>
+    /* ── Conversion Tracking ── */
+    window.trackEvent = window.trackEvent || function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString() },
+            data || {}
+        );
+        console.log("[TRACK]", name, payload);
+    };
+    window.trackEvent("payment_success_page_view", {
+        plan: "pro",
+        source: "pricing"
+    });
+    </script>
 </body>
 </html>
