@@ -849,3 +849,116 @@ body {
     margin: 0;
     line-height: 1.5;
 }
+
+/* ── CTA Pulse / Glow Animation ── */
+@keyframes ctaPulse {
+    0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+    70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+.cta-pulse {
+    animation: ctaPulse 2s ease-in-out infinite;
+}
+
+/* ── Paywall Modal ── */
+.paywall-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.55); z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+}
+.paywall-box {
+    background: #fff; border-radius: 16px; padding: 36px 32px;
+    max-width: 440px; width: 100%; text-align: center;
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.18);
+}
+.paywall-close {
+    position: absolute; top: 12px; right: 16px;
+    border: none; background: none; font-size: 24px;
+    cursor: pointer; color: #94a3b8;
+}
+.paywall-close:hover { color: #475569; }
+.paywall-icon { font-size: 40px; margin-bottom: 12px; }
+.paywall-title {
+    font-size: 20px; font-weight: 700; color: #0f172a;
+    margin: 0 0 8px;
+}
+.paywall-text {
+    font-size: 14px; color: #64748b; line-height: 1.6;
+    margin: 0 0 16px;
+}
+.paywall-features {
+    list-style: none; padding: 0; margin: 0 0 20px;
+    text-align: left; max-width: 280px; margin-left: auto; margin-right: auto;
+}
+.paywall-features li {
+    font-size: 14px; color: #334155; padding: 4px 0;
+}
+.paywall-cta {
+    display: inline-block; padding: 13px 32px;
+    border-radius: 10px; border: none;
+    font-size: 15px; font-weight: 700;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff; cursor: pointer; text-decoration: none;
+    font-family: inherit; transition: transform 0.1s;
+}
+.paywall-cta:hover { transform: translateY(-1px); opacity: 0.95; }
+.paywall-micro {
+    font-size: 12px; color: #94a3b8; margin: 12px 0 0;
+}
+
+/* ── Sticky Mobile CTA ── */
+.sticky-cta {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0;
+    background: #fff; border-top: 1px solid #e2e8f0;
+    padding: 10px 16px; z-index: 900;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+    justify-content: center;
+}
+.sticky-cta-btn {
+    display: block; width: 100%; max-width: 440px;
+    padding: 13px 20px; border-radius: 10px;
+    font-size: 15px; font-weight: 700;
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: #fff; text-align: center; text-decoration: none;
+    font-family: inherit;
+}
+.sticky-cta-btn:hover { opacity: 0.95; }
+/* Only show on small screens */
+@media (min-width: 641px) {
+    .sticky-cta { display: none !important; }
+}
+
+/* ── Usage Pressure Colors ── */
+.psm-pressure-warn { color: #d97706; font-weight: 600; }
+.psm-pressure-critical { color: #dc2626; font-weight: 700; }
+
+/* ── Loss Aversion Feature List ── */
+.psm-lost-features {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; margin: 10px 0 6px;
+}
+.psm-lost-title {
+    font-size: 13px; font-weight: 700; margin-bottom: 2px;
+}
+.psm-lost-item {
+    font-size: 13px; opacity: 0.9;
+}
+
+/* ── Dashboard: Loss Aversion Block ── */
+.billing-lost-features {
+    padding: 0 28px 16px; font-size: 13px;
+}
+.billing-lost-title {
+    font-weight: 700; margin-bottom: 6px; color: inherit;
+}
+.billing-lost-item {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+}
+.billing-lost-x { color: #dc2626; font-weight: 700; flex-shrink: 0; }
+
+/* ── Dashboard: CTA pulse for billing card ── */
+.btn-billing.cta-pulse {
+    animation: ctaPulse 2s ease-in-out infinite;
+}

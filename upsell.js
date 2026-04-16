@@ -3,10 +3,10 @@
  * Shared by index.html (pricing section) and dashboard.html (billing card).
  *
  * @param {Object|null} user — /api/me response, or null for logged-out
- * @returns {{ state: string, message: string, cta: string, ctaHref: string|null,
- *             ctaClass: string, secondaryCta: string|null, secondaryHref: string|null,
- *             secondaryClass: string|null, benefit: string, urgency: string|null,
- *             showPricing: boolean }}
+ * @returns {{ state, message, cta, ctaHref, ctaClass, secondaryCta, secondaryHref,
+ *             secondaryClass, benefit, urgency, showPricing, nearLimit, atLimit,
+ *             usagePressureMsg, lostFeatures, analysisCount, analysisLimit,
+ *             pulseCta }}
  */
 window.getUserStateContext = function (user) {
     if (!user) {
@@ -21,11 +21,20 @@ window.getUserStateContext = function (user) {
             secondaryClass: null,
             benefit: "Limited free usage \u00b7 No credit card required",
             urgency: "Cancel anytime \u00b7 Instant activation",
-            showPricing: true
+            showPricing: true,
+            nearLimit: false,
+            atLimit: false,
+            usagePressureMsg: null,
+            lostFeatures: null,
+            analysisCount: 0,
+            analysisLimit: 0,
+            pulseCta: false
         };
     }
 
     var subStatus = (user.subscription_status || "").toUpperCase();
+    var count = user.analysis_count || 0;
+    var limit = (typeof user.analysis_limit === "number") ? user.analysis_limit : 0;
 
     if (user.is_pro) {
         return {
@@ -41,23 +50,44 @@ window.getUserStateContext = function (user) {
             secondaryClass: "outline",
             benefit: "Unlimited analyses \u00b7 All Pro features enabled",
             urgency: null,
-            showPricing: false
+            showPricing: false,
+            nearLimit: false,
+            atLimit: false,
+            usagePressureMsg: null,
+            lostFeatures: null,
+            analysisCount: count,
+            analysisLimit: limit,
+            pulseCta: false
         };
     }
+
+    /* Lost features list for cancelled / expired */
+    var lostFeatures = [
+        "Unlimited analyses",
+        "Saved analysis history",
+        "Premium category insights"
+    ];
 
     if (subStatus === "CANCELLED") {
         return {
             state: "cancelled",
-            message: "Your Pro access will end soon",
-            cta: "Keep Pro Access",
+            message: "Your Pro access ends soon",
+            cta: "Keep My Pro Access",
             ctaHref: "/",
             ctaClass: "primary",
             secondaryCta: null,
             secondaryHref: null,
             secondaryClass: null,
-            benefit: "Unlimited analyses, premium insights",
+            benefit: "Don\u2019t lose your data access",
             urgency: "No data loss \u00b7 Instant reactivation",
-            showPricing: true
+            showPricing: true,
+            nearLimit: false,
+            atLimit: false,
+            usagePressureMsg: null,
+            lostFeatures: lostFeatures,
+            analysisCount: count,
+            analysisLimit: limit,
+            pulseCta: true
         };
     }
 
@@ -73,7 +103,14 @@ window.getUserStateContext = function (user) {
             secondaryClass: "outline",
             benefit: "Restore unlimited analyses and Pro features",
             urgency: "No data loss \u00b7 Update payment to continue",
-            showPricing: true
+            showPricing: true,
+            nearLimit: false,
+            atLimit: false,
+            usagePressureMsg: null,
+            lostFeatures: null,
+            analysisCount: count,
+            analysisLimit: limit,
+            pulseCta: false
         };
     }
 
@@ -81,7 +118,7 @@ window.getUserStateContext = function (user) {
         return {
             state: "expired",
             message: "Your Pro access has ended",
-            cta: "Restore Pro Access",
+            cta: "Restore My Pro Access",
             ctaHref: "/",
             ctaClass: "primary",
             secondaryCta: null,
@@ -89,13 +126,29 @@ window.getUserStateContext = function (user) {
             secondaryClass: null,
             benefit: "Unlimited analyses, premium insights",
             urgency: "Instant activation \u00b7 Cancel anytime",
-            showPricing: true
+            showPricing: true,
+            nearLimit: false,
+            atLimit: false,
+            usagePressureMsg: null,
+            lostFeatures: lostFeatures,
+            analysisCount: count,
+            analysisLimit: limit,
+            pulseCta: true
         };
     }
 
-    /* Default: free user */
-    var count = user.analysis_count || 0;
-    var limit = user.analysis_limit || 0;
+    /* Default: free user — with usage pressure */
+    var atLimit = (limit > 0 && count >= limit);
+    var nearLimit = (!atLimit && limit > 0 && (count / limit) >= 0.8);
+    var usagePressureMsg;
+    if (atLimit) {
+        usagePressureMsg = "You\u2019ve reached your limit \u2014 upgrade to continue";
+    } else if (nearLimit) {
+        usagePressureMsg = "You\u2019re about to hit your limit";
+    } else {
+        usagePressureMsg = "You\u2019ve used " + count + " out of " + limit + " analyses";
+    }
+
     return {
         state: "free",
         message: "Unlock unlimited analyses",
@@ -105,8 +158,15 @@ window.getUserStateContext = function (user) {
         secondaryCta: null,
         secondaryHref: null,
         secondaryClass: null,
-        benefit: "You\u2019ve used " + count + "/" + limit + " analyses",
+        benefit: usagePressureMsg,
         urgency: "Cancel anytime \u00b7 Instant activation",
-        showPricing: true
+        showPricing: true,
+        nearLimit: nearLimit,
+        atLimit: atLimit,
+        usagePressureMsg: usagePressureMsg,
+        lostFeatures: null,
+        analysisCount: count,
+        analysisLimit: limit,
+        pulseCta: (atLimit || nearLimit)
     };
 };

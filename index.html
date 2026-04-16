@@ -132,6 +132,29 @@
         </div>
     </div>
 
+    <!-- ── Paywall Modal (soft paywall for free users at limit) ── -->
+    <div class="paywall-overlay" id="paywallOverlay" style="display:none;">
+        <div class="paywall-box">
+            <button class="paywall-close" id="paywallClose">&times;</button>
+            <div class="paywall-icon">🔒</div>
+            <h2 class="paywall-title">You&rsquo;ve reached your free limit</h2>
+            <p class="paywall-text">Upgrade to Pro to continue analyzing products with unlimited access.</p>
+            <ul class="paywall-features">
+                <li>✓ Unlimited product analyses</li>
+                <li>✓ Deeper, category-specific insights</li>
+                <li>✓ Save and revisit past analyses</li>
+                <li>✓ Priority support</li>
+            </ul>
+            <a href="#pricingSection" class="paywall-cta cta-pulse" onclick="document.getElementById('paywallOverlay').style.display='none';">Unlock Pro — Unlimited Analyses</a>
+            <p class="paywall-micro">Cancel anytime · Instant activation · No data loss</p>
+        </div>
+    </div>
+
+    <!-- ── Sticky Mobile CTA ── -->
+    <div class="sticky-cta" id="stickyCta" style="display:none;">
+        <a href="#pricingSection" class="sticky-cta-btn">⚡ Unlock Pro — Unlimited Analyses</a>
+    </div>
+
     <!-- ── Conversion Tracking ── -->
     <script>
     /**

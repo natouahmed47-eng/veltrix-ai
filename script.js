@@ -21,6 +21,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!pricingSection) return;
 
+        /* Store context globally for paywall check */
+        window._veltrixCtx = ctx;
+
         pricingSection.style.display = "block";
 
         if (ctx.state === "pro_active") {
@@ -44,9 +47,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 } else {
                     stateMsg.style.display = "block";
                     var msgHtml = '<span class="psm-text">' + escHtml(ctx.message) + '</span>';
-                    if (ctx.benefit) {
+
+                    /* Usage pressure for free users */
+                    if (ctx.usagePressureMsg) {
+                        var pressureCls = ctx.atLimit ? "psm-pressure-critical" : (ctx.nearLimit ? "psm-pressure-warn" : "");
+                        msgHtml += ' <span class="psm-benefit ' + pressureCls + '">' + escHtml(ctx.usagePressureMsg) + '</span>';
+                    } else if (ctx.benefit) {
                         msgHtml += ' <span class="psm-benefit">' + escHtml(ctx.benefit) + '</span>';
                     }
+
+                    /* Loss aversion list for cancelled / expired */
+                    if (ctx.lostFeatures && ctx.lostFeatures.length) {
+                        msgHtml += '<div class="psm-lost-features"><span class="psm-lost-title">You\u2019ll lose access to:</span>';
+                        for (var i = 0; i < ctx.lostFeatures.length; i++) {
+                            msgHtml += '<span class="psm-lost-item">\u2717 ' + escHtml(ctx.lostFeatures[i]) + '</span>';
+                        }
+                        msgHtml += '</div>';
+                    }
+
                     if (ctx.urgency) {
                         msgHtml += ' <span class="psm-urgency">' + escHtml(ctx.urgency) + '</span>';
                     }
@@ -62,6 +80,39 @@ document.addEventListener("DOMContentLoaded", function () {
                 user_state: ctx.state,
                 source: "pricing"
             });
+        }
+        /* Track retention view for cancelled/expired */
+        if ((ctx.state === "cancelled" || ctx.state === "expired") && window.trackEvent) {
+            window.trackEvent("retention_view", {
+                user_state: ctx.state,
+                source: "pricing"
+            });
+        }
+        /* Track urgency view for cancelled */
+        if (ctx.state === "cancelled" && window.trackEvent) {
+            window.trackEvent("urgency_view", {
+                user_state: ctx.state,
+                source: "pricing"
+            });
+        }
+        /* Track limit reached */
+        if (ctx.atLimit && window.trackEvent) {
+            window.trackEvent("limit_reached", {
+                user_state: ctx.state,
+                analysis_count: ctx.analysisCount,
+                analysis_limit: ctx.analysisLimit,
+                source: "pricing"
+            });
+        }
+
+        /* Activate mobile sticky CTA for conversion states */
+        var stickyBar = document.getElementById("stickyCta");
+        if (stickyBar) {
+            if (ctx.showPricing && ctx.state !== "logged_out" && ctx.state !== "pro_active") {
+                stickyBar.style.display = "flex";
+            } else {
+                stickyBar.style.display = "none";
+            }
         }
     }
 
@@ -194,6 +245,29 @@ document.addEventListener("DOMContentLoaded", function () {
 
     updateAuthUI();
 
+    /* ── Soft Paywall Modal ── */
+    function showPaywallModal() {
+        var overlay = document.getElementById("paywallOverlay");
+        if (overlay) {
+            overlay.style.display = "flex";
+            if (window.trackEvent) {
+                window.trackEvent("paywall_view", {
+                    user_state: "free",
+                    source: "analyze"
+                });
+            }
+        }
+    }
+    function hidePaywallModal() {
+        var overlay = document.getElementById("paywallOverlay");
+        if (overlay) overlay.style.display = "none";
+    }
+    /* Wire close handlers for paywall modal */
+    document.addEventListener("click", function(e) {
+        if (e.target && e.target.id === "paywallClose") hidePaywallModal();
+        if (e.target && e.target.id === "paywallOverlay") hidePaywallModal();
+    });
+
     /* ── Analyze Product ── */
     analyzeBtn.addEventListener("click", analyzeProduct);
 
@@ -210,6 +284,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!idea) {
             messageEl.innerHTML = '<div class="error">Please enter a product idea or name.</div>';
+            return;
+        }
+
+        /* ── Soft paywall: block analysis if free user hit limit ── */
+        var ctx = window._veltrixCtx;
+        if (ctx && ctx.atLimit && ctx.state === "free") {
+            showPaywallModal();
             return;
         }
 

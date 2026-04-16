@@ -188,6 +188,24 @@
             .container { padding: 0 12px; }
             .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
         }
+        /* ── CTA Pulse Animation ── */
+        @keyframes ctaPulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        .cta-pulse { animation: ctaPulse 2s ease-in-out infinite; }
+        /* ── Loss Aversion Block ── */
+        .billing-lost-features {
+            padding: 0 28px 16px; font-size: 13px;
+        }
+        .billing-lost-title {
+            font-weight: 700; margin-bottom: 6px; color: inherit;
+        }
+        .billing-lost-item {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+        }
+        .billing-lost-x { color: #dc2626; font-weight: 700; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -297,6 +315,7 @@
 
                 /* ── State config ── */
                 var cfg = {};
+                var pulseCls = ctx.pulseCta ? " cta-pulse" : "";
                 if (ctx.state === "pro_active") {
                     cfg = {
                         planName: "Veltrix AI Pro",
@@ -307,6 +326,7 @@
                         msgCls: "msg-active",
                         msgIcon: "✅",
                         msgText: ctx.message,
+                        lostHtml: "",
                         btnHtml: (function() {
                             var html = '';
                             if (ctx.ctaHref) {
@@ -327,8 +347,9 @@
                         subtitle: "Previously subscribed to Pro",
                         msgCls: "msg-cancelled",
                         msgIcon: "⚠️",
-                        msgText: ctx.message,
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'cancelled\',action:\'keep_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
+                        msgText: ctx.benefit || ctx.message,
+                        lostHtml: buildLostFeaturesHtml(ctx.lostFeatures),
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'cancelled\',action:\'keep_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
                                  (ctx.urgency ? '<span style="display:block;margin-top:8px;font-size:12px;color:#64748b;">' + esc(ctx.urgency) + '</span>' : '')
                     };
                 } else if (ctx.state === "suspended") {
@@ -341,6 +362,7 @@
                         msgCls: "msg-suspended",
                         msgIcon: "🚨",
                         msgText: "Update your payment method on PayPal to restore Pro access.",
+                        lostHtml: "",
                         btnHtml: '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-warning" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'suspended\',action:\'fix_payment\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>' +
                                  '<a href="/" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'suspended\',action:\'resubscribe\',source:\'dashboard\'})">' + esc(ctx.secondaryCta) + '</a>'
                     };
@@ -354,23 +376,39 @@
                         msgCls: "msg-expired",
                         msgIcon: "⏰",
                         msgText: ctx.benefit,
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'expired\',action:\'restore_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
+                        lostHtml: buildLostFeaturesHtml(ctx.lostFeatures),
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'expired\',action:\'restore_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
                                  (ctx.urgency ? '<span style="display:block;margin-top:8px;font-size:12px;color:#64748b;">' + esc(ctx.urgency) + '</span>' : '')
                     };
                 } else {
                     /* free user */
+                    var pressureMsg = ctx.usagePressureMsg || ctx.message;
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "free",
                         badgeLabel: "Free",
-                        subtitle: ctx.benefit,
-                        msgCls: "msg-free",
-                        msgIcon: "💡",
-                        msgText: ctx.message + " — upgrade to remove limits.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'upsell_click\',{user_state:\'free\',action:\'upgrade\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
+                        subtitle: ctx.usagePressureMsg || ctx.benefit,
+                        msgCls: ctx.atLimit ? "msg-expired" : (ctx.nearLimit ? "msg-cancelled" : "msg-free"),
+                        msgIcon: ctx.atLimit ? "🚫" : (ctx.nearLimit ? "⚠️" : "💡"),
+                        msgText: ctx.atLimit
+                            ? "You\u2019ve reached your limit \u2014 upgrade to continue"
+                            : (pressureMsg + " \u2014 upgrade to remove limits."),
+                        lostHtml: "",
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'upsell_click\',{user_state:\'free\',action:\'upgrade\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
                                  (ctx.urgency ? '<span style="display:block;margin-top:8px;font-size:12px;color:#64748b;">' + esc(ctx.urgency) + '</span>' : '')
                     };
+                }
+
+                /* Build lost features HTML block */
+                function buildLostFeaturesHtml(features) {
+                    if (!features || !features.length) return "";
+                    var html = '<div class="billing-lost-features"><div class="billing-lost-title">You\u2019ll lose access to:</div>';
+                    for (var i = 0; i < features.length; i++) {
+                        html += '<div class="billing-lost-item"><span class="billing-lost-x">\u2717</span><span>' + esc(features[i]) + '</span></div>';
+                    }
+                    html += '</div>';
+                    return html;
                 }
 
                 /* Track upsell/retention view on dashboard */
@@ -380,8 +418,30 @@
                         source: "dashboard"
                     });
                 }
+                /* Track retention view for cancelled/expired */
+                if ((ctx.state === "cancelled" || ctx.state === "expired") && window.trackEvent) {
+                    window.trackEvent("retention_view", {
+                        user_state: ctx.state,
+                        source: "dashboard"
+                    });
+                }
+                /* Track urgency view for cancelled */
+                if (ctx.state === "cancelled" && window.trackEvent) {
+                    window.trackEvent("urgency_view", {
+                        user_state: ctx.state,
+                        source: "dashboard"
+                    });
+                }
+                /* Track limit reached for free users at limit */
+                if (ctx.atLimit && window.trackEvent) {
+                    window.trackEvent("limit_reached", {
+                        user_state: ctx.state,
+                        analysis_count: ctx.analysisCount,
+                        analysis_limit: ctx.analysisLimit,
+                        source: "dashboard"
+                    });
+                }
 
-                /* ── Feature comparison ── */
                 /* ── Feature comparison ── */
                 var proOnlyFeatures = [
                     "Category-specific insights",
@@ -421,6 +481,8 @@
                         '<span class="billing-status-icon">' + cfg.msgIcon + '</span>' +
                         '<span>' + esc(cfg.msgText) + '</span>' +
                     '</div>' +
+                    /* Loss aversion block */
+                    cfg.lostHtml +
                     /* Feature comparison */
                     '<div class="billing-body">' +
                         '<div class="feature-grid">' +
