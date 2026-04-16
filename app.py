@@ -2247,22 +2247,70 @@ def admin_analyses():
         return jsonify({"error": "Failed to load analyses"}), 500
 
 
+# ── Shared funnel analytics helpers ──
+_FUNNEL_EVENTS = [
+    "pricing_view",
+    "upgrade_click",
+    "paypal_button_rendered",
+    "paypal_subscription_approved",
+    "payment_success_page_view",
+    "payment_cancel_page_view",
+]
+
+
+def _funnel_rate(numerator, denominator):
+    """Return percentage rate rounded to 2 decimals, or 0.0 if denominator is zero."""
+    if denominator == 0:
+        return 0.0
+    return round(numerator / denominator * 100, 2)
+
+
+def _parse_funnel_date_filter():
+    """Build a SQLAlchemy filter clause from request query params (range, start_date, end_date).
+
+    Returns None when no time constraint should be applied ("all" range).
+    Raises a (message, status_code) tuple on invalid input.
+    """
+    start_date_param = request.args.get("start_date")
+    end_date_param = request.args.get("end_date")
+    range_param = request.args.get("range", "all")
+
+    now = datetime.utcnow()
+
+    if start_date_param and end_date_param:
+        try:
+            start_dt = datetime.fromisoformat(start_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
+            end_dt = datetime.fromisoformat(end_date_param.replace("Z", "+00:00")).replace(tzinfo=None)
+            return TrackingEvent.created_at.between(start_dt, end_dt)
+        except (ValueError, TypeError):
+            raise ValueError("Invalid start_date or end_date format")
+    elif range_param == "today":
+        midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        return TrackingEvent.created_at >= midnight
+    elif range_param == "7d":
+        return TrackingEvent.created_at >= (now - timedelta(days=7))
+    elif range_param == "30d":
+        return TrackingEvent.created_at >= (now - timedelta(days=30))
+    # "all" or unrecognised → no filter
+    return None
+
+
 @app.route("/api/admin/analytics/funnel", methods=["GET"])
 @admin_required
 def admin_analytics_funnel():
     """Return conversion funnel counts, derived rates, and recent tracking events."""
     try:
-        funnel_events = [
-            "pricing_view",
-            "upgrade_click",
-            "paypal_button_rendered",
-            "paypal_subscription_approved",
-            "payment_success_page_view",
-            "payment_cancel_page_view",
-        ]
+        try:
+            date_filter = _parse_funnel_date_filter()
+        except ValueError:
+            return jsonify({"error": "Invalid start_date or end_date format"}), 400
+
         counts = {}
-        for evt in funnel_events:
-            counts[evt] = TrackingEvent.query.filter_by(event_name=evt).count()
+        for evt in _FUNNEL_EVENTS:
+            q = TrackingEvent.query.filter_by(event_name=evt)
+            if date_filter is not None:
+                q = q.filter(date_filter)
+            counts[evt] = q.count()
 
         pricing = counts["pricing_view"] or 0
         clicks = counts["upgrade_click"] or 0
@@ -2270,20 +2318,18 @@ def admin_analytics_funnel():
         successes = counts["payment_success_page_view"] or 0
         cancels = counts["payment_cancel_page_view"] or 0
 
-        def _rate(numerator, denominator):
-            if denominator == 0:
-                return 0.0
-            return round(numerator / denominator * 100, 2)
-
         derived = {
-            "pricing_to_click_rate": _rate(clicks, pricing),
-            "click_to_approval_rate": _rate(approvals, clicks),
-            "pricing_to_success_rate": _rate(successes, pricing),
-            "cancel_rate": _rate(cancels, pricing),
+            "pricing_to_click_rate": _funnel_rate(clicks, pricing),
+            "click_to_approval_rate": _funnel_rate(approvals, clicks),
+            "pricing_to_success_rate": _funnel_rate(successes, pricing),
+            "cancel_rate": _funnel_rate(cancels, pricing),
         }
 
+        recent_q = TrackingEvent.query
+        if date_filter is not None:
+            recent_q = recent_q.filter(date_filter)
         recent_events = (
-            TrackingEvent.query
+            recent_q
             .order_by(TrackingEvent.created_at.desc())
             .limit(20)
             .all()
@@ -2307,6 +2353,61 @@ def admin_analytics_funnel():
     except Exception as e:
         app.logger.error("Admin analytics funnel failed: %s", e)
         return jsonify({"error": "Failed to load funnel analytics"}), 500
+
+
+@app.route("/api/admin/analytics/funnel-breakdown", methods=["GET"])
+@admin_required
+def admin_analytics_funnel_breakdown():
+    """Return funnel counts and derived rates broken down by user_state and source."""
+    try:
+        try:
+            date_filter = _parse_funnel_date_filter()
+        except ValueError:
+            return jsonify({"error": "Invalid start_date or end_date format"}), 400
+
+        def _build_breakdown(group_column):
+            """Build per-group funnel counts + derived metrics."""
+            base_q = db.session.query(
+                group_column,
+                TrackingEvent.event_name,
+                db.func.count(TrackingEvent.id),
+            ).filter(TrackingEvent.event_name.in_(_FUNNEL_EVENTS))
+            if date_filter is not None:
+                base_q = base_q.filter(date_filter)
+            rows = base_q.group_by(group_column, TrackingEvent.event_name).all()
+
+            groups = {}
+            for raw_group, event_name, cnt in rows:
+                group = raw_group if raw_group else "unknown"
+                if group not in groups:
+                    groups[group] = {evt: 0 for evt in _FUNNEL_EVENTS}
+                groups[group][event_name] = cnt
+
+            result = {}
+            for group, counts in groups.items():
+                pricing = counts.get("pricing_view", 0)
+                clicks = counts.get("upgrade_click", 0)
+                approvals = counts.get("paypal_subscription_approved", 0)
+                successes = counts.get("payment_success_page_view", 0)
+                cancels = counts.get("payment_cancel_page_view", 0)
+                result[group] = {
+                    "funnel_counts": counts,
+                    "derived_metrics": {
+                        "pricing_to_click_rate": _funnel_rate(clicks, pricing),
+                        "click_to_approval_rate": _funnel_rate(approvals, clicks),
+                        "pricing_to_success_rate": _funnel_rate(successes, pricing),
+                        "cancel_rate": _funnel_rate(cancels, pricing),
+                    },
+                }
+            return result
+
+        return jsonify({
+            "by_user_state": _build_breakdown(TrackingEvent.user_state),
+            "by_source": _build_breakdown(TrackingEvent.source),
+        })
+    except Exception as e:
+        app.logger.error("Admin analytics funnel-breakdown failed: %s", e)
+        return jsonify({"error": "Failed to load funnel breakdown"}), 500
 
 
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])

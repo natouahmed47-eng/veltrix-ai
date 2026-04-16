@@ -113,6 +113,20 @@
         .pagination button:disabled { opacity: 0.4; cursor: default; }
         .pagination button:not(:disabled):hover { border-color: #818cf8; color: #818cf8; }
         .pagination span { font-size: 12px; color: #94a3b8; line-height: 30px; }
+
+        /* ── Funnel Filter Bar ── */
+        .filter-bar {
+            display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .filter-bar button {
+            padding: 6px 16px; border-radius: 8px; border: 1px solid #475569;
+            background: #1e293b; color: #e2e8f0; font-size: 12px; font-weight: 500;
+            cursor: pointer; font-family: inherit; transition: all 0.15s ease;
+        }
+        .filter-bar button:hover { border-color: #818cf8; color: #818cf8; }
+        .filter-bar button.active {
+            background: #312e81; border-color: #818cf8; color: #a5b4fc;
+        }
     </style>
 </head>
 <body>
@@ -189,6 +203,12 @@
 
         <!-- Conversion Funnel Analytics -->
         <h3 class="section-header">Conversion Funnel Analytics</h3>
+        <div class="filter-bar" id="funnelFilterBar">
+            <button data-range="today" onclick="setFunnelRange('today')">Today</button>
+            <button data-range="7d" class="active" onclick="setFunnelRange('7d')">Last 7 Days</button>
+            <button data-range="30d" onclick="setFunnelRange('30d')">Last 30 Days</button>
+            <button data-range="all" onclick="setFunnelRange('all')">All Time</button>
+        </div>
         <div class="stats-grid" id="funnelCardsGrid">
             <div class="stat-card"><div class="label">Pricing Views</div><div class="value" id="funnelPricingView">—</div></div>
             <div class="stat-card"><div class="label">Upgrade Clicks</div><div class="value" id="funnelUpgradeClick">—</div></div>
@@ -214,6 +234,32 @@
                 </thead>
                 <tbody id="recentEventsBody">
                     <tr><td colspan="6" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Funnel Breakdown by User State -->
+        <h3 class="section-header">Breakdown by User State</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>User State</th><th>Pricing Views</th><th>Upgrade Clicks</th><th>PayPal Rendered</th><th>Approved</th><th>Success</th><th>Cancelled</th><th>Pricing→Click</th><th>Click→Approval</th><th>Pricing→Success</th><th>Cancel Rate</th></tr>
+                </thead>
+                <tbody id="breakdownUserStateBody">
+                    <tr><td colspan="11" class="loading-text">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Funnel Breakdown by Source -->
+        <h3 class="section-header">Breakdown by Source</h3>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr><th>Source</th><th>Pricing Views</th><th>Upgrade Clicks</th><th>PayPal Rendered</th><th>Approved</th><th>Success</th><th>Cancelled</th><th>Pricing→Click</th><th>Click→Approval</th><th>Pricing→Success</th><th>Cancel Rate</th></tr>
+                </thead>
+                <tbody id="breakdownSourceBody">
+                    <tr><td colspan="11" class="loading-text">Loading...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -251,6 +297,7 @@
 <script>
     let usersPage = 1;
     let analysesPage = 1;
+    let currentRange = "7d";
 
     // ── Helpers ──
     function escapeHtml(str) {
@@ -352,10 +399,21 @@
             : '<tr><td colspan="5" class="loading-text">No subscriptions yet</td></tr>';
     }
 
+    // ── Funnel Range Selection ──
+    function setFunnelRange(range) {
+        currentRange = range;
+        var buttons = document.querySelectorAll("#funnelFilterBar button");
+        buttons.forEach(function(btn) {
+            btn.classList.toggle("active", btn.getAttribute("data-range") === range);
+        });
+        loadFunnelAnalytics();
+        loadFunnelBreakdown();
+    }
+
     // ── Render Funnel Analytics ──
     async function loadFunnelAnalytics() {
         try {
-            const data = await apiFetch("/api/admin/analytics/funnel");
+            const data = await apiFetch("/api/admin/analytics/funnel?range=" + encodeURIComponent(currentRange));
             const counts = data.funnel_counts;
             document.getElementById("funnelPricingView").textContent = counts.pricing_view;
             document.getElementById("funnelUpgradeClick").textContent = counts.upgrade_click;
@@ -382,6 +440,44 @@
         } catch (e) {
             document.getElementById("recentEventsBody").innerHTML =
                 '<tr><td colspan="6" class="loading-text">Failed to load funnel data</td></tr>';
+        }
+    }
+
+    // ── Render Funnel Breakdown ──
+    function renderBreakdownTable(containerId, groups) {
+        var keys = Object.keys(groups).sort();
+        if (!keys.length) {
+            document.getElementById(containerId).innerHTML =
+                '<tr><td colspan="11" class="loading-text">No data</td></tr>';
+            return;
+        }
+        document.getElementById(containerId).innerHTML = keys.map(function(group) {
+            var c = groups[group].funnel_counts;
+            var m = groups[group].derived_metrics;
+            return "<tr><td><strong>" + escapeHtml(group) + "</strong></td>" +
+                "<td>" + c.pricing_view + "</td>" +
+                "<td>" + c.upgrade_click + "</td>" +
+                "<td>" + c.paypal_button_rendered + "</td>" +
+                "<td>" + c.paypal_subscription_approved + "</td>" +
+                "<td>" + c.payment_success_page_view + "</td>" +
+                "<td>" + c.payment_cancel_page_view + "</td>" +
+                "<td>" + m.pricing_to_click_rate + "%</td>" +
+                "<td>" + m.click_to_approval_rate + "%</td>" +
+                "<td>" + m.pricing_to_success_rate + "%</td>" +
+                "<td>" + m.cancel_rate + "%</td></tr>";
+        }).join("");
+    }
+
+    async function loadFunnelBreakdown() {
+        try {
+            var data = await apiFetch("/api/admin/analytics/funnel-breakdown?range=" + encodeURIComponent(currentRange));
+            renderBreakdownTable("breakdownUserStateBody", data.by_user_state);
+            renderBreakdownTable("breakdownSourceBody", data.by_source);
+        } catch (e) {
+            document.getElementById("breakdownUserStateBody").innerHTML =
+                '<tr><td colspan="11" class="loading-text">Failed to load breakdown</td></tr>';
+            document.getElementById("breakdownSourceBody").innerHTML =
+                '<tr><td colspan="11" class="loading-text">Failed to load breakdown</td></tr>';
         }
     }
 
@@ -447,6 +543,7 @@
             .then(function(data) {
                 renderOverview(data);
                 loadFunnelAnalytics();
+                loadFunnelBreakdown();
                 loadUsers(1);
                 loadAnalyses(1);
             })
