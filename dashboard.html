@@ -226,6 +226,27 @@
         </div>
     </div>
 
+    <script src="/upsell.js"></script>
+    <script>
+    /* Lightweight trackEvent for dashboard — fire-and-forget to backend */
+    window.trackEvent = function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString() },
+            data || {}
+        );
+        console.log("[TRACK]", name, payload);
+        try {
+            var headers = { "Content-Type": "application/json" };
+            var token = localStorage.getItem("veltrix_token");
+            if (token) headers["Authorization"] = "Bearer " + token;
+            fetch("/api/track-event", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        } catch(e) {}
+    };
+    </script>
     <script>
     (function () {
         var token = localStorage.getItem("veltrix_token") || "";
@@ -271,13 +292,12 @@
             .then(function (d) {
                 if (d.error) return;
                 var card = document.getElementById("billingCard");
-                var isPro = d.is_pro;
-                var subStatus = (d.subscription_status || "").toUpperCase();
-                var paypalSubId = d.paypal_subscription_id || "";
+                var ctx = window.getUserStateContext ? window.getUserStateContext(d) : null;
+                if (!ctx) return;
 
                 /* ── State config ── */
                 var cfg = {};
-                if (isPro) {
+                if (ctx.state === "pro_active") {
                     cfg = {
                         planName: "Veltrix AI Pro",
                         icon: "⚡",
@@ -286,12 +306,19 @@
                         subtitle: "Unlimited analyses · All Pro features enabled",
                         msgCls: "msg-active",
                         msgIcon: "✅",
-                        msgText: "You have full access to all Pro features.",
-                        btnHtml: paypalSubId
-                            ? '<a href="https://www.paypal.com/myaccount/autopay" target="_blank" rel="noopener" class="btn-billing btn-billing-outline">Manage Subscription ↗</a>'
-                            : ''
+                        msgText: ctx.message,
+                        btnHtml: (function() {
+                            var html = '';
+                            if (ctx.ctaHref) {
+                                html += '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'upsell_click\',{user_state:\'pro_active\',action:\'manage\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>';
+                            }
+                            if (ctx.secondaryCta) {
+                                html += '<a href="' + esc(ctx.secondaryHref) + '" class="btn-billing btn-billing-outline">' + esc(ctx.secondaryCta) + '</a>';
+                            }
+                            return html;
+                        })()
                     };
-                } else if (subStatus === "CANCELLED") {
+                } else if (ctx.state === "cancelled") {
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
@@ -300,46 +327,58 @@
                         subtitle: "Previously subscribed to Pro",
                         msgCls: "msg-cancelled",
                         msgIcon: "⚠️",
-                        msgText: "Your subscription will end soon. You still have access until the end of your billing period.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Unlock Pro Features</a>'
+                        msgText: ctx.message,
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'cancelled\',action:\'keep_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
+                                 (ctx.urgency ? '<span style="display:block;margin-top:8px;font-size:12px;color:#64748b;">' + esc(ctx.urgency) + '</span>' : '')
                     };
-                } else if (subStatus === "SUSPENDED") {
+                } else if (ctx.state === "suspended") {
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "suspended",
                         badgeLabel: "Suspended",
-                        subtitle: "Payment issue detected",
+                        subtitle: ctx.message,
                         msgCls: "msg-suspended",
                         msgIcon: "🚨",
-                        msgText: "Payment issue detected — update your payment method on PayPal to restore Pro access.",
-                        btnHtml: '<a href="https://www.paypal.com/myaccount/autopay" target="_blank" rel="noopener" class="btn-billing btn-billing-warning">Fix Payment on PayPal ↗</a>' +
-                                 '<a href="/" class="btn-billing btn-billing-outline">Start Pro Now</a>'
+                        msgText: "Update your payment method on PayPal to restore Pro access.",
+                        btnHtml: '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-warning" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'suspended\',action:\'fix_payment\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>' +
+                                 '<a href="/" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'suspended\',action:\'resubscribe\',source:\'dashboard\'})">' + esc(ctx.secondaryCta) + '</a>'
                     };
-                } else if (subStatus === "EXPIRED") {
+                } else if (ctx.state === "expired") {
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "expired",
                         badgeLabel: "Expired",
-                        subtitle: "Your Pro access has ended",
+                        subtitle: ctx.message,
                         msgCls: "msg-expired",
                         msgIcon: "⏰",
-                        msgText: "Your Pro access has ended. Upgrade to Pro to unlock unlimited analyses and all Pro features.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Upgrade to Pro</a>'
+                        msgText: ctx.benefit,
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'expired\',action:\'restore_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
+                                 (ctx.urgency ? '<span style="display:block;margin-top:8px;font-size:12px;color:#64748b;">' + esc(ctx.urgency) + '</span>' : '')
                     };
                 } else {
+                    /* free user */
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "free",
                         badgeLabel: "Free",
-                        subtitle: (d.analysis_count || 0) + " / " + (d.analysis_limit || 0) + " analyses used",
+                        subtitle: ctx.benefit,
                         msgCls: "msg-free",
                         msgIcon: "💡",
-                        msgText: "You're on the Free plan. Unlock Pro to get unlimited analyses and premium features.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Upgrade to Pro</a>'
+                        msgText: ctx.message + " — upgrade to remove limits.",
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'upsell_click\',{user_state:\'free\',action:\'upgrade\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>' +
+                                 (ctx.urgency ? '<span style="display:block;margin-top:8px;font-size:12px;color:#64748b;">' + esc(ctx.urgency) + '</span>' : '')
                     };
+                }
+
+                /* Track upsell/retention view on dashboard */
+                if (window.trackEvent) {
+                    window.trackEvent("upsell_view", {
+                        user_state: ctx.state,
+                        source: "dashboard"
+                    });
                 }
 
                 /* ── Feature comparison ── */

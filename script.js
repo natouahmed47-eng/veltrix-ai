@@ -8,6 +8,71 @@ document.addEventListener("DOMContentLoaded", function () {
     var lastAnalysisIdea = "";
     var lastAnalysisResult = null;
 
+    /**
+     * applyPricingState — update pricing section on index.html based on user state.
+     * @param {Object} ctx — result of getUserStateContext()
+     */
+    function applyPricingState(ctx) {
+        var pricingSection = document.getElementById("pricingSection");
+        var pricingGrid = document.getElementById("pricingGrid");
+        var proActive = document.getElementById("pricingProActive");
+        var freeCta = document.getElementById("pricingFreeCta");
+        var stateMsg = document.getElementById("pricingStateMsg");
+
+        if (!pricingSection) return;
+
+        pricingSection.style.display = "block";
+
+        if (ctx.state === "pro_active") {
+            /* Pro user: hide comparison grid, show active message */
+            if (pricingGrid) pricingGrid.style.display = "none";
+            if (proActive) proActive.style.display = "block";
+            if (stateMsg) stateMsg.style.display = "none";
+        } else {
+            if (pricingGrid) pricingGrid.style.display = "block";
+            if (proActive) proActive.style.display = "none";
+            if (freeCta) {
+                freeCta.textContent = ctx.state === "logged_out"
+                    ? "Get Started Free"
+                    : "Your Current Plan";
+            }
+
+            /* Update the state-aware message banner */
+            if (stateMsg) {
+                if (ctx.state === "logged_out") {
+                    stateMsg.style.display = "none";
+                } else {
+                    stateMsg.style.display = "block";
+                    var msgHtml = '<span class="psm-text">' + escHtml(ctx.message) + '</span>';
+                    if (ctx.benefit) {
+                        msgHtml += ' <span class="psm-benefit">' + escHtml(ctx.benefit) + '</span>';
+                    }
+                    if (ctx.urgency) {
+                        msgHtml += ' <span class="psm-urgency">' + escHtml(ctx.urgency) + '</span>';
+                    }
+                    stateMsg.innerHTML = msgHtml;
+                    stateMsg.className = "pricing-state-msg psm-" + ctx.state;
+                }
+            }
+        }
+
+        /* Track upsell view */
+        if (ctx.showPricing && window.trackEvent) {
+            window.trackEvent("upsell_view", {
+                user_state: ctx.state,
+                source: "pricing"
+            });
+        }
+    }
+
+    /** Minimal HTML escaper */
+    function escHtml(str) {
+        if (!str) return "";
+        var div = document.createElement("div");
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
     function updateAuthUI() {
         var authArea = document.getElementById("authArea");
         var userArea = document.getElementById("userArea");
@@ -20,16 +85,8 @@ document.addEventListener("DOMContentLoaded", function () {
             authArea.style.display = "flex";
             userArea.style.display = "none";
             /* Show pricing section for logged-out visitors */
-            var pricingSection = document.getElementById("pricingSection");
-            var pricingGrid = document.getElementById("pricingGrid");
-            var proActive = document.getElementById("pricingProActive");
-            var freeCta = document.getElementById("pricingFreeCta");
-            if (pricingSection) {
-                pricingSection.style.display = "block";
-                if (pricingGrid) pricingGrid.style.display = "block";
-                if (proActive) proActive.style.display = "none";
-                if (freeCta) freeCta.textContent = "Get Started Free";
-            }
+            var ctx = window.getUserStateContext(null);
+            applyPricingState(ctx);
         }
     }
 
@@ -40,28 +97,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (d.analysis_count !== undefined) {
                     var label = d.analysis_count + "/" + d.analysis_limit + " analyses";
                     if (d.plan === "pro") {
-                        label = "Pro · " + label;
+                        label = "Pro \u00b7 " + label;
                     }
                     document.getElementById("usageInfo").textContent = label;
                 }
-                /* ── Update pricing section visibility ── */
-                var pricingSection = document.getElementById("pricingSection");
-                var pricingGrid = document.getElementById("pricingGrid");
-                var proActive = document.getElementById("pricingProActive");
-                var freeCta = document.getElementById("pricingFreeCta");
-                if (pricingSection) {
-                    pricingSection.style.display = "block";
-                    if (d.plan === "pro") {
-                        /* Pro user: hide comparison grid, show active message */
-                        if (pricingGrid) pricingGrid.style.display = "none";
-                        if (proActive) proActive.style.display = "block";
-                    } else {
-                        /* Free user: show comparison grid */
-                        if (pricingGrid) pricingGrid.style.display = "block";
-                        if (proActive) proActive.style.display = "none";
-                        if (freeCta) freeCta.textContent = "Your Current Plan";
-                    }
-                }
+                /* ── Update pricing section using state context ── */
+                var ctx = window.getUserStateContext(d);
+                applyPricingState(ctx);
             })
             .catch(function () { /* ignore */ });
     }

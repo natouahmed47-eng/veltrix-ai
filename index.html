@@ -71,6 +71,9 @@
         <h2 class="pricing-section-title">Unlock Deeper Product Insights</h2>
         <p class="pricing-section-sub">Upgrade to Pro — analyze unlimited products with deeper, category-specific intelligence. Cancel anytime.</p>
 
+        <!-- State-aware message banner (populated by script.js) -->
+        <div class="pricing-state-msg" id="pricingStateMsg" style="display:none;"></div>
+
         <!-- Pro active message (shown only when user is Pro) -->
         <div class="pricing-pro-active-msg" id="pricingProActive" style="display:none;">
             <div class="pam-icon">✅</div>
@@ -181,6 +184,7 @@
 
     <!-- PayPal SDK — Live client-id -->
     <script src="https://www.paypal.com/sdk/js?client-id=AXII0NIu0wnEJwazRqZ5UsowkdJWxJdVYxrxUT84kYljpayOSUFC76fMRyvJbIFMuzYjZMv3gP53U4C3&currency=USD&vault=true&intent=subscription"></script>
+    <script src="upsell.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
