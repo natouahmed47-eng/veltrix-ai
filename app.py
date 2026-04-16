@@ -1752,6 +1752,11 @@ def serve_script():
     return send_file("script.js")
 
 
+@app.route("/upsell.js")
+def serve_upsell():
+    return send_file("upsell.js")
+
+
 @app.route("/style.css")
 def serve_style():
     return send_file("style.css")

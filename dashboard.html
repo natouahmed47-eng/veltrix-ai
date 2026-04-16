@@ -188,6 +188,38 @@
             .container { padding: 0 12px; }
             .page-header { flex-direction: column; align-items: flex-start; gap: 8px; }
         }
+        /* ── CTA Pulse Animation ── */
+        @keyframes ctaPulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.5); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+        .cta-pulse { animation: ctaPulse 2s ease-in-out infinite; }
+        /* ── Loss Aversion Block ── */
+        .billing-lost-features {
+            padding: 0 28px 16px; font-size: 13px;
+        }
+        .billing-lost-title {
+            font-weight: 700; margin-bottom: 6px; color: inherit;
+        }
+        .billing-lost-item {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 3px;
+        }
+        .billing-lost-x { color: #dc2626; font-weight: 700; flex-shrink: 0; }
+        /* ── Progress Bar ── */
+        .billing-progress-wrap { padding: 0 28px 16px; text-align: center; }
+        .usage-progress-bar {
+            width: 100%; max-width: 300px; height: 8px;
+            background: #e2e8f0; border-radius: 4px;
+            margin: 0 auto 6px; overflow: hidden;
+        }
+        .usage-progress-fill {
+            height: 100%; border-radius: 4px;
+            background: #6366f1; transition: width 0.4s ease;
+        }
+        .usage-progress-fill.progress-warn { background: #f59e0b; }
+        .usage-progress-fill.progress-critical { background: #dc2626; }
+        .usage-progress-label { font-size: 12px; color: #64748b; }
     </style>
 </head>
 <body>
@@ -226,6 +258,27 @@
         </div>
     </div>
 
+    <script src="/upsell.js"></script>
+    <script>
+    /* Lightweight trackEvent for dashboard — fire-and-forget to backend */
+    window.trackEvent = function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString() },
+            data || {}
+        );
+        console.log("[TRACK]", name, payload);
+        try {
+            var headers = { "Content-Type": "application/json" };
+            var token = localStorage.getItem("veltrix_token");
+            if (token) headers["Authorization"] = "Bearer " + token;
+            fetch("/api/track-event", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        } catch(e) {}
+    };
+    </script>
     <script>
     (function () {
         var token = localStorage.getItem("veltrix_token") || "";
@@ -271,78 +324,141 @@
             .then(function (d) {
                 if (d.error) return;
                 var card = document.getElementById("billingCard");
-                var isPro = d.is_pro;
-                var subStatus = (d.subscription_status || "").toUpperCase();
-                var paypalSubId = d.paypal_subscription_id || "";
+                var ctx = window.getUserStateContext ? window.getUserStateContext(d) : null;
+                if (!ctx) return;
 
-                /* ── State config ── */
+                /* ── State config — simplified: 1 main message + 1 supporting line ── */
                 var cfg = {};
-                if (isPro) {
+                var pulseCls = ctx.pulseCta ? " cta-pulse" : "";
+
+                /* Build progress bar HTML for free users */
+                function buildProgressBarHtml(ctx) {
+                    if (ctx.state !== "free" || !ctx.analysisLimit) return "";
+                    var pct = Math.min(Math.round((ctx.analysisCount / ctx.analysisLimit) * 100), 100);
+                    var barCls = pct >= 100 ? "progress-critical" : (pct >= 80 ? "progress-warn" : "");
+                    return '<div class="billing-progress-wrap">' +
+                        '<div class="usage-progress-bar"><div class="usage-progress-fill ' + barCls + '" style="width:' + pct + '%"></div></div>' +
+                        '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' analyses used</span>' +
+                        '</div>';
+                }
+
+                if (ctx.state === "pro_active") {
                     cfg = {
                         planName: "Veltrix AI Pro",
                         icon: "⚡",
                         badgeCls: "active",
                         badgeLabel: "Active",
-                        subtitle: "Unlimited analyses · All Pro features enabled",
+                        subtitle: ctx.supportingLine || "Unlimited analyses · All Pro features enabled",
                         msgCls: "msg-active",
                         msgIcon: "✅",
-                        msgText: "You have full access to all Pro features.",
-                        btnHtml: paypalSubId
-                            ? '<a href="https://www.paypal.com/myaccount/autopay" target="_blank" rel="noopener" class="btn-billing btn-billing-outline">Manage Subscription ↗</a>'
-                            : ''
+                        msgText: ctx.message,
+                        extraHtml: "",
+                        btnHtml: (function() {
+                            var html = '';
+                            if (ctx.ctaHref) {
+                                html += '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'pro_active\',action:\'manage\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>';
+                            }
+                            return html;
+                        })()
                     };
-                } else if (subStatus === "CANCELLED") {
+                } else if (ctx.state === "cancelled") {
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "cancelled",
                         badgeLabel: "Cancelled",
-                        subtitle: "Previously subscribed to Pro",
+                        subtitle: ctx.supportingLine || "Don\u2019t lose your data access",
                         msgCls: "msg-cancelled",
                         msgIcon: "⚠️",
-                        msgText: "Your subscription will end soon. You still have access until the end of your billing period.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Unlock Pro Features</a>'
+                        msgText: ctx.message,
+                        extraHtml: buildLostFeaturesHtml(ctx.lostFeatures),
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'cancelled\',action:\'keep_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
                     };
-                } else if (subStatus === "SUSPENDED") {
+                } else if (ctx.state === "suspended") {
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "suspended",
                         badgeLabel: "Suspended",
-                        subtitle: "Payment issue detected",
+                        subtitle: ctx.supportingLine || "Update payment to restore Pro access",
                         msgCls: "msg-suspended",
                         msgIcon: "🚨",
-                        msgText: "Payment issue detected — update your payment method on PayPal to restore Pro access.",
-                        btnHtml: '<a href="https://www.paypal.com/myaccount/autopay" target="_blank" rel="noopener" class="btn-billing btn-billing-warning">Fix Payment on PayPal ↗</a>' +
-                                 '<a href="/" class="btn-billing btn-billing-outline">Start Pro Now</a>'
+                        msgText: ctx.message,
+                        extraHtml: "",
+                        btnHtml: '<a href="' + esc(ctx.ctaHref) + '" target="_blank" rel="noopener" class="btn-billing btn-billing-primary" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'suspended\',action:\'fix_payment\',source:\'dashboard\'})">' + esc(ctx.cta) + ' ↗</a>' +
+                                 '<a href="/" class="btn-billing btn-billing-outline" onclick="if(window.trackEvent)window.trackEvent(\'retention_click\',{user_state:\'suspended\',action:\'resubscribe\',source:\'dashboard\'})">' + esc(ctx.secondaryCta) + '</a>'
                     };
-                } else if (subStatus === "EXPIRED") {
+                } else if (ctx.state === "expired") {
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "expired",
                         badgeLabel: "Expired",
-                        subtitle: "Your Pro access has ended",
+                        subtitle: ctx.supportingLine || "Restore access to unlimited analyses",
                         msgCls: "msg-expired",
                         msgIcon: "⏰",
-                        msgText: "Your Pro access has ended. Upgrade to Pro to unlock unlimited analyses and all Pro features.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Upgrade to Pro</a>'
+                        msgText: ctx.message,
+                        extraHtml: buildLostFeaturesHtml(ctx.lostFeatures),
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'expired\',action:\'restore_pro\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
                     };
                 } else {
+                    /* free user — simplified message */
                     cfg = {
                         planName: "Free Plan",
                         icon: "📦",
                         badgeCls: "free",
                         badgeLabel: "Free",
-                        subtitle: (d.analysis_count || 0) + " / " + (d.analysis_limit || 0) + " analyses used",
-                        msgCls: "msg-free",
-                        msgIcon: "💡",
-                        msgText: "You're on the Free plan. Unlock Pro to get unlimited analyses and premium features.",
-                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary">Upgrade to Pro</a>'
+                        subtitle: ctx.supportingLine || "Upgrade for unlimited access",
+                        msgCls: ctx.atLimit ? "msg-expired" : (ctx.nearLimit ? "msg-cancelled" : "msg-free"),
+                        msgIcon: ctx.atLimit ? "🚫" : (ctx.nearLimit ? "⚠️" : "💡"),
+                        msgText: ctx.message,
+                        extraHtml: buildProgressBarHtml(ctx),
+                        btnHtml: '<a href="/" class="btn-billing btn-billing-primary' + pulseCls + '" onclick="if(window.trackEvent)window.trackEvent(\'cta_primary_click\',{user_state:\'free\',action:\'upgrade\',source:\'dashboard\'})">' + esc(ctx.cta) + '</a>'
                     };
                 }
 
-                /* ── Feature comparison ── */
+                /* Build lost features HTML block */
+                function buildLostFeaturesHtml(features) {
+                    if (!features || !features.length) return "";
+                    var html = '<div class="billing-lost-features"><div class="billing-lost-title">You\u2019ll lose access to:</div>';
+                    for (var i = 0; i < features.length; i++) {
+                        html += '<div class="billing-lost-item"><span class="billing-lost-x">\u2717</span><span>' + esc(features[i]) + '</span></div>';
+                    }
+                    html += '</div>';
+                    return html;
+                }
+
+                /* Track upsell/retention view on dashboard */
+                if (window.trackEvent) {
+                    window.trackEvent("upsell_view", {
+                        user_state: ctx.state,
+                        source: "dashboard"
+                    });
+                }
+                /* Track retention view for cancelled/expired */
+                if ((ctx.state === "cancelled" || ctx.state === "expired") && window.trackEvent) {
+                    window.trackEvent("retention_view", {
+                        user_state: ctx.state,
+                        source: "dashboard"
+                    });
+                }
+                /* Track urgency view for cancelled */
+                if (ctx.state === "cancelled" && window.trackEvent) {
+                    window.trackEvent("urgency_view", {
+                        user_state: ctx.state,
+                        source: "dashboard"
+                    });
+                }
+                /* Track limit reached for free users at limit */
+                if (ctx.atLimit && window.trackEvent) {
+                    window.trackEvent("limit_reached", {
+                        user_state: ctx.state,
+                        analysis_count: ctx.analysisCount,
+                        analysis_limit: ctx.analysisLimit,
+                        source: "dashboard"
+                    });
+                }
+
                 /* ── Feature comparison ── */
                 var proOnlyFeatures = [
                     "Category-specific insights",
@@ -382,6 +498,8 @@
                         '<span class="billing-status-icon">' + cfg.msgIcon + '</span>' +
                         '<span>' + esc(cfg.msgText) + '</span>' +
                     '</div>' +
+                    /* Extra content (loss aversion / progress bar) */
+                    cfg.extraHtml +
                     /* Feature comparison */
                     '<div class="billing-body">' +
                         '<div class="feature-grid">' +

@@ -8,6 +8,122 @@ document.addEventListener("DOMContentLoaded", function () {
     var lastAnalysisIdea = "";
     var lastAnalysisResult = null;
 
+    /**
+     * applyPricingState — update pricing section on index.html based on user state.
+     * Shows only 1 main message + 1 supporting line per priority logic.
+     * @param {Object} ctx — result of getUserStateContext()
+     */
+    function applyPricingState(ctx) {
+        var pricingSection = document.getElementById("pricingSection");
+        var pricingGrid = document.getElementById("pricingGrid");
+        var proActive = document.getElementById("pricingProActive");
+        var freeCta = document.getElementById("pricingFreeCta");
+        var stateMsg = document.getElementById("pricingStateMsg");
+
+        if (!pricingSection) return;
+
+        /* Store context globally for paywall check */
+        window._veltrixCtx = ctx;
+
+        pricingSection.style.display = "block";
+
+        if (ctx.state === "pro_active") {
+            /* Pro user: hide comparison grid, show active message */
+            if (pricingGrid) pricingGrid.style.display = "none";
+            if (proActive) proActive.style.display = "block";
+            if (stateMsg) stateMsg.style.display = "none";
+        } else {
+            if (pricingGrid) pricingGrid.style.display = "block";
+            if (proActive) proActive.style.display = "none";
+            if (freeCta) {
+                freeCta.textContent = ctx.state === "logged_out"
+                    ? "Get Started Free"
+                    : "Your Current Plan";
+            }
+
+            /* Simplified message banner: 1 main message + 1 supporting line only */
+            if (stateMsg) {
+                if (ctx.state === "logged_out") {
+                    stateMsg.style.display = "none";
+                } else {
+                    stateMsg.style.display = "block";
+                    var msgHtml = '<span class="psm-text">' + escHtml(ctx.message) + '</span>';
+
+                    /* Supporting line */
+                    if (ctx.supportingLine) {
+                        var supportCls = ctx.atLimit ? "psm-pressure-critical" : (ctx.nearLimit ? "psm-pressure-warn" : "");
+                        msgHtml += '<span class="psm-benefit ' + supportCls + '">' + escHtml(ctx.supportingLine) + '</span>';
+                    }
+
+                    /* Progress bar for free users */
+                    if (ctx.state === "free" && ctx.analysisLimit > 0) {
+                        var pct = Math.min(Math.round((ctx.analysisCount / ctx.analysisLimit) * 100), 100);
+                        var barCls = pct >= 100 ? "progress-critical" : (pct >= 80 ? "progress-warn" : "");
+                        msgHtml += '<div class="usage-progress-wrap">' +
+                            '<div class="usage-progress-bar"><div class="usage-progress-fill ' + barCls + '" style="width:' + pct + '%"></div></div>' +
+                            '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' analyses used</span>' +
+                            '</div>';
+                    }
+
+                    stateMsg.innerHTML = msgHtml;
+                    stateMsg.className = "pricing-state-msg psm-" + ctx.state;
+                }
+            }
+        }
+
+        /* Track upsell view */
+        if (ctx.showPricing && window.trackEvent) {
+            window.trackEvent("upsell_view", {
+                user_state: ctx.state,
+                source: "pricing"
+            });
+        }
+        /* Track retention view for cancelled/expired */
+        if ((ctx.state === "cancelled" || ctx.state === "expired") && window.trackEvent) {
+            window.trackEvent("retention_view", {
+                user_state: ctx.state,
+                source: "pricing"
+            });
+        }
+        /* Track urgency view for cancelled */
+        if (ctx.state === "cancelled" && window.trackEvent) {
+            window.trackEvent("urgency_view", {
+                user_state: ctx.state,
+                source: "pricing"
+            });
+        }
+        /* Track limit reached */
+        if (ctx.atLimit && window.trackEvent) {
+            window.trackEvent("limit_reached", {
+                user_state: ctx.state,
+                analysis_count: ctx.analysisCount,
+                analysis_limit: ctx.analysisLimit,
+                source: "pricing"
+            });
+        }
+
+        /* Activate mobile sticky CTA for conversion states */
+        var stickyBar = document.getElementById("stickyCta");
+        if (stickyBar) {
+            if (ctx.showPricing && ctx.state !== "logged_out" && ctx.state !== "pro_active") {
+                stickyBar.style.display = "flex";
+                /* Add bottom padding so sticky CTA doesn't overlap content */
+                document.body.style.paddingBottom = "64px";
+            } else {
+                stickyBar.style.display = "none";
+                document.body.style.paddingBottom = "";
+            }
+        }
+    }
+
+    /** Minimal HTML escaper */
+    function escHtml(str) {
+        if (!str) return "";
+        var div = document.createElement("div");
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
     function updateAuthUI() {
         var authArea = document.getElementById("authArea");
         var userArea = document.getElementById("userArea");
@@ -20,16 +136,8 @@ document.addEventListener("DOMContentLoaded", function () {
             authArea.style.display = "flex";
             userArea.style.display = "none";
             /* Show pricing section for logged-out visitors */
-            var pricingSection = document.getElementById("pricingSection");
-            var pricingGrid = document.getElementById("pricingGrid");
-            var proActive = document.getElementById("pricingProActive");
-            var freeCta = document.getElementById("pricingFreeCta");
-            if (pricingSection) {
-                pricingSection.style.display = "block";
-                if (pricingGrid) pricingGrid.style.display = "block";
-                if (proActive) proActive.style.display = "none";
-                if (freeCta) freeCta.textContent = "Get Started Free";
-            }
+            var ctx = window.getUserStateContext(null);
+            applyPricingState(ctx);
         }
     }
 
@@ -40,28 +148,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (d.analysis_count !== undefined) {
                     var label = d.analysis_count + "/" + d.analysis_limit + " analyses";
                     if (d.plan === "pro") {
-                        label = "Pro · " + label;
+                        label = "Pro \u00b7 " + label;
                     }
                     document.getElementById("usageInfo").textContent = label;
                 }
-                /* ── Update pricing section visibility ── */
-                var pricingSection = document.getElementById("pricingSection");
-                var pricingGrid = document.getElementById("pricingGrid");
-                var proActive = document.getElementById("pricingProActive");
-                var freeCta = document.getElementById("pricingFreeCta");
-                if (pricingSection) {
-                    pricingSection.style.display = "block";
-                    if (d.plan === "pro") {
-                        /* Pro user: hide comparison grid, show active message */
-                        if (pricingGrid) pricingGrid.style.display = "none";
-                        if (proActive) proActive.style.display = "block";
-                    } else {
-                        /* Free user: show comparison grid */
-                        if (pricingGrid) pricingGrid.style.display = "block";
-                        if (proActive) proActive.style.display = "none";
-                        if (freeCta) freeCta.textContent = "Your Current Plan";
-                    }
-                }
+                /* ── Update pricing section using state context ── */
+                var ctx = window.getUserStateContext(d);
+                applyPricingState(ctx);
             })
             .catch(function () { /* ignore */ });
     }
@@ -152,6 +245,42 @@ document.addEventListener("DOMContentLoaded", function () {
 
     updateAuthUI();
 
+    /* ── Soft Paywall Modal ── */
+    function showPaywallModal() {
+        var overlay = document.getElementById("paywallOverlay");
+        if (overlay) {
+            overlay.style.display = "flex";
+            if (window.trackEvent) {
+                window.trackEvent("paywall_view", {
+                    user_state: "free",
+                    source: "analyze"
+                });
+                window.trackEvent("paywall_shown_after_click", {
+                    user_state: "free",
+                    source: "analyze"
+                });
+            }
+        }
+    }
+    function hidePaywallModal() {
+        var overlay = document.getElementById("paywallOverlay");
+        if (overlay) overlay.style.display = "none";
+    }
+    /* Wire close handlers for paywall modal */
+    document.addEventListener("click", function(e) {
+        if (e.target && e.target.id === "paywallClose") hidePaywallModal();
+        if (e.target && e.target.id === "paywallOverlay") hidePaywallModal();
+        /* Track primary CTA clicks */
+        if (e.target && (e.target.classList.contains("paywall-cta") || e.target.classList.contains("sticky-cta-btn"))) {
+            if (window.trackEvent) {
+                window.trackEvent("cta_primary_click", {
+                    user_state: (window._veltrixCtx && window._veltrixCtx.state) || "unknown",
+                    source: e.target.classList.contains("sticky-cta-btn") ? "sticky_cta" : "paywall"
+                });
+            }
+        }
+    });
+
     /* ── Analyze Product ── */
     analyzeBtn.addEventListener("click", analyzeProduct);
 
@@ -168,6 +297,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!idea) {
             messageEl.innerHTML = '<div class="error">Please enter a product idea or name.</div>';
+            return;
+        }
+
+        /* ── Soft paywall: delay 0.5s with loading feel, then show paywall ── */
+        var ctx = window._veltrixCtx;
+        if (ctx && ctx.atLimit && ctx.state === "free") {
+            messageEl.innerHTML = "\u23F3 Analyzing, please wait...";
+            analyzeBtn.disabled = true;
+            setTimeout(function() {
+                messageEl.innerHTML = "";
+                analyzeBtn.disabled = false;
+                showPaywallModal();
+            }, 500);
             return;
         }
 
