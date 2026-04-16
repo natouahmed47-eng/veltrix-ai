@@ -2011,8 +2011,8 @@ def admin_overview():
 def admin_users():
     """Return paginated list of all users."""
     try:
-        page = request.args.get("page", 1, type=int)
-        per_page = min(request.args.get("per_page", 50, type=int), 100)
+        page = max(request.args.get("page", 1, type=int), 1)
+        per_page = max(min(request.args.get("per_page", 50, type=int), 100), 1)
         pagination = (
             User.query
             .order_by(User.created_at.desc())
@@ -2044,8 +2044,8 @@ def admin_users():
 def admin_analyses():
     """Return paginated list of all saved analyses."""
     try:
-        page = request.args.get("page", 1, type=int)
-        per_page = min(request.args.get("per_page", 50, type=int), 100)
+        page = max(request.args.get("page", 1, type=int), 1)
+        per_page = max(min(request.args.get("per_page", 50, type=int), 100), 1)
         pagination = (
             SavedAnalysis.query
             .order_by(SavedAnalysis.created_at.desc())
