@@ -129,6 +129,45 @@
         </div>
     </div>
 
+    <!-- ── Conversion Tracking ── -->
+    <script>
+    /**
+     * trackEvent — structured conversion tracking.
+     * Logs to console for now; later can forward to PostHog / GA / backend.
+     * @param {string} name  — event name (e.g. "pricing_view")
+     * @param {Object} [data] — optional metadata
+     */
+    window.trackEvent = function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString() },
+            data || {}
+        );
+        console.log("[TRACK]", name, payload);
+    };
+
+    /* Track pricing_view when #pricingSection scrolls into view */
+    (function() {
+        var tracked = false;
+        var section = document.getElementById("pricingSection");
+        if (!section || !window.IntersectionObserver) return;
+        var obs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e) {
+                if (e.isIntersecting && !tracked) {
+                    tracked = true;
+                    var token = localStorage.getItem("veltrix_token") || "";
+                    window.trackEvent("pricing_view", {
+                        plan: "pro",
+                        source: "pricing",
+                        user_state: token ? "logged_in" : "logged_out"
+                    });
+                    obs.disconnect();
+                }
+            });
+        }, { threshold: 0.3 });
+        obs.observe(section);
+    })();
+    </script>
+
     <!-- PayPal SDK — Live client-id -->
     <script src="https://www.paypal.com/sdk/js?client-id=AXII0NIu0wnEJwazRqZ5UsowkdJWxJdVYxrxUT84kYljpayOSUFC76fMRyvJbIFMuzYjZMv3gP53U4C3&currency=USD&vault=true&intent=subscription"></script>
     <script src="script.js"></script>

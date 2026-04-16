@@ -26,5 +26,19 @@
             <a class="status-btn status-btn-outline" href="/">Return to Home</a>
         </div>
     </div>
+    <script>
+    /* ── Conversion Tracking ── */
+    window.trackEvent = window.trackEvent || function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString() },
+            data || {}
+        );
+        console.log("[TRACK]", name, payload);
+    };
+    window.trackEvent("payment_cancel_page_view", {
+        plan: "pro",
+        source: "pricing"
+    });
+    </script>
 </body>
 </html>
