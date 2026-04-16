@@ -350,6 +350,7 @@ _ALLOWED_TRACKING_EVENTS = frozenset({
     "payment_cancel_page_view",
     "experiment_view",
     "experiment_conversion",
+    "cta_primary_click",
 })
 
 # Maximum request body size for the tracking endpoint (2 KB)
@@ -2415,6 +2416,83 @@ def admin_analytics_funnel_breakdown():
     except Exception as e:
         app.logger.error("Admin analytics funnel-breakdown failed: %s", e)
         return jsonify({"error": "Failed to load funnel breakdown"}), 500
+
+
+_EXPERIMENT_EVENTS = ["experiment_view", "cta_primary_click", "experiment_conversion"]
+
+
+@app.route("/api/admin/analytics/experiments", methods=["GET"])
+@admin_required
+def admin_analytics_experiments():
+    """Return A/B experiment results comparing variants using TrackingEvent data."""
+    try:
+        try:
+            date_filter = _parse_funnel_date_filter()
+        except ValueError:
+            return jsonify({"error": "Invalid start_date or end_date format"}), 400
+
+        experiment_name = request.args.get("experiment", "upsell_v1")
+
+        q = TrackingEvent.query.filter(
+            TrackingEvent.event_name.in_(_EXPERIMENT_EVENTS)
+        )
+        if date_filter is not None:
+            q = q.filter(date_filter)
+
+        events = q.all()
+
+        # Group counts by variant
+        variants = {}
+        for e in events:
+            meta = {}
+            if e.metadata_json:
+                try:
+                    meta = json.loads(e.metadata_json)
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+            if meta.get("experiment") != experiment_name:
+                continue
+
+            variant = meta.get("variant", "unknown")
+            if variant not in variants:
+                variants[variant] = {evt: 0 for evt in _EXPERIMENT_EVENTS}
+            variants[variant][e.event_name] += 1
+
+        # Build per-variant metrics
+        results = {}
+        for variant, counts in variants.items():
+            views = counts.get("experiment_view", 0)
+            clicks = counts.get("cta_primary_click", 0)
+            conversions = counts.get("experiment_conversion", 0)
+            results[variant] = {
+                "experiment_view": views,
+                "cta_primary_click": clicks,
+                "experiment_conversion": conversions,
+                "view_to_click_rate": _funnel_rate(clicks, views),
+                "click_to_conversion_rate": _funnel_rate(conversions, clicks),
+                "view_to_conversion_rate": _funnel_rate(conversions, views),
+            }
+
+        # Determine winner by highest view_to_conversion_rate
+        winner = None
+        if len(results) >= 2:
+            sorted_variants = sorted(
+                results.items(),
+                key=lambda x: x[1]["view_to_conversion_rate"],
+                reverse=True,
+            )
+            if sorted_variants[0][1]["view_to_conversion_rate"] > sorted_variants[1][1]["view_to_conversion_rate"]:
+                winner = sorted_variants[0][0]
+
+        return jsonify({
+            "experiment": experiment_name,
+            "variants": results,
+            "winner": winner,
+        })
+    except Exception as e:
+        app.logger.error("Admin analytics experiments failed: %s", e)
+        return jsonify({"error": "Failed to load experiment analytics"}), 500
 
 
 @app.route("/api/admin/paypal/create-plan", methods=["POST"])
