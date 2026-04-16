@@ -48,7 +48,14 @@
     };
     window.trackEvent("payment_success_page_view", {
         plan: "pro",
+        variant: localStorage.getItem("upsell_variant") || "A",
         source: "pricing"
+    });
+    /* ── Experiment conversion tracking ── */
+    window.trackEvent("experiment_conversion", {
+        experiment: "upsell_v1",
+        variant: localStorage.getItem("upsell_variant") || "A",
+        plan: "pro"
     });
     </script>
 </body>

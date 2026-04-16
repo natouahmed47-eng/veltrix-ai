@@ -8,6 +8,14 @@ document.addEventListener("DOMContentLoaded", function () {
     var lastAnalysisIdea = "";
     var lastAnalysisResult = null;
 
+    /* ── A/B Experiment: upsell_v1 ── */
+    var _upsellVariant = localStorage.getItem("upsell_variant");
+    if (!_upsellVariant) {
+        _upsellVariant = Math.random() < 0.5 ? "A" : "B";
+        localStorage.setItem("upsell_variant", _upsellVariant);
+    }
+    window._upsellVariant = _upsellVariant;
+
     /**
      * applyPricingState — update pricing section on index.html based on user state.
      * Shows only 1 main message + 1 supporting line per priority logic.
@@ -24,6 +32,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* Store context globally for paywall check */
         window._veltrixCtx = ctx;
+
+        /* ── A/B variant override (skip Pro users) ── */
+        if (window._upsellVariant === "B" && ctx.state !== "pro_active") {
+            ctx.cta = "Upgrade to Pro Now";
+            ctx.supportingLine = (ctx.supportingLine || "") + " \u00b7 Most users upgrade after hitting their limit";
+        }
 
         pricingSection.style.display = "block";
 
@@ -75,6 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (ctx.showPricing && window.trackEvent) {
             window.trackEvent("upsell_view", {
                 user_state: ctx.state,
+                variant: window._upsellVariant,
                 source: "pricing"
             });
         }
@@ -113,6 +128,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 stickyBar.style.display = "none";
                 document.body.style.paddingBottom = "";
             }
+        }
+
+        /* ── A/B variant: update paywall + sticky CTA text ── */
+        if (window._upsellVariant === "B" && ctx.state !== "pro_active") {
+            var paywallCta = document.querySelector(".paywall-cta");
+            if (paywallCta) paywallCta.textContent = "Upgrade to Pro Now";
+            var stickyBtn = document.querySelector(".sticky-cta-btn");
+            if (stickyBtn) stickyBtn.textContent = "\u26a1 Upgrade to Pro Now";
+        }
+
+        /* ── Track experiment variant exposure ── */
+        if (window.trackEvent && ctx.state !== "pro_active") {
+            window.trackEvent("experiment_view", {
+                experiment: "upsell_v1",
+                variant: window._upsellVariant,
+                user_state: ctx.state
+            });
         }
     }
 
@@ -253,10 +285,12 @@ document.addEventListener("DOMContentLoaded", function () {
             if (window.trackEvent) {
                 window.trackEvent("paywall_view", {
                     user_state: "free",
+                    variant: window._upsellVariant,
                     source: "analyze"
                 });
                 window.trackEvent("paywall_shown_after_click", {
                     user_state: "free",
+                    variant: window._upsellVariant,
                     source: "analyze"
                 });
             }
@@ -275,6 +309,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (window.trackEvent) {
                 window.trackEvent("cta_primary_click", {
                     user_state: (window._veltrixCtx && window._veltrixCtx.state) || "unknown",
+                    variant: window._upsellVariant,
                     source: e.target.classList.contains("sticky-cta-btn") ? "sticky_cta" : "paywall"
                 });
             }
