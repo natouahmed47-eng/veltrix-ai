@@ -2439,16 +2439,16 @@ def _compute_time_to_conversion_stats(durations_seconds):
 def _build_time_to_conversion(events, experiment_name):
     """Calculate time-to-conversion from experiment_view to experiment_conversion.
 
-    Matches by user_id first, then by username. For each converting user/session,
-    finds the earliest experiment_view and the corresponding experiment_conversion,
-    calculates the time difference.
+    Matches by session_id first, then user_id, then username. For each session,
+    finds the earliest experiment_view and the first experiment_conversion AFTER
+    that view with the same experiment+variant, calculates the time difference.
 
     Returns dict with 'overall' and 'by_variant' breakdowns.
     """
-    # Separate views and conversions, keyed by user identity
-    # Each entry: {identity: [(created_at, variant), ...]}
-    views_by_user = {}   # identity -> [(created_at, variant)]
-    conversions_by_user = {}  # identity -> [(created_at, variant)]
+    # Separate views and conversions, keyed by (identity, variant)
+    # Each entry: {(identity, variant): [(created_at,), ...]}
+    views_by_key = {}       # (identity, variant) -> [created_at, ...]
+    conversions_by_key = {} # (identity, variant) -> [created_at, ...]
 
     for e in events:
         meta = {}
@@ -2461,9 +2461,12 @@ def _build_time_to_conversion(events, experiment_name):
         if meta.get("experiment") != experiment_name:
             continue
 
-        # Determine user identity: prefer user_id, fall back to username
+        # Determine identity: prefer session_id, then user_id, then username
+        session_id = meta.get("session_id")
         identity = None
-        if e.user_id:
+        if session_id:
+            identity = ("sid", session_id)
+        elif e.user_id:
             identity = ("uid", e.user_id)
         elif e.username:
             identity = ("uname", e.username)
@@ -2471,34 +2474,36 @@ def _build_time_to_conversion(events, experiment_name):
             continue  # Cannot match without identity
 
         variant = meta.get("variant", "unknown")
+        key = (identity, variant)
 
         if e.event_name == "experiment_view":
-            views_by_user.setdefault(identity, []).append((e.created_at, variant))
+            views_by_key.setdefault(key, []).append(e.created_at)
         elif e.event_name == "experiment_conversion":
-            conversions_by_user.setdefault(identity, []).append((e.created_at, variant))
+            conversions_by_key.setdefault(key, []).append(e.created_at)
 
     # Calculate durations
     all_durations = []
     variant_durations = {}  # variant -> [duration_seconds]
 
-    for identity, conv_list in conversions_by_user.items():
-        if identity not in views_by_user:
+    for key, conv_times in conversions_by_key.items():
+        if key not in views_by_key:
             continue
-        view_list = views_by_user[identity]
+        view_times = views_by_key[key]
 
-        # Earliest view
-        earliest_view = min(view_list, key=lambda x: x[0])
-        # Earliest conversion
-        earliest_conv = min(conv_list, key=lambda x: x[0])
+        # Earliest view (first view in session for this experiment+variant)
+        earliest_view_time = min(view_times)
+        # First conversion AFTER the earliest view
+        valid_convs = [t for t in conv_times if t >= earliest_view_time]
+        if not valid_convs:
+            continue  # All conversions before view — skip
 
-        if earliest_conv[0] < earliest_view[0]:
-            continue  # Conversion before view — skip
+        first_conv_time = min(valid_convs)
 
-        duration = (earliest_conv[0] - earliest_view[0]).total_seconds()
+        duration = (first_conv_time - earliest_view_time).total_seconds()
         all_durations.append(duration)
 
-        # Use the variant from the view event for breakdown
-        variant = earliest_view[1]
+        # Use the variant from the key for breakdown
+        variant = key[1]
         variant_durations.setdefault(variant, []).append(duration)
 
     result = {
@@ -2641,6 +2646,7 @@ def admin_analytics_experiments():
             "current_sample_B": winner_info.get("current_sample_B"),
             "by_source": by_source,
             "time_to_conversion": time_to_conversion,
+            "attribution_model": "session_first",
         })
     except Exception as e:
         app.logger.error("Admin analytics experiments failed: %s", e)

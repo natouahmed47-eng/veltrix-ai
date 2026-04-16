@@ -29,9 +29,23 @@
     </div>
     <script>
     /* ── Conversion Tracking ── */
+    /* ── Session ID for attribution ── */
+    (function() {
+        var key = "veltrix_session_id";
+        var tsKey = "veltrix_session_ts";
+        var MAX_AGE_MS = 24 * 60 * 60 * 1000;
+        var existing = localStorage.getItem(key);
+        var ts = parseInt(localStorage.getItem(tsKey) || "0", 10);
+        if (!existing || (Date.now() - ts) > MAX_AGE_MS) {
+            var sid = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem(key, sid);
+            localStorage.setItem(tsKey, String(Date.now()));
+        }
+    })();
+
     window.trackEvent = window.trackEvent || function(name, data) {
         var payload = Object.assign(
-            { event: name, timestamp: new Date().toISOString() },
+            { event: name, timestamp: new Date().toISOString(), session_id: localStorage.getItem("veltrix_session_id") || "" },
             data || {}
         );
         console.log("[TRACK]", name, payload);
