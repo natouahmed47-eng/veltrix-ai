@@ -182,7 +182,6 @@
             { event: name, timestamp: new Date().toISOString(), session_id: localStorage.getItem("veltrix_session_id") || "" },
             data || {}
         );
-        console.log("[TRACK]", name, payload);
         /* POST to backend — fire-and-forget, fail silently */
         try {
             var headers = { "Content-Type": "application/json" };
@@ -219,8 +218,25 @@
     })();
     </script>
 
-    <!-- PayPal SDK — Live client-id -->
-    <script src="https://www.paypal.com/sdk/js?client-id=AXII0NIu0wnEJwazRqZ5UsowkdJWxJdVYxrxUT84kYljpayOSUFC76fMRyvJbIFMuzYjZMv3gP53U4C3&currency=USD&vault=true&intent=subscription"></script>
+    <!-- PayPal SDK — loaded dynamically from /api/config -->
+    <script>
+    (function() {
+        fetch("/api/config")
+            .then(function(r) { return r.json(); })
+            .then(function(cfg) {
+                if (!cfg.paypal_client_id) return;
+                var s = document.createElement("script");
+                s.src = "https://www.paypal.com/sdk/js?client-id=" +
+                    encodeURIComponent(cfg.paypal_client_id) +
+                    "&currency=USD&vault=true&intent=subscription";
+                s.onload = function() {
+                    document.dispatchEvent(new Event("paypal-sdk-ready"));
+                };
+                document.head.appendChild(s);
+            })
+            .catch(function() {});
+    })();
+    </script>
     <script src="upsell.js"></script>
     <script src="script.js"></script>
 </body>

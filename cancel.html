@@ -47,7 +47,6 @@
             { event: name, timestamp: new Date().toISOString(), session_id: localStorage.getItem("veltrix_session_id") || "" },
             data || {}
         );
-        console.log("[TRACK]", name, payload);
         try {
             var headers = { "Content-Type": "application/json" };
             var token = localStorage.getItem("veltrix_token");

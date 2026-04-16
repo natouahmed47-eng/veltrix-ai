@@ -853,15 +853,13 @@ document.addEventListener("DOMContentLoaded", function () {
 (function() {
   /* Skip rendering PayPal button if user is already Pro */
   var token = localStorage.getItem("veltrix_token") || "";
-  function renderPayPal() {
+
+  function _initPayPalButton() {
     fetch("/api/config")
       .then(function(res) { return res.json(); })
       .then(function(cfg) {
         var planId = cfg.paypal_plan_id;
-        if (!planId) {
-          console.warn("PayPal plan_id not configured — subscription button disabled.");
-          return;
-        }
+        if (!planId) return;
         var container = document.getElementById("paypal-button-container");
         if (!container) return;
         /* Track click on the PayPal / upgrade area (once per render) */
@@ -914,9 +912,16 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         });
       })
-      .catch(function(err) {
-        console.warn("Failed to load PayPal config:", err);
-      });
+      .catch(function() {});
+  }
+
+  function renderPayPal() {
+    /* Wait for dynamically-loaded PayPal SDK */
+    if (typeof paypal !== "undefined") {
+      _initPayPalButton();
+    } else {
+      document.addEventListener("paypal-sdk-ready", _initPayPalButton);
+    }
   }
 
   if (token) {
