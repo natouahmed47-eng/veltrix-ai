@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Veltrix AI — Product Intelligence Platform</title>
+    <title>Veltrix — Product Decision Engine</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -14,7 +14,7 @@
     <!-- ── Top Bar ── -->
     <div class="top-bar">
         <div class="logo">Veltrix<span>AI</span></div>
-        <div class="tagline">Product Intelligence Platform</div>
+        <div class="tagline">Product Decision Engine</div>
 
         <!-- Logged-out buttons -->
         <div class="auth-area" id="authArea">
@@ -53,11 +53,11 @@
     <!-- ── Main Content ── -->
     <div class="container">
         <div class="search-card">
-            <h1>Analyze Any Product</h1>
-            <div class="muted">Enter a product name or idea to generate a full AI-powered intelligence report.</div>
+            <h1>Should You Build It?</h1>
+            <div class="muted">Enter a product name or idea. Get a clear BUILD or DON'T BUILD verdict in seconds.</div>
             <div class="search-row">
-                <input type="text" id="productIdea" placeholder="e.g. iPhone 15, Nike Air Max, CeraVe Moisturizer, IKEA Kallax..." />
-                <button id="analyzeBtn">Analyze</button>
+                <input type="text" id="productIdea" placeholder="e.g. iPhone 15, Nike Air Max, CeraVe Moisturizer, a new SaaS idea..." />
+                <button id="analyzeBtn">Get Verdict</button>
             </div>
             <div id="message"></div>
         </div>
@@ -68,8 +68,8 @@
 
     <!-- ── Pricing Section ── -->
     <div class="pricing-section" id="pricingSection" style="display:none;">
-        <h2 class="pricing-section-title">Unlock Deeper Product Insights</h2>
-        <p class="pricing-section-sub">Upgrade to Pro — analyze unlimited products with deeper, category-specific intelligence. Cancel anytime.</p>
+        <h2 class="pricing-section-title">Make Better Product Decisions</h2>
+        <p class="pricing-section-sub">Upgrade to Pro — get unlimited verdicts with deeper market data and category-specific breakdowns. Cancel anytime.</p>
 
         <!-- State-aware message banner (populated by script.js) -->
         <div class="pricing-state-msg" id="pricingStateMsg" style="display:none;"></div>
@@ -91,11 +91,11 @@
                     <div class="pricing-price">$0 <span>/ forever</span></div>
                     <div class="pricing-price-note">No credit card required</div>
                     <ul class="pricing-features">
-                        <li><span class="pf-icon check">✓</span> Analyze up to 5 products</li>
-                        <li><span class="pf-icon check">✓</span> Core AI-powered insights</li>
-                        <li><span class="pf-icon check">✓</span> Standard AI model</li>
+                        <li><span class="pf-icon check">✓</span> Up to 5 product verdicts</li>
+                        <li><span class="pf-icon check">✓</span> BUILD / DON'T BUILD decisions</li>
+                        <li><span class="pf-icon check">✓</span> Standard decision model</li>
                         <li><span class="pf-icon x">—</span> No deep category breakdowns</li>
-                        <li><span class="pf-icon x">—</span> No saved analysis history</li>
+                        <li><span class="pf-icon x">—</span> No saved decision history</li>
                         <li><span class="pf-icon x">—</span> No priority support</li>
                     </ul>
                     <div class="pricing-cta pricing-cta-free" id="pricingFreeCta">Your Current Plan</div>
@@ -109,10 +109,10 @@
                     <div class="pricing-price">$9.99 <span>/ month</span></div>
                     <div class="pricing-price-note">Billed monthly · Cancel anytime</div>
                     <ul class="pricing-features">
-                        <li><span class="pf-icon check">✓</span> <strong>Unlimited</strong> product analyses — no caps, no limits</li>
-                        <li><span class="pf-icon check">✓</span> Deeper, more actionable AI insights</li>
-                        <li><span class="pf-icon check">✓</span> Tailored analysis for each product category</li>
-                        <li><span class="pf-icon check">✓</span> Save and revisit past analyses anytime</li>
+                        <li><span class="pf-icon check">✓</span> <strong>Unlimited</strong> product verdicts — no caps, no limits</li>
+                        <li><span class="pf-icon check">✓</span> Deeper, data-backed decision reports</li>
+                        <li><span class="pf-icon check">✓</span> Tailored verdicts for each product category</li>
+                        <li><span class="pf-icon check">✓</span> Save and revisit past decisions anytime</li>
                         <li><span class="pf-icon check">✓</span> Get faster help when you need it</li>
                         <li><span class="pf-icon check">✓</span> Export full reports in one click</li>
                     </ul>
@@ -124,7 +124,7 @@
             </div>
 
             <div class="pricing-trust">
-                <p class="pricing-social-proof">🚀 Used by a growing number of ecommerce sellers</p>
+                <p class="pricing-social-proof">🚀 Trusted by a growing number of ecommerce sellers and builders</p>
                 <p>🔒 <strong>Secure payment via PayPal</strong> — no card details stored on our servers.</p>
                 <p>⚡ <strong>Instant activation</strong> — Pro features unlock the moment you upgrade.</p>
                 <p>🚫 <strong>No hidden fees</strong> — $9.99/month, cancel anytime.</p>
@@ -138,21 +138,21 @@
         <div class="paywall-box">
             <button class="paywall-close" id="paywallClose">&times;</button>
             <div class="paywall-icon">🔒</div>
-            <h2 class="paywall-title">You&rsquo;ve reached your free limit</h2>
-            <p class="paywall-text">Upgrade to Pro to continue analyzing products.</p>
+            <h2 class="paywall-title">You&rsquo;ve used all your free verdicts</h2>
+            <p class="paywall-text">Upgrade to Pro to keep making product decisions.</p>
             <ul class="paywall-features">
-                <li>✓ Unlimited analyses</li>
+                <li>✓ Unlimited verdicts</li>
                 <li>✓ Instant access</li>
                 <li>✓ Cancel anytime</li>
             </ul>
-            <a href="#pricingSection" class="paywall-cta cta-pulse" onclick="document.getElementById('paywallOverlay').style.display='none';">Unlock Unlimited Analyses</a>
+            <a href="#pricingSection" class="paywall-cta cta-pulse" onclick="document.getElementById('paywallOverlay').style.display='none';">Unlock Unlimited Verdicts</a>
             <p class="paywall-micro">$9.99/month · Cancel anytime</p>
         </div>
     </div>
 
     <!-- ── Sticky Mobile CTA ── -->
     <div class="sticky-cta" id="stickyCta" style="display:none;">
-        <a href="#pricingSection" class="sticky-cta-btn">⚡ Unlock Unlimited Analyses</a>
+        <a href="#pricingSection" class="sticky-cta-btn">⚡ Unlock Unlimited Verdicts</a>
     </div>
 
     <!-- ── Conversion Tracking ── -->

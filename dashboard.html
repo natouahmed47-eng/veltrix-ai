@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dashboard — Veltrix AI</title>
+    <title>Dashboard — Veltrix</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -225,9 +225,9 @@
 <body>
     <div class="top-bar">
         <a href="/" class="logo">Veltrix<span>AI</span></a>
-        <div class="tagline">Product Intelligence Platform</div>
+        <div class="tagline">Product Decision Engine</div>
         <div class="nav-links">
-            <a href="/">Analyze</a>
+            <a href="/">Decide</a>
             <a href="/dashboard" class="active">Dashboard</a>
             <span style="color:#e2e8f0;font-size:13px;font-weight:600;" id="navUsername"></span>
             <button id="logoutBtn">Log Out</button>
@@ -237,13 +237,13 @@
     <div class="container">
         <div id="loginPrompt" class="login-prompt" style="display:none;">
             <h2>Log in to view your dashboard</h2>
-            <p>Save and review your product analyses in one place.</p>
+            <p>Save and review your product decisions in one place.</p>
             <button onclick="window.location.href='/'">Go to Home</button>
         </div>
         <div id="dashboardContent" style="display:none;">
             <div id="billingCard" class="billing-card" style="display:none;"></div>
             <div class="page-header">
-                <h1>Your Analyses</h1>
+                <h1>Your Decisions</h1>
                 <span class="usage-badge" id="usageBadge"></span>
             </div>
             <div id="analysisList"></div>
@@ -358,13 +358,13 @@
                     var barCls = pct >= 100 ? "progress-critical" : (pct >= 80 ? "progress-warn" : "");
                     return '<div class="billing-progress-wrap">' +
                         '<div class="usage-progress-bar"><div class="usage-progress-fill ' + barCls + '" style="width:' + pct + '%"></div></div>' +
-                        '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' analyses used</span>' +
+                        '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' verdicts used</span>' +
                         '</div>';
                 }
 
                 if (ctx.state === "pro_active") {
                     cfg = {
-                        planName: "Veltrix AI Pro",
+                        planName: "Veltrix Pro",
                         icon: "⚡",
                         badgeCls: "active",
                         badgeLabel: "Active",
@@ -481,17 +481,17 @@
 
                 /* ── Feature comparison ── */
                 var proOnlyFeatures = [
-                    "Category-specific insights",
-                    "Unlimited analyses",
+                    "Category-specific verdicts",
+                    "Unlimited decisions",
                     "Priority support"
                 ];
                 var freeFeatures = [
-                    "Basic product analysis",
-                    (d.analysis_limit || 0) + " analyses total",
-                    "Standard AI model"
+                    "Basic product verdicts",
+                    (d.analysis_limit || 0) + " decisions total",
+                    "Standard decision model"
                 ];
                 var proFeatures = [
-                    "Advanced product intelligence"
+                    "Full decision reports"
                 ].concat(proOnlyFeatures).concat(["Full export capabilities"]);
 
                 function featureList(items, check) {
@@ -550,7 +550,7 @@
                     return;
                 }
 
-                document.getElementById("usageBadge").textContent = data.count + " / " + data.limit + " analyses used";
+                document.getElementById("usageBadge").textContent = data.count + " / " + data.limit + " verdicts used";
 
                 var list = document.getElementById("analysisList");
                 allAnalyses = data.analyses;
@@ -559,8 +559,8 @@
                     list.innerHTML =
                         '<div class="empty-state">' +
                             '<div class="icon">📊</div>' +
-                            '<h3>No analyses yet</h3>' +
-                            '<p>Go to the <a href="/">Analyze page</a> to create your first product analysis.</p>' +
+                            '<h3>No decisions yet</h3>' +
+                            '<p>Go to the <a href="/">home page</a> to get your first product verdict.</p>' +
                         '</div>';
                     return;
                 }
@@ -580,7 +580,7 @@
                 }).join("");
             })
             .catch(function () {
-                document.getElementById("analysisList").innerHTML = '<div class="empty-state"><p>Failed to load analyses.</p></div>';
+                document.getElementById("analysisList").innerHTML = '<div class="empty-state"><p>Failed to load decisions.</p></div>';
             });
 
         /* Detail view */

@@ -20,7 +20,7 @@ window.getUserStateContext = function (user) {
             secondaryCta: null,
             secondaryHref: null,
             secondaryClass: null,
-            benefit: "Limited free usage \u00b7 No credit card required",
+            benefit: "Limited free verdicts \u00b7 No credit card required",
             urgency: "Cancel anytime \u00b7 Instant activation",
             showPricing: true,
             nearLimit: false,
@@ -41,7 +41,7 @@ window.getUserStateContext = function (user) {
         return {
             state: "pro_active",
             message: "You\u2019re on the Pro plan",
-            supportingLine: "Unlimited analyses \u00b7 All Pro features enabled",
+            supportingLine: "Unlimited verdicts \u00b7 All Pro features enabled",
             cta: "Manage Subscription",
             ctaHref: user.paypal_subscription_id
                 ? "https://www.paypal.com/myaccount/autopay"
@@ -50,7 +50,7 @@ window.getUserStateContext = function (user) {
             secondaryCta: "Explore Advanced Features",
             secondaryHref: "/",
             secondaryClass: "outline",
-            benefit: "Unlimited analyses \u00b7 All Pro features enabled",
+            benefit: "Unlimited verdicts \u00b7 All Pro features enabled",
             urgency: null,
             showPricing: false,
             nearLimit: false,
@@ -65,23 +65,23 @@ window.getUserStateContext = function (user) {
 
     /* Lost features list for cancelled / expired */
     var lostFeatures = [
-        "Unlimited analyses",
-        "Saved analysis history",
-        "Premium category insights"
+        "Unlimited verdicts",
+        "Saved decision history",
+        "Premium category breakdowns"
     ];
 
     if (subStatus === "CANCELLED") {
         return {
             state: "cancelled",
             message: "Your Pro access ends soon",
-            supportingLine: "Don\u2019t lose your data access",
+            supportingLine: "Don\u2019t lose your saved decisions",
             cta: "Keep My Pro Access",
             ctaHref: "/",
             ctaClass: "primary",
             secondaryCta: null,
             secondaryHref: null,
             secondaryClass: null,
-            benefit: "Don\u2019t lose your data access",
+            benefit: "Don\u2019t lose your saved decisions",
             urgency: "No data loss \u00b7 Instant reactivation",
             showPricing: true,
             nearLimit: false,
@@ -105,7 +105,7 @@ window.getUserStateContext = function (user) {
             secondaryCta: "Re-subscribe",
             secondaryHref: "/",
             secondaryClass: "outline",
-            benefit: "Restore unlimited analyses and Pro features",
+            benefit: "Restore unlimited verdicts and Pro features",
             urgency: "No data loss \u00b7 Update payment to continue",
             showPricing: true,
             nearLimit: false,
@@ -122,14 +122,14 @@ window.getUserStateContext = function (user) {
         return {
             state: "expired",
             message: "Your Pro access has ended",
-            supportingLine: "Restore access to unlimited analyses",
+            supportingLine: "Restore access to unlimited verdicts",
             cta: "Restore My Access",
             ctaHref: "/",
             ctaClass: "primary",
             secondaryCta: null,
             secondaryHref: null,
             secondaryClass: null,
-            benefit: "Unlimited analyses, premium insights",
+            benefit: "Unlimited verdicts, premium decision reports",
             urgency: "Instant activation \u00b7 Cancel anytime",
             showPricing: true,
             nearLimit: false,
@@ -148,21 +148,21 @@ window.getUserStateContext = function (user) {
     var usagePressureMsg;
     var supportingLine;
     if (atLimit) {
-        usagePressureMsg = "You\u2019ve reached your limit \u2014 upgrade to continue";
-        supportingLine = "Unlock unlimited analyses now";
+        usagePressureMsg = "You\u2019ve used all your free verdicts \u2014 upgrade to continue";
+        supportingLine = "Unlock unlimited verdicts now";
     } else if (nearLimit) {
         usagePressureMsg = "You\u2019re about to hit your limit";
-        supportingLine = count + " of " + limit + " analyses used";
+        supportingLine = count + " of " + limit + " verdicts used";
     } else {
-        usagePressureMsg = "You\u2019ve used " + count + " out of " + limit + " analyses";
-        supportingLine = "Upgrade for unlimited access";
+        usagePressureMsg = "You\u2019ve used " + count + " out of " + limit + " verdicts";
+        supportingLine = "Upgrade for unlimited decisions";
     }
 
     return {
         state: "free",
-        message: atLimit ? usagePressureMsg : (nearLimit ? usagePressureMsg : "Unlock unlimited analyses"),
+        message: atLimit ? usagePressureMsg : (nearLimit ? usagePressureMsg : "Unlock unlimited verdicts"),
         supportingLine: supportingLine,
-        cta: "Unlock Unlimited Analyses",
+        cta: "Unlock Unlimited Verdicts",
         ctaHref: null,
         ctaClass: "primary",
         secondaryCta: null,
