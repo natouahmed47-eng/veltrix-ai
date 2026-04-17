@@ -477,7 +477,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return Math.min(Math.max(item.confidence, 60), 97);
         }
         /* Fallback: calculate from data richness */
-        var score = 70;
+        var score = 80;
         var perf = item.performance;
         if (perf && typeof perf === "object" && Object.keys(perf).length) {
             score += Math.min(Object.keys(perf).length, 3);
@@ -604,7 +604,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* ── Verdict Banner ── */
         var verdict = (item.verdict || "BUILD").toUpperCase();
-        var isBuild = verdict.indexOf("DON") === -1;
+        var isBuild = verdict === "BUILD";
         var verdictColor = isBuild ? "#059669" : "#dc2626";
         var verdictBg = isBuild ? "#f0fdf4" : "#fef2f2";
         var verdictBorder = isBuild ? "#bbf7d0" : "#fecaca";
