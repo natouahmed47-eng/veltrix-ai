@@ -191,10 +191,14 @@ _real_signal_re = re.compile(
     r"|barrier.to.entry|first.mover|network effect)"
     # Quantitative clues (numbers, percentages, dollar values, timeframes)
     r"|(?:\d+\s*%|\$\s*[\d,.]+|\d+[\d,]*\s*(?:unit|user|customer|subscriber)"
-    r"|\d+\s*(?:hour|day|week|month|year|minute))"
+    r"|\d+\s*(?:hour|day|week|month|year|minute)|\d+\s?(?:usd|دولار))"
     # Supply chain specifics
     r"|(?:MOQ|minimum order|supplier|sourcing|Alibaba|manufacturer|landed cost"
     r"|shipping cost|fulfillment|warehouse)"
+    # SaaS metrics
+    r"|(?:cac|churn|ltv|pricing|subscription|mrr|arr|arpu|payback period)"
+    # Shopify ecosystem / known competitors
+    r"|(?:shopify|narvar|returnly|loop\s?returns?)"
     r")",
     re.IGNORECASE,
 )
@@ -293,16 +297,20 @@ _REASON_CATEGORIES = {
             r"\b(competitor|competitors|competes|compete|competing"
             r"|saturated|market share|incumbent"
             r"|incumbents|CAC|customer acquisition|fragmented|red ocean"
-            r"|blue ocean|market leader|dominant|dominate)\b",
+            r"|blue ocean|market leader|dominant|dominate"
+            r"|narvar|returnly|loop\s?returns?)\b",
             re.IGNORECASE,
         ),
         "label": "Competition",
     },
     "monetization": {
         "keywords": re.compile(
-            r"\b(pricing|margin|cost|revenue|CAC|LTV|COGS|unit cost"
+            r"(?:"
+            r"\b(?:pricing|margin|cost|revenue|CAC|LTV|COGS|unit cost"
             r"|retail price|wholesale|profit|MRR|ARR|monetiz"
-            r"|subscription|AOV)\b",
+            r"|subscription|AOV|churn|ltv)\b"
+            r"|\$\d+|\d+%|\d+\s?(?:usd|دولار)"
+            r")",
             re.IGNORECASE,
         ),
         "label": "Monetization",
@@ -315,6 +323,21 @@ _REASON_CATEGORIES = {
             re.IGNORECASE,
         ),
         "label": "Differentiation",
+    },
+    "saas_metrics": {
+        "keywords": re.compile(
+            r"\b(cac|churn|ltv|pricing|subscription|mrr|arr|arpu|payback period)\b",
+            re.IGNORECASE,
+        ),
+        "label": "SaaS Metrics",
+    },
+    "shopify_ecosystem": {
+        "keywords": re.compile(
+            r"\b(shopify|returns|narvar|returnly|loop\s?returns?"
+            r"|shopify app|shopify ecosystem|e-?commerce)\b",
+            re.IGNORECASE,
+        ),
+        "label": "Shopify Ecosystem",
     },
 }
 
@@ -1975,22 +1998,25 @@ long_description HTML structure:
             if not str_reasons or all(is_reason_generic(r) for r in str_reasons):
                 # Attempt to derive reasons from the actual analysis text
                 # before falling back to generic placeholders.
-                analysis_text = " ".join(filter(None, [
+                full_analysis_text = " ".join(filter(None, [
                     output.get("verdict_reasoning", ""),
                     output.get("technical_analysis", ""),
+                    output.get("target_audience", ""),
                     output.get("long_description", ""),
                     output.get("short_summary", ""),
                 ]))
-                derived = derive_top_reasons_from_text(analysis_text)
-                if derived:
+                derived = derive_top_reasons_from_text(full_analysis_text)
+                print("DERIVED REASONS:", derived)
+                if derived and len(derived) >= 1:
                     output["top_reasons"] = derived
                 else:
-                    # Only use fallback when reasoning and analysis are empty
+                    # Only use fallback when derivation truly failed
                     output["top_reasons"] = [
                         "No verifiable demand signals or market data available",
                         "Competitive landscape unclear — risk of entering a saturated space",
                         "Unit economics and margin potential cannot be assessed",
                     ]
+                print("FINAL TOP REASONS:", output["top_reasons"])
             str_actions = [a for a in output.get("next_actions", []) if isinstance(a, str) and a.strip()]
             if not str_actions or all(is_action_generic(a) for a in str_actions):
                 output["next_actions"] = [
@@ -2030,6 +2056,7 @@ long_description HTML structure:
             _analysis_pool = " ".join(filter(None, [
                 output.get("verdict_reasoning", ""),
                 output.get("technical_analysis", ""),
+                output.get("target_audience", ""),
                 output.get("long_description", ""),
                 output.get("short_summary", ""),
             ]))
