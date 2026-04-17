@@ -357,7 +357,7 @@ _REASON_CATEGORIES = {
             r"\b(differentiat\w*|undifferentiated|moat|unique|switching cost"
             r"|barrier to entry|first mover|network effect|proprietary"
             r"|IP\b|patent|trademark|licens\w*|weak|similar|copycat"
-            r"|overlap\w*|commodit\w*|no moat|no clear moat)\b",
+            r"|overlap\w*|commodit\w*|no\s+(?:clear\s+)?moat)\b",
             re.IGNORECASE,
         ),
         "label": "Differentiation",
