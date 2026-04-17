@@ -164,6 +164,120 @@ _negative_signals_re = re.compile(
 )
 
 # ---------------------------------------------------------------------------
+# Smart validation helpers for reasoning preservation
+# ---------------------------------------------------------------------------
+# Detects real analytical signals that indicate the AI produced specific,
+# useful reasoning — not generic filler.  Used to decide whether to keep
+# AI-generated content vs. falling back.
+
+_real_signal_re = re.compile(
+    r"(?:"
+    # Market condition language
+    r"(?:saturat|fragment|open market|niche market|blue ocean|red ocean"
+    r"|market share|market size|TAM|SAM|SOM|addressable market)"
+    # Demand quality language
+    r"|(?:high demand|low demand|unproven demand|proven demand|validated demand"
+    r"|search volume|trend(?:ing)?|growing|declining|customer base)"
+    # Monetization / pricing / margins
+    r"|(?:margin|COGS|unit cost|retail price|wholesale|pricing|revenue"
+    r"|profit|CAC|LTV|AOV|subscription|monetiz|MRR|ARR)"
+    # Retention / churn
+    r"|(?:churn|retention|repeat purchase|customer lifetime)"
+    # Legal / IP / licensing
+    r"|(?:trademark|patent|licens|copyright|IP |intellectual property"
+    r"|regulat|FDA|FTC|compliance|cease.and.desist|authorized)"
+    # Differentiation / moat
+    r"|(?:moat|switching cost|differentiat|unique value|proprietary"
+    r"|barrier.to.entry|first.mover|network effect)"
+    # Quantitative clues (numbers, percentages, dollar values, timeframes)
+    r"|(?:\d+\s*%|\$\s*[\d,.]+|\d+[\d,]*\s*(?:unit|user|customer|subscriber)"
+    r"|\d+\s*(?:hour|day|week|month|year|minute))"
+    # Supply chain specifics
+    r"|(?:MOQ|minimum order|supplier|sourcing|Alibaba|manufacturer|landed cost"
+    r"|shipping cost|fulfillment|warehouse)"
+    r")",
+    re.IGNORECASE,
+)
+
+# Case-sensitive pattern for named entities (proper nouns, domain names).
+# Kept separate so IGNORECASE doesn't make it match common words like "good idea".
+_named_entity_re = re.compile(
+    # Multi-word proper nouns (e.g. "Tom Ford", "Louis Vuitton", "Flight Club")
+    r"[A-Z][a-z]+(?:\s[A-Z][a-z]+)+"
+    # Domain-style names (e.g. "Monday.com", "StockX.io")
+    r"|[A-Z][a-zA-Z]+\.(?:com|io|co|org|net)"
+)
+
+# Phrases that are clearly generic filler — only these warrant replacement.
+_clearly_generic_re = re.compile(
+    r"^\s*("
+    r"addresses a market need|addresses a real need|addresses an unmet need"
+    r"|feasible to build|technically feasible|can be built"
+    r"|shows potential|has potential|strong potential"
+    r"|worth exploring|could be promising|interesting concept"
+    r"|validate demand|do more research|research competitors"
+    r"|test the market|explore partnerships|gather feedback"
+    r"|conduct market research|seek feedback|get feedback"
+    r"|product addresses a market need"
+    r")\s*\.?\s*$",
+    re.IGNORECASE,
+)
+
+
+def has_real_signal(text: str) -> bool:
+    """Return True if the text contains at least one concrete analytical signal.
+
+    This is the primary guard against over-replacement: if the AI output
+    references real data (competitors, numbers, market conditions, margins,
+    legal constraints, etc.), it should be preserved.
+    """
+    if not text or not text.strip():
+        return False
+    # Check analytical-term signals (case-insensitive)
+    if _real_signal_re.search(text):
+        return True
+    # Check named entities (case-sensitive — proper nouns, domain names)
+    if _named_entity_re.search(text):
+        return True
+    return False
+
+
+def is_reason_generic(text: str) -> bool:
+    """Return True only if a reason is clearly generic filler with no real signal.
+
+    A reason is generic if:
+    - it matches a known filler pattern entirely, OR
+    - it is very short AND contains no quantitative or analytical signals.
+    """
+    if not text or not text.strip():
+        return True
+    stripped = text.strip()
+    # Entirely a known generic phrase
+    if _clearly_generic_re.match(stripped):
+        return True
+    # If the text has any real analytical signal, keep it
+    if has_real_signal(stripped):
+        return False
+    # Very short text with no signal is likely generic
+    if len(stripped) < MIN_SPECIFIC_REASON_LENGTH:
+        return True
+    return False
+
+
+def is_action_generic(text: str) -> bool:
+    """Return True only if a next-action is clearly generic filler.
+
+    Same logic as is_reason_generic — actions that reference specific
+    numbers, companies, or concrete steps are preserved.
+    """
+    return is_reason_generic(text)
+
+
+# Verdict-field names that should NOT be aggressively scrubbed by regex.
+_VERDICT_FIELDS = frozenset(["verdict_reasoning", "top_reasons", "next_actions"])
+
+
+# ---------------------------------------------------------------------------
 # Lightweight brand/product spelling corrections
 # Keys are lowercase misspellings; values are the canonical form.
 # ---------------------------------------------------------------------------
@@ -1191,15 +1305,17 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         re.IGNORECASE,
     )
 
-    def _final_scrub(value):
+    def _final_scrub(value, field_name=""):
+        """Strip vague/marketing filler — but preserve verdict fields that
+        contain real analytical signals."""
         if isinstance(value, str):
             cleaned = value
             # Remove "Likely" / "Likely:" prefixes
             cleaned = _likely_re.sub("", cleaned)
-            # Remove banned vague phrases
-            cleaned = _final_banned_re.sub("", cleaned)
-            # Remove marketing filler adjectives
-            cleaned = _marketing_re.sub("", cleaned)
+            # Only apply aggressive regex to non-verdict fields
+            if field_name not in _VERDICT_FIELDS:
+                cleaned = _final_banned_re.sub("", cleaned)
+                cleaned = _marketing_re.sub("", cleaned)
             # Collapse whitespace
             while "  " in cleaned:
                 cleaned = cleaned.replace("  ", " ")
@@ -1208,12 +1324,12 @@ def enforce_no_empty_fields(data: dict, idea: str = "") -> dict:
         if isinstance(value, list):
             result = []
             for v in value:
-                scrubbed = _final_scrub(v)
+                scrubbed = _final_scrub(v, field_name)
                 if scrubbed:
                     result.append(scrubbed)
             return result if result else ["General-purpose product benefit"]
         if isinstance(value, dict):
-            return {k: _final_scrub(v) for k, v in value.items()}
+            return {k: _final_scrub(v, k) for k, v in value.items()}
         return value
 
     data = _final_scrub(data)
@@ -1653,12 +1769,21 @@ long_description HTML structure:
             )
 
             def _scrub(value, field_name=""):
-                """Recursively clean banned phrases, 'Likely' prefixes, and marketing filler."""
+                """Recursively clean banned phrases, 'Likely' prefixes, and marketing filler.
+
+                Verdict fields (verdict_reasoning, top_reasons, next_actions) are
+                only lightly cleaned — 'Likely' prefix removal only — to preserve
+                AI-generated analytical reasoning.  Aggressive regex replacement is
+                reserved for non-verdict fields (descriptions, summaries, etc.).
+                """
                 if isinstance(value, str):
                     cleaned = value
+                    # Always remove "Likely" prefixes
                     cleaned = _likely_re.sub("", cleaned)
-                    cleaned = _banned_re.sub("", cleaned)
-                    cleaned = _marketing_re.sub("", cleaned)
+                    # Only apply aggressive banned/marketing regex to non-verdict fields
+                    if field_name not in _VERDICT_FIELDS:
+                        cleaned = _banned_re.sub("", cleaned)
+                        cleaned = _marketing_re.sub("", cleaned)
                     while "  " in cleaned:
                         cleaned = cleaned.replace("  ", " ")
                     cleaned = cleaned.strip()
@@ -1733,16 +1858,23 @@ long_description HTML structure:
             raw_verdict = str(output.get("verdict", "DON'T BUILD")).strip().upper()
             output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
-            # Ensure verdict section always has content (fallbacks — ruthless defaults)
-            if not output.get("verdict_reasoning"):
+            # Ensure verdict section always has content — fallback ONLY when
+            # the field is truly empty or entirely generic filler.
+            # Preserve AI-generated reasoning that contains real signal.
+            vr = output.get("verdict_reasoning", "")
+            if not vr or not vr.strip() or is_reason_generic(vr):
                 output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
-            if not output.get("top_reasons"):
+            if not output.get("top_reasons") or all(
+                is_reason_generic(r) for r in output["top_reasons"] if isinstance(r, str)
+            ):
                 output["top_reasons"] = [
                     "No verifiable demand signals or market data available",
                     "Competitive landscape unclear — risk of entering a saturated space",
                     "Unit economics and margin potential cannot be assessed",
                 ]
-            if not output.get("next_actions"):
+            if not output.get("next_actions") or all(
+                is_action_generic(a) for a in output["next_actions"] if isinstance(a, str)
+            ):
                 output["next_actions"] = [
                     "Define the exact target customer and validate demand with 30+ survey responses",
                     "Identify the top 3 direct competitors and document how this product is concretely different",
@@ -1760,62 +1892,62 @@ long_description HTML structure:
                 if _negative_signals_re.search(combined_text):
                     output["verdict"] = "DON'T BUILD"
 
-            # --- Post-processing: strip generic phrases from top_reasons
-            # and next_actions ---
-            # If the AI still produced generic outputs despite prompt rules,
-            # scrub them out and replace with context-aware fallbacks.
-            _generic_action_re = re.compile(
-                r"^(validate demand|validate the market|validate the idea"
-                r"|do more research|research competitors|research the market"
-                r"|test the market|test your idea|test the concept"
-                r"|explore partnerships|conduct market research"
-                r"|gather feedback|seek feedback|get feedback"
-                r"|build an? mvp|create an? mvp"
-                r"|addresses a market need|addresses a real need|addresses an unmet need"
-                r"|feasible to build|technically feasible|can be built"
-                r"|shows potential|has potential|strong potential"
-                r"|product addresses a market need)\.?$",
-                re.IGNORECASE,
-            )
-
-            # Regex to detect generic filler phrases anywhere in a reason
-            _generic_filler_re = re.compile(
-                r"\b(addresses a market need|addresses a real need|addresses an unmet need"
-                r"|product addresses a market need"
-                r"|feasible to build|technically feasible|can be built"
-                r"|shows potential|has potential|strong potential)\b",
-                re.IGNORECASE,
-            )
-
-            def _is_generic(text: str) -> bool:
-                """Check if a reason/action is too generic (matches a known
-                vague pattern or contains banned filler phrases)."""
-                stripped = text.strip().rstrip(".")
-                if _generic_action_re.match(stripped):
-                    return True
-                # Flag entries that contain generic filler phrases even if longer
-                if _generic_filler_re.search(stripped):
-                    return True
-                # Also flag very short entries that lack specifics
-                if len(stripped) < MIN_SPECIFIC_REASON_LENGTH and not any(
-                    c.isdigit() for c in stripped
-                ):
-                    return True
-                return False
-
-            # Scrub generic entries from top_reasons
-            cleaned_reasons = [
-                r for r in output.get("top_reasons", [])
-                if isinstance(r, str) and not _is_generic(r)
+            # --- Post-processing: selective validation of top_reasons
+            # and next_actions using smart validators ---
+            # Only replace items that are clearly generic filler.
+            # Preserve any reason/action that contains real analytical signal.
+            _fallback_reasons = [
+                "No verifiable demand signals or market data available",
+                "Competitive landscape unclear — risk of entering a saturated space",
+                "Unit economics and margin potential cannot be assessed",
             ]
-            output["top_reasons"] = cleaned_reasons[:3] if cleaned_reasons else output["top_reasons"]
-
-            # Scrub generic entries from next_actions
-            cleaned_actions = [
-                a for a in output.get("next_actions", [])
-                if isinstance(a, str) and not _is_generic(a)
+            _fallback_actions = [
+                "Define the exact target customer and validate demand with 30+ survey responses",
+                "Identify the top 3 direct competitors and document how this product is concretely different",
+                "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
             ]
-            output["next_actions"] = cleaned_actions[:3] if cleaned_actions else output["next_actions"]
+
+            # Validate each top_reason individually — keep strong, replace weak
+            raw_reasons = output.get("top_reasons", [])
+            validated_reasons = []
+            fallback_idx = 0
+            for r in raw_reasons:
+                if isinstance(r, str) and not is_reason_generic(r):
+                    validated_reasons.append(r)
+                else:
+                    # Replace only this one weak reason with a fallback
+                    if fallback_idx < len(_fallback_reasons):
+                        validated_reasons.append(_fallback_reasons[fallback_idx])
+                        fallback_idx += 1
+            # Pad to 3 if some were dropped
+            while len(validated_reasons) < 3 and fallback_idx < len(_fallback_reasons):
+                validated_reasons.append(_fallback_reasons[fallback_idx])
+                fallback_idx += 1
+            output["top_reasons"] = validated_reasons[:3]
+
+            # Validate each next_action individually — keep strong, replace weak
+            raw_actions = output.get("next_actions", [])
+            validated_actions = []
+            fallback_idx = 0
+            for a in raw_actions:
+                if isinstance(a, str) and not is_action_generic(a):
+                    validated_actions.append(a)
+                else:
+                    if fallback_idx < len(_fallback_actions):
+                        validated_actions.append(_fallback_actions[fallback_idx])
+                        fallback_idx += 1
+            while len(validated_actions) < 3 and fallback_idx < len(_fallback_actions):
+                validated_actions.append(_fallback_actions[fallback_idx])
+                fallback_idx += 1
+            output["next_actions"] = validated_actions[:3]
+
+            # --- Post-processing: enforce verdict consistency AFTER validation ---
+            # Re-check verdict alignment now that reasons are finalized.
+            if output["verdict"] == "BUILD":
+                final_reasoning = output.get("verdict_reasoning", "")
+                final_reasons = " ".join(output.get("top_reasons", []))
+                if _negative_signals_re.search(f"{final_reasoning} {final_reasons}"):
+                    output["verdict"] = "DON'T BUILD"
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
