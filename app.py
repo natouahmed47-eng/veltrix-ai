@@ -153,12 +153,12 @@ MIN_SPECIFIC_REASON_LENGTH = 25
 # Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
 _negative_signals_re = re.compile(
     r"\b(no demand|no market|insufficient|cannot|unfeasible|infeasible"
-    r"|unclear market|lack of|not viable|no viable|not feasible"
-    r"|no evidence|no verifiable|oversaturated|saturated market"
+    r"|unclear|lack of|not viable|no viable|not feasible"
+    r"|no evidence|no verifiable|oversaturated|saturated"
     r"|no competitive|no differentiation|no moat|no clear"
     r"|no proven|weak demand|low demand|no search volume"
     r"|no social proof|no traction|high risk|too risky"
-    r"|does not justify|does not meet|not recommended"
+    r"|high competition|does not justify|does not meet|not recommended"
     r"|no realistic|no sustainable|negative margin|no margin)\b",
     re.IGNORECASE,
 )
