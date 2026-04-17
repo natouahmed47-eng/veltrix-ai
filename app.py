@@ -146,6 +146,9 @@ CATEGORY_SPECIFIC_FIELDS = [
 # Supported product categories
 SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home", "general"]
 
+# Minimum character length for a reason/action to be considered specific (not generic).
+MIN_SPECIFIC_REASON_LENGTH = 25
+
 # Pre-compiled regex for detecting negative signals in verdict reasoning/top_reasons.
 # Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
 _negative_signals_re = re.compile(
@@ -1371,13 +1374,80 @@ STRICT RULES:
    - If top_reasons contain negative facts (no demand, saturated market, weak margins), the verdict MUST be DON'T BUILD.
    - A BUILD verdict requires ALL of: proven demand, viable margins, and a defensible market position.
 
+11) CONTEXT-AWARE REASONING — CRITICAL:
+   Your top_reasons and next_actions MUST be specific to the exact scenario described in the input.
+   Generic advice is NOT allowed. Every reason and action must directly reference the specific
+   product, brand, market, or constraint relevant to THIS idea — not boilerplate startup advice.
+
+12) SCENARIO DETECTION — CRITICAL:
+   You MUST identify the type of idea and tailor your reasoning and actions accordingly:
+
+   a) KNOWN BRAND (Nike, Dior, Apple, Louis Vuitton, Chanel, Gucci, etc.):
+      → Your reasoning MUST address: licensing requirements, legal restrictions,
+        trademark/IP ownership, brand-controlled distribution, authorized reseller
+        barriers, and cease-and-desist risk. These are the PRIMARY constraints.
+      → next_actions MUST include steps like "Contact [Brand] wholesale division
+        for authorized reseller application" or "Consult an IP attorney about
+        trademark licensing in your jurisdiction — budget $500-1,500".
+
+   b) SATURATED MARKET (food delivery, social media, generic t-shirts, dropshipping, etc.):
+      → Your reasoning MUST address: competition density with named incumbents
+        and their market share, specific differentiation gaps (or lack thereof),
+        customer acquisition costs in that vertical, and switching costs.
+      → next_actions MUST include concrete differentiation steps with measurable
+        targets, not "research competitors".
+
+   c) SaaS / SOFTWARE IDEA:
+      → Your reasoning MUST address: customer acquisition cost (CAC) estimates,
+        expected churn rate for the vertical, retention benchmarks, distribution
+        channel viability, and build-vs-buy alternatives already on the market.
+      → next_actions MUST include steps like "Build an MVP landing page and run
+        $200 in Google Ads targeting [specific keyword] to measure signup rate"
+        or "Interview 15 [specific role] at [company size] to confirm willingness
+        to pay $X/month".
+
+   d) PHYSICAL PRODUCT:
+      → Your reasoning MUST address: sourcing complexity, landed cost per unit,
+        logistics and fulfillment costs, margin analysis at realistic retail
+        price points, supply chain risks, and MOQ (minimum order quantity)
+        requirements from manufacturers.
+      → next_actions MUST include steps like "Request quotes from 3 manufacturers
+        on Alibaba for MOQ of 500 units — target unit cost under $X" or "Calculate
+        total landed cost including shipping, duties, and packaging".
+
+   e) REGULATED INDUSTRY (health, finance, cannabis, alcohol, firearms, etc.):
+      → Your reasoning MUST address: regulatory compliance requirements, licensing
+        costs and timelines, legal barriers to entry, and liability exposure.
+
+   If the idea spans multiple types, address ALL relevant constraints.
+
+13) BANNED GENERIC OUTPUTS — CRITICAL:
+   The following phrases are FORBIDDEN in top_reasons and next_actions:
+   - "Validate demand" / "Validate the market" / "Validate the idea"
+   - "Do more research" / "Research competitors" / "Research the market"
+   - "Test the market" / "Test your idea" / "Test the concept"
+   - "Build an MVP" (without specific scope, timeline, and budget)
+   - "Talk to potential customers" (without specifying how many, which segment, and what to ask)
+   - "Explore partnerships" (without naming specific partner types or companies)
+
+   Every output MUST instead include:
+   - Specific numbers (dollar amounts, percentages, unit counts, timeframes)
+   - Concrete actions that can be executed immediately
+   - Real constraints tied to THIS specific idea
+
+   EXAMPLES OF REQUIRED TRANSFORMATION:
+   ❌ "Validate demand" → ✅ "Survey 30+ sneaker collectors in the $150-300 price range and confirm at least 40% would purchase within 30 days"
+   ❌ "Research competitors" → ✅ "Map the top 5 competitors (StockX, GOAT, Flight Club, Stadium Goods, eBay) — document their fees, seller experience, and gaps in authentication"
+   ❌ "Test the market" → ✅ "Run a $100 Instagram ad campaign targeting 18-34 streetwear enthusiasts in 3 metro areas — measure click-through rate against 2% benchmark"
+   ❌ "Explore partnerships" → ✅ "Contact 5 independent sneaker boutiques in your metro area and propose a consignment pilot — 30-day trial, 15% commission"
+
 ---
 VERDICT (required):
 - verdict: exactly "BUILD" or "DON'T BUILD" — your clear recommendation on whether to pursue, stock, or invest in this product. Default to DON'T BUILD unless there is compelling evidence otherwise.
 - verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be brutally direct — reference specific market data, named competitors, demand signals, margin potential, or concrete product weaknesses. NEVER use phrases like "shows potential" or "worth exploring".
 - confidence: integer 60-97 representing how confident you are in this verdict (based on data richness and market clarity)
-- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. Each reason must reference specific facts: market size, competitor names, pricing data, demand trends, or supply chain realities. (e.g. "Fragrance market saturated — top 10 brands control 72% of shelf space", "Unit cost ~$8 with $25-35 retail price gives healthy 65%+ margins", "No search volume or social proof for this product concept"). These must read like an investor's bullet points, not marketing copy.
-- next_actions: array of exactly 3 concrete, actionable next steps the user should take based on this verdict. Each action must be specific and immediately doable (e.g. "Source 3 suppliers from Alibaba and request samples — budget $200", "Run a $50 Facebook ad test targeting 25-34 year old women in the US", "Register your brand name on USPTO and secure the .com domain for ~$12"). Do NOT use vague advice like "do more research" or "validate the market".
+- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. Each reason MUST reference constraints, facts, or risks specific to THIS exact idea. Reference specific facts: market size, competitor names, pricing data, demand trends, legal barriers, licensing issues, or supply chain realities. For known brands, ALWAYS mention IP/licensing/trademark constraints. For saturated markets, ALWAYS name incumbent competitors and their market share. (e.g. "Dior controls its entire distribution chain — unauthorized resellers face legal action and zero wholesale access", "Fragrance market saturated — top 10 brands control 72% of shelf space", "Unit cost ~$8 with $25-35 retail price gives healthy 65%+ margins"). These must read like an investor's bullet points, not marketing copy. NEVER output generic reasons like "validate demand" or "research competitors".
+- next_actions: array of exactly 3 concrete, tactical next steps the user should execute based on this verdict. Each action MUST be: (1) executable immediately without further research, (2) include specific numbers, dollar amounts, or measurable targets, (3) directly address the specific constraints identified in top_reasons. For known brands: include legal/licensing steps with cost estimates. For physical products: include sourcing steps with MOQ and unit cost targets. For SaaS: include CAC testing steps with ad budget amounts. (e.g. "Contact Dior's authorized wholesale division and apply for reseller status — expect $50K minimum buy-in and brand compliance audit", "Source 3 suppliers from Alibaba for MOQ of 500 units — target unit cost under $8 to maintain 60%+ margins at $22 retail", "Run a $150 Google Ads campaign targeting 'project management for agencies' — measure cost-per-signup against $25 CAC target"). FORBIDDEN: "validate demand", "do more research", "test the market", "explore partnerships" without specifics.
 
 ---
 UNIVERSAL FIELDS (always required):
@@ -1431,6 +1501,12 @@ long_description HTML structure:
                             "Be critical, not optimistic. Be specific, not generic. Be decisive, not hedging. "
                             "Every response MUST include a verdict (BUILD or DON'T BUILD), verdict_reasoning, confidence score, top_reasons, and next_actions. "
                             "CRITICAL RULE: If your reasoning is negative, your verdict MUST be DON'T BUILD. Never return BUILD with negative signals. No hedging. No mixed signals. Verdict must strictly align with reasoning. "
+                            "CONTEXT-AWARE REASONING RULE: Your top_reasons and next_actions MUST be specific to the exact scenario. "
+                            "Generic advice like 'validate demand', 'research competitors', 'test the market', or 'do more research' is FORBIDDEN. "
+                            "You MUST detect the idea type (known brand → licensing/legal/IP issues; saturated market → named incumbents/market share; "
+                            "SaaS → CAC/churn/retention; physical product → sourcing/MOQ/landed cost; regulated industry → compliance/licensing costs) "
+                            "and tailor ALL reasoning and actions to the specific constraints of THAT scenario. "
+                            "Every next_action must be immediately executable with specific numbers, dollar amounts, targets, or measurable outcomes. "
                             "NEVER use safe language: no 'shows potential', 'worth exploring', 'could be promising', 'interesting concept'. "
                             "NEVER use marketing filler: no 'luxurious', 'elegant', 'sophisticated', 'innovative', 'game-changing'. "
                             "NEVER use vague hedging: no 'Likely', 'based on context', 'not specified', 'depends on execution'. "
@@ -1441,6 +1517,8 @@ long_description HTML structure:
                             "Only auto-correct when the match is reasonably obvious; if unsure, state the uncertainty. "
                             "IMPORTANT: If the product belongs to a well-known brand, always classify it into the correct domain "
                             "(fashion, electronics, beauty, home, fragrance). Never default to 'general' when the brand clearly belongs to a specific category. "
+                            "For known brands, ALWAYS address licensing, trademark, and authorized distribution as primary constraints — "
+                            "these are the REAL barriers, not generic market advice. "
                             "You return clean, valid JSON only — no markdown, no code fences, no extra text."
                         ),
                     },
@@ -1656,6 +1734,47 @@ long_description HTML structure:
                 combined_text = f"{reasoning_text} {reasons_text}"
                 if _negative_signals_re.search(combined_text):
                     output["verdict"] = "DON'T BUILD"
+
+            # --- Post-processing: strip generic phrases from top_reasons
+            # and next_actions ---
+            # If the AI still produced generic outputs despite prompt rules,
+            # scrub them out and replace with context-aware fallbacks.
+            _generic_action_re = re.compile(
+                r"^(validate demand|validate the market|validate the idea"
+                r"|do more research|research competitors|research the market"
+                r"|test the market|test your idea|test the concept"
+                r"|explore partnerships|conduct market research"
+                r"|gather feedback|seek feedback|get feedback"
+                r"|build an? mvp|create an? mvp)\.?$",
+                re.IGNORECASE,
+            )
+
+            def _is_generic(text: str) -> bool:
+                """Check if a reason/action is too generic (under 40 chars
+                and matches a known vague pattern)."""
+                stripped = text.strip().rstrip(".")
+                if _generic_action_re.match(stripped):
+                    return True
+                # Also flag very short entries that lack specifics
+                if len(stripped) < MIN_SPECIFIC_REASON_LENGTH and not any(
+                    c.isdigit() for c in stripped
+                ):
+                    return True
+                return False
+
+            # Scrub generic entries from top_reasons
+            cleaned_reasons = [
+                r for r in output.get("top_reasons", [])
+                if isinstance(r, str) and not _is_generic(r)
+            ]
+            output["top_reasons"] = cleaned_reasons[:3] if cleaned_reasons else output["top_reasons"]
+
+            # Scrub generic entries from next_actions
+            cleaned_actions = [
+                a for a in output.get("next_actions", [])
+                if isinstance(a, str) and not _is_generic(a)
+            ]
+            output["next_actions"] = cleaned_actions[:3] if cleaned_actions else output["next_actions"]
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
