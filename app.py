@@ -210,7 +210,7 @@ _named_entity_re = re.compile(
 
 # Phrases that are clearly generic filler — only these warrant replacement.
 _clearly_generic_re = re.compile(
-    r"^\s*("
+    r"^\s{0,5}("
     r"addresses a market need|addresses a real need|addresses an unmet need"
     r"|feasible to build|technically feasible|can be built"
     r"|shows potential|has potential|strong potential"
@@ -219,7 +219,7 @@ _clearly_generic_re = re.compile(
     r"|test the market|explore partnerships|gather feedback"
     r"|conduct market research|seek feedback|get feedback"
     r"|product addresses a market need"
-    r")\s*\.?\s*$",
+    r")\.?\s{0,5}$",
     re.IGNORECASE,
 )
 
@@ -1864,17 +1864,15 @@ long_description HTML structure:
             vr = output.get("verdict_reasoning", "")
             if not vr or not vr.strip() or is_reason_generic(vr):
                 output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
-            if not output.get("top_reasons") or all(
-                is_reason_generic(r) for r in output["top_reasons"] if isinstance(r, str)
-            ):
+            str_reasons = [r for r in output.get("top_reasons", []) if isinstance(r, str) and r.strip()]
+            if not str_reasons or all(is_reason_generic(r) for r in str_reasons):
                 output["top_reasons"] = [
                     "No verifiable demand signals or market data available",
                     "Competitive landscape unclear — risk of entering a saturated space",
                     "Unit economics and margin potential cannot be assessed",
                 ]
-            if not output.get("next_actions") or all(
-                is_action_generic(a) for a in output["next_actions"] if isinstance(a, str)
-            ):
+            str_actions = [a for a in output.get("next_actions", []) if isinstance(a, str) and a.strip()]
+            if not str_actions or all(is_action_generic(a) for a in str_actions):
                 output["next_actions"] = [
                     "Define the exact target customer and validate demand with 30+ survey responses",
                     "Identify the top 3 direct competitors and document how this product is concretely different",
