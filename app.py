@@ -273,6 +273,113 @@ def is_action_generic(text: str) -> bool:
     return is_reason_generic(text)
 
 
+# ---------------------------------------------------------------------------
+# Derive top_reasons from analysis text (heuristic extraction)
+# ---------------------------------------------------------------------------
+# Category keyword maps — each maps a reason "dimension" to trigger keywords
+# and a sentence-building template.
+_REASON_CATEGORIES = {
+    "demand": {
+        "keywords": re.compile(
+            r"\b(demand|adoption|ROI|churn|users|growth|search volume|trend"
+            r"|customer base|retention|repeat purchase|subscriber|traction"
+            r"|validated demand|proven demand|unproven demand)\b",
+            re.IGNORECASE,
+        ),
+        "label": "Demand",
+    },
+    "competition": {
+        "keywords": re.compile(
+            r"\b(competitor|competitors|competes|compete|competing"
+            r"|saturated|market share|incumbent"
+            r"|incumbents|CAC|customer acquisition|fragmented|red ocean"
+            r"|blue ocean|market leader|dominant|dominate)\b",
+            re.IGNORECASE,
+        ),
+        "label": "Competition",
+    },
+    "monetization": {
+        "keywords": re.compile(
+            r"\b(pricing|margin|cost|revenue|CAC|LTV|COGS|unit cost"
+            r"|retail price|wholesale|profit|MRR|ARR|monetiz"
+            r"|subscription|AOV)\b",
+            re.IGNORECASE,
+        ),
+        "label": "Monetization",
+    },
+    "differentiation": {
+        "keywords": re.compile(
+            r"\b(differentiat|moat|unique|switching cost|barrier to entry"
+            r"|first mover|network effect|proprietary|IP\b|patent"
+            r"|trademark|licens)\b",
+            re.IGNORECASE,
+        ),
+        "label": "Differentiation",
+    },
+}
+
+
+def derive_top_reasons_from_text(text: str) -> list[str]:
+    """Extract up to 3 specific reasons from analysis text using heuristic rules.
+
+    Scans *text* (typically verdict_reasoning + long analysis sections) for
+    keyword signals in four categories: demand, competition, monetization,
+    differentiation.  For each matched category, it picks the most
+    signal-dense sentence and condenses it into a punchy reason.
+
+    Returns a list of up to 3 derived reasons (may be fewer if the text
+    only touches fewer categories).
+    """
+    if not text or not text.strip():
+        return []
+
+    # Split into sentences (roughly)
+    sentences = re.split(r"(?<=[.!?])\s+|\n+", text)
+    sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) >= 12]
+
+    derived: list[str] = []
+    used_categories: set[str] = set()
+
+    # Score each sentence by category and pick the best sentence per category
+    category_best: dict[str, tuple[str, int]] = {}
+    for sent in sentences:
+        for cat_key, cat_info in _REASON_CATEGORIES.items():
+            matches = cat_info["keywords"].findall(sent)
+            if matches:
+                score = len(matches)
+                if cat_key not in category_best or score > category_best[cat_key][1]:
+                    category_best[cat_key] = (sent, score)
+
+    # Build reasons from best-matching sentences, ordered by score
+    ranked = sorted(category_best.items(), key=lambda x: x[1][1], reverse=True)
+    for cat_key, (best_sent, _score) in ranked:
+        if len(derived) >= 3:
+            break
+        if cat_key in used_categories:
+            continue
+        used_categories.add(cat_key)
+        # Trim the sentence to a reasonable length for a "reason" line
+        reason = best_sent.strip()
+        # Remove leading bullet markers if present
+        reason = re.sub(r"^[-•–]\s*", "", reason)
+        # Remove HTML tags if present
+        reason = re.sub(r"<[^>]+>", "", reason)
+        # Cap length — keep the first natural clause if very long
+        if len(reason) > 180:
+            # Try to break at a clause boundary (comma, semicolon, dash)
+            for sep in [" — ", " – ", "; ", ", "]:
+                idx = reason.find(sep, 60)
+                if 60 < idx < 160:
+                    reason = reason[:idx]
+                    break
+            else:
+                reason = reason[:175].rsplit(" ", 1)[0] + "…"
+        if reason and len(reason) >= MIN_SPECIFIC_REASON_LENGTH:
+            derived.append(reason)
+
+    return derived
+
+
 # Verdict-field names that should NOT be aggressively scrubbed by regex.
 _VERDICT_FIELDS = frozenset(["verdict_reasoning", "top_reasons", "next_actions"])
 
@@ -1866,11 +1973,24 @@ long_description HTML structure:
                 output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
             str_reasons = [r for r in output.get("top_reasons", []) if isinstance(r, str) and r.strip()]
             if not str_reasons or all(is_reason_generic(r) for r in str_reasons):
-                output["top_reasons"] = [
-                    "No verifiable demand signals or market data available",
-                    "Competitive landscape unclear — risk of entering a saturated space",
-                    "Unit economics and margin potential cannot be assessed",
-                ]
+                # Attempt to derive reasons from the actual analysis text
+                # before falling back to generic placeholders.
+                analysis_text = " ".join(filter(None, [
+                    output.get("verdict_reasoning", ""),
+                    output.get("technical_analysis", ""),
+                    output.get("long_description", ""),
+                    output.get("short_summary", ""),
+                ]))
+                derived = derive_top_reasons_from_text(analysis_text)
+                if derived:
+                    output["top_reasons"] = derived
+                else:
+                    # Only use fallback when reasoning and analysis are empty
+                    output["top_reasons"] = [
+                        "No verifiable demand signals or market data available",
+                        "Competitive landscape unclear — risk of entering a saturated space",
+                        "Unit economics and margin potential cannot be assessed",
+                    ]
             str_actions = [a for a in output.get("next_actions", []) if isinstance(a, str) and a.strip()]
             if not str_actions or all(is_action_generic(a) for a in str_actions):
                 output["next_actions"] = [
@@ -1894,6 +2014,7 @@ long_description HTML structure:
             # and next_actions using smart validators ---
             # Only replace items that are clearly generic filler.
             # Preserve any reason/action that contains real analytical signal.
+            # For generic reasons, attempt to derive from analysis before falling back.
             _fallback_reasons = [
                 "No verifiable demand signals or market data available",
                 "Competitive landscape unclear — risk of entering a saturated space",
@@ -1905,22 +2026,41 @@ long_description HTML structure:
                 "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
             ]
 
-            # Validate each top_reason individually — keep strong, replace weak
+            # Build the analysis text pool once for derivation
+            _analysis_pool = " ".join(filter(None, [
+                output.get("verdict_reasoning", ""),
+                output.get("technical_analysis", ""),
+                output.get("long_description", ""),
+                output.get("short_summary", ""),
+            ]))
+            _derived_reasons_pool = derive_top_reasons_from_text(_analysis_pool) if _analysis_pool.strip() else []
+
+            # Validate each top_reason individually — keep strong, derive or replace weak
             raw_reasons = output.get("top_reasons", [])
             validated_reasons = []
+            derived_idx = 0
             fallback_idx = 0
             for r in raw_reasons:
                 if isinstance(r, str) and not is_reason_generic(r):
                     validated_reasons.append(r)
                 else:
-                    # Replace only this one weak reason with a fallback
-                    if fallback_idx < len(_fallback_reasons):
+                    # Try to use a derived reason from analysis first
+                    if derived_idx < len(_derived_reasons_pool):
+                        validated_reasons.append(_derived_reasons_pool[derived_idx])
+                        derived_idx += 1
+                    elif fallback_idx < len(_fallback_reasons):
                         validated_reasons.append(_fallback_reasons[fallback_idx])
                         fallback_idx += 1
             # Pad to 3 if some were dropped
-            while len(validated_reasons) < 3 and fallback_idx < len(_fallback_reasons):
-                validated_reasons.append(_fallback_reasons[fallback_idx])
-                fallback_idx += 1
+            while len(validated_reasons) < 3:
+                if derived_idx < len(_derived_reasons_pool):
+                    validated_reasons.append(_derived_reasons_pool[derived_idx])
+                    derived_idx += 1
+                elif fallback_idx < len(_fallback_reasons):
+                    validated_reasons.append(_fallback_reasons[fallback_idx])
+                    fallback_idx += 1
+                else:
+                    break
             output["top_reasons"] = validated_reasons[:3]
 
             # Validate each next_action individually — keep strong, replace weak
