@@ -1347,6 +1347,8 @@ VERDICT (required):
 - verdict: exactly "BUILD" or "DON'T BUILD" — your clear recommendation on whether to pursue, stock, or invest in this product
 - verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be direct and specific — reference market data, competition, demand signals, or product weaknesses.
 - confidence: integer 60-97 representing how confident you are in this verdict (based on data richness and market clarity)
+- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. Each reason should be specific and data-backed (e.g. "High demand in growing $2B market segment", "Strong differentiation from 4 major competitors", "Low barrier to entry with proven supply chain"). These must read like decisive bullet points, not descriptions.
+- next_actions: array of exactly 3 concrete, actionable next steps the user should take based on this verdict. Each action must be specific and immediately doable (e.g. "Source 3 suppliers and request samples within 2 weeks", "Run a $50 Facebook ad test targeting 25-34 year old women", "Register your brand name and secure the .com domain"). Do NOT use vague advice like "do more research".
 
 ---
 UNIVERSAL FIELDS (always required):
@@ -1443,6 +1445,8 @@ long_description HTML structure:
                 "verdict": "BUILD",
                 "verdict_reasoning": "",
                 "confidence": 70,
+                "top_reasons": [],
+                "next_actions": [],
                 "key_benefits": [],
                 "selling_points": [],
                 "target_audience": "",
@@ -1560,6 +1564,8 @@ long_description HTML structure:
                 "verdict": data.get("verdict", "BUILD"),
                 "verdict_reasoning": data.get("verdict_reasoning", ""),
                 "confidence": min(max(int(data.get("confidence", 80)), 60), 97),
+                "top_reasons": data.get("top_reasons", [])[:3],
+                "next_actions": data.get("next_actions", [])[:3],
                 "short_summary": data.get("short_summary", ""),
                 "technical_analysis": data.get("technical_analysis", ""),
                 "target_audience": data.get("target_audience", ""),
@@ -1661,6 +1667,8 @@ long_description HTML structure:
         "verdict": "BUILD",
         "verdict_reasoning": "",
         "confidence": 70,
+        "top_reasons": [],
+        "next_actions": [],
         "short_summary": "",
         "technical_analysis": "",
         "target_audience": "",
