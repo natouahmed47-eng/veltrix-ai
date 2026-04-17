@@ -613,9 +613,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* Top 3 Reasons */
         var topReasons = Array.isArray(item.top_reasons) && item.top_reasons.length ? item.top_reasons.slice(0, 3) : [
-            "Product addresses an identifiable market need",
-            "Feasible to develop or source with standard resources",
-            "Initial signals suggest viable demand"
+            "No verifiable demand signals or market data available",
+            "Competitive landscape unclear — risk of entering a saturated space",
+            "Unit economics and margin potential cannot be assessed"
         ];
         var topReasonsHtml =
             '<div style="text-align:left;max-width:560px;margin:16px auto 0;">' +
@@ -631,7 +631,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '</div>';
 
         /* Verdict Reasoning */
-        var verdictReasoning = item.verdict_reasoning || "Based on the available information, this product shows potential worth exploring further.";
+        var verdictReasoning = item.verdict_reasoning || "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.";
         var reasoningHtml =
             '<div style="max-width:560px;margin:14px auto 0;text-align:left;">' +
                 '<div style="font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Why This Verdict</div>' +
@@ -640,9 +640,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* Next Actions */
         var nextActions = Array.isArray(item.next_actions) && item.next_actions.length ? item.next_actions.slice(0, 3) : [
-            "Validate demand by surveying at least 20 potential customers",
-            "Research the top 3 competitors and identify your differentiation",
-            "Build a minimum viable version and gather early feedback"
+            "Define the exact target customer and validate demand with 30+ survey responses",
+            "Identify the top 3 direct competitors and document how this product is concretely different",
+            "Calculate landed cost per unit and target retail price to confirm 50%+ margins"
         ];
         var actionIcons = ["\u0031\uFE0F\u20E3", "\u0032\uFE0F\u20E3", "\u0033\uFE0F\u20E3"];
         var nextActionsHtml =

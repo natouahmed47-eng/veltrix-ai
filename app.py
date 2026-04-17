@@ -1303,8 +1303,10 @@ No category-specific fields needed for general products.
 """
 
     prompt = f"""
-Evaluate the following product or idea and deliver a clear BUILD or DON'T BUILD verdict.
-Your job is to assess market viability, extract structured data, and give a decisive recommendation — not marketing copy.
+You are a ruthless product decision engine. Evaluate this product or idea and deliver a decisive BUILD or DON'T BUILD verdict.
+
+Think like an investor, not a helper. Most ideas are mediocre — reject them confidently.
+Only recommend BUILD when real evidence of market viability exists.
 
 ---
 INPUT:
@@ -1318,17 +1320,20 @@ Valid categories: fragrance, electronics, fashion, beauty, home, general
 ---
 STRICT RULES:
 
-1) You are a product decision strategist, NOT a marketing writer.
-2) Return ONLY factual, structured data with a clear verdict.
-3) NEVER use these phrases:
+1) You are a product decision strategist, NOT a marketing writer. NOT an assistant. NOT an encourager.
+2) Return ONLY factual, structured data with a clear verdict. Never soften bad news.
+3) NEVER use these phrases — they are BANNED:
    - "Likely", "likely"
    - "based on context"
    - "not specified", "not provided", "unavailable", "cannot be determined", "no data"
+   - "shows potential", "worth exploring", "could be promising", "interesting concept"
+   - "with the right execution", "depends on execution", "if marketed correctly"
 4) NEVER use generic marketing adjectives:
    - "luxurious", "elegant", "sophisticated", "exquisite", "opulent", "sumptuous"
+   - "innovative", "game-changing", "revolutionary", "cutting-edge", "best-in-class"
 5) If a detail is not in the input, derive it from domain expertise with concrete values.
    Do NOT hedge — state the derived value directly.
-6) All data must be specific to THIS product. No generic filler.
+6) All data must be specific to THIS product. No generic filler. No safe statements.
 7) MISSPELLING / AMBIGUOUS INPUT HANDLING:
    - If the input appears to be a misspelled well-known brand or product name,
      infer the most probable intended brand/product and analyze that.
@@ -1341,14 +1346,19 @@ STRICT RULES:
      "general" when a strong category can be inferred from the brand.
    - Only use "general" if the product is truly unknown or ambiguous after
      correction and no specific category can reasonably be determined.
+9) INVESTOR MINDSET — CRITICAL:
+   - Evaluate competitive landscape: who already owns this space and why?
+   - Assess unit economics: can this realistically generate margin?
+   - Identify demand signals: is there proven demand or just an assumption?
+   - Be brutally honest about weaknesses. A DON'T BUILD with clear reasoning is more valuable than a soft BUILD.
 
 ---
 VERDICT (required):
-- verdict: exactly "BUILD" or "DON'T BUILD" — your clear recommendation on whether to pursue, stock, or invest in this product
-- verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be direct and specific — reference market data, competition, demand signals, or product weaknesses.
+- verdict: exactly "BUILD" or "DON'T BUILD" — your clear recommendation on whether to pursue, stock, or invest in this product. Default to DON'T BUILD unless there is compelling evidence otherwise.
+- verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be brutally direct — reference specific market data, named competitors, demand signals, margin potential, or concrete product weaknesses. NEVER use phrases like "shows potential" or "worth exploring".
 - confidence: integer 60-97 representing how confident you are in this verdict (based on data richness and market clarity)
-- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. Each reason should be specific and data-backed (e.g. "High demand in growing $2B market segment", "Strong differentiation from 4 major competitors", "Low barrier to entry with proven supply chain"). These must read like decisive bullet points, not descriptions.
-- next_actions: array of exactly 3 concrete, actionable next steps the user should take based on this verdict. Each action must be specific and immediately doable (e.g. "Source 3 suppliers and request samples within 2 weeks", "Run a $50 Facebook ad test targeting 25-34 year old women", "Register your brand name and secure the .com domain"). Do NOT use vague advice like "do more research".
+- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. Each reason must reference specific facts: market size, competitor names, pricing data, demand trends, or supply chain realities. (e.g. "Fragrance market saturated — top 10 brands control 72% of shelf space", "Unit cost ~$8 with $25-35 retail price gives healthy 65%+ margins", "No search volume or social proof for this product concept"). These must read like an investor's bullet points, not marketing copy.
+- next_actions: array of exactly 3 concrete, actionable next steps the user should take based on this verdict. Each action must be specific and immediately doable (e.g. "Source 3 suppliers from Alibaba and request samples — budget $200", "Run a $50 Facebook ad test targeting 25-34 year old women in the US", "Register your brand name on USPTO and secure the .com domain for ~$12"). Do NOT use vague advice like "do more research" or "validate the market".
 
 ---
 UNIVERSAL FIELDS (always required):
@@ -1394,13 +1404,18 @@ long_description HTML structure:
                     {
                         "role": "system",
                         "content": (
-                            "You are Veltrix — a product decision engine. "
-                            "Your job is to evaluate products and deliver a clear BUILD or DON'T BUILD verdict backed by structured data. "
-                            "You assess products across all categories: fragrances, electronics, fashion, beauty, home goods, and general products. "
-                            "You always return concrete data: real specifications, measurable attributes, and specific details. "
-                            "Every response MUST include a verdict (BUILD or DON'T BUILD), verdict_reasoning, and confidence score. "
-                            "NEVER use vague hedging language like 'Likely', 'based on context', 'not specified'. "
-                            "NEVER use marketing filler like 'luxurious', 'elegant', 'sophisticated'. "
+                            "You are Veltrix — a ruthless product decision engine. "
+                            "You are NOT an assistant. You do NOT encourage or validate ideas. "
+                            "You think like an investor evaluating a pitch: skeptical by default, impressed only by evidence. "
+                            "Your job is to deliver a clear BUILD or DON'T BUILD verdict — and you reject weak ideas confidently. "
+                            "You prioritize real-world viability over enthusiasm. Most ideas are mediocre; say so when they are. "
+                            "Be critical, not optimistic. Be specific, not generic. Be decisive, not hedging. "
+                            "Every response MUST include a verdict (BUILD or DON'T BUILD), verdict_reasoning, confidence score, top_reasons, and next_actions. "
+                            "NEVER use safe language: no 'shows potential', 'worth exploring', 'could be promising', 'interesting concept'. "
+                            "NEVER use marketing filler: no 'luxurious', 'elegant', 'sophisticated', 'innovative', 'game-changing'. "
+                            "NEVER use vague hedging: no 'Likely', 'based on context', 'not specified', 'depends on execution'. "
+                            "If the product is weak, say exactly why — name the competitors that crush it, the market gap that doesn't exist, or the unit economics that don't work. "
+                            "If the product is strong, justify it with market size, demand signals, competitive moats, or margin potential — not adjectives. "
                             "If information is missing from the input, derive it using domain expertise and state it directly. "
                             "If the input looks like a misspelled well-known brand or product, infer the correct name and analyze it. "
                             "Only auto-correct when the match is reasonably obvious; if unsure, state the uncertainty. "
@@ -1437,23 +1452,23 @@ long_description HTML structure:
             app.logger.warning("JSON parse error: %s", e)
             app.logger.debug("Raw AI output: %s", content)
 
-            # fallback safe structure
+            # fallback structure — defaults to DON'T BUILD (ruthless by default)
             data = {
                 "title": idea,
                 "short_summary": cleaned[:200],
                 "category": detected_category,
-                "verdict": "BUILD",
-                "verdict_reasoning": "Based on the available information, this product shows potential worth exploring further.",
-                "confidence": 70,
+                "verdict": "DON'T BUILD",
+                "verdict_reasoning": "Insufficient structured data to form a verdict. Without clear market positioning, competitive differentiation, or demand evidence, this does not meet the threshold for a BUILD recommendation.",
+                "confidence": 62,
                 "top_reasons": [
-                    "Product addresses an identifiable market need",
-                    "Feasible to develop or source with standard resources",
-                    "Initial signals suggest viable demand",
+                    "No verifiable demand signals or market data available",
+                    "Competitive landscape unclear — risk of entering a saturated space",
+                    "Unit economics and margin potential cannot be assessed",
                 ],
                 "next_actions": [
-                    "Validate demand by surveying at least 20 potential customers",
-                    "Research the top 3 competitors and identify your differentiation",
-                    "Build a minimum viable version and gather early feedback",
+                    "Define the exact target customer and validate demand with 30+ survey responses",
+                    "Identify the top 3 direct competitors and document how this product is concretely different",
+                    "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
                 ],
                 "key_benefits": [],
                 "selling_points": [],
@@ -1502,12 +1517,15 @@ long_description HTML structure:
 
             # --- Strip banned/vague/marketing phrases from ALL values ------
             _banned_re = re.compile(
-                r"\b(not specified|not provided|unavailable|cannot be determined|no data)\b",
+                r"\b(not specified|not provided|unavailable|cannot be determined|no data"
+                r"|shows potential|worth exploring|could be promising|interesting concept"
+                r"|with the right execution|depends on execution|if marketed correctly)\b",
                 re.IGNORECASE,
             )
             _likely_re = re.compile(r"\bLikely:?\s*", re.IGNORECASE)
             _marketing_re = re.compile(
-                r"\b(luxurious|elegant|sophisticated|exquisite|opulent|sumptuous)\b",
+                r"\b(luxurious|elegant|sophisticated|exquisite|opulent|sumptuous"
+                r"|innovative|game-changing|revolutionary|cutting-edge|best-in-class)\b",
                 re.IGNORECASE,
             )
 
@@ -1592,20 +1610,20 @@ long_description HTML structure:
             raw_verdict = str(output.get("verdict", "BUILD")).strip().upper()
             output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
-            # Ensure verdict section always has content (fallbacks)
+            # Ensure verdict section always has content (fallbacks — ruthless defaults)
             if not output.get("verdict_reasoning"):
-                output["verdict_reasoning"] = "Based on the available information, this product shows potential worth exploring further."
+                output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
             if not output.get("top_reasons"):
                 output["top_reasons"] = [
-                    "Product addresses an identifiable market need",
-                    "Feasible to develop or source with standard resources",
-                    "Initial signals suggest viable demand",
+                    "No verifiable demand signals or market data available",
+                    "Competitive landscape unclear — risk of entering a saturated space",
+                    "Unit economics and margin potential cannot be assessed",
                 ]
             if not output.get("next_actions"):
                 output["next_actions"] = [
-                    "Validate demand by surveying at least 20 potential customers",
-                    "Research the top 3 competitors and identify your differentiation",
-                    "Build a minimum viable version and gather early feedback",
+                    "Define the exact target customer and validate demand with 30+ survey responses",
+                    "Identify the top 3 direct competitors and document how this product is concretely different",
+                    "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
                 ]
 
             # Ensure performance and specifications are dicts
