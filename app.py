@@ -216,28 +216,17 @@ _named_entity_re = re.compile(
 # like "demand", "saturated", "margin" which would trick ``has_real_signal``
 # into treating them as real analysis.  They must be recognised as generic
 # *before* the signal-word check runs.
-_KNOWN_FALLBACK_REASONS: frozenset[str] = frozenset(
-    s.lower()
-    for s in [
-        "No verifiable demand signals or market data available",
-        "Competitive landscape unclear — risk of entering a saturated space",
-        "Competitive landscape unclear - risk of entering a saturated space",
-        "Unit economics and margin potential cannot be assessed",
-        "Unit economics cannot be assessed",
-        "No verifiable demand signals",
-        "Competitive landscape unclear",
-    ]
-)
-
-# Secondary regex that catches common placeholder / fallback phrasing even if
-# the exact wording varies slightly.  Anchored to full-string so it won't
-# match real analytical sentences that merely contain these fragments.
-_fallback_phrasing_re = re.compile(
-    r"^\s{0,5}("
-    r"no verifiable demand signals.*"
-    r"|competitive landscape unclear.*"
-    r"|unit economics.*cannot be assessed.*"
-    r")\s{0,5}$",
+# Uses substring matching (re.search) so that any variation of these phrases
+# is caught regardless of extra punctuation, suffixes, or wording tweaks.
+_KNOWN_FALLBACK_PATTERN = re.compile(
+    r"("
+    r"no verifiable demand"
+    r"|competitive landscape unclear"
+    r"|unit economics.*cannot be assessed"
+    r"|لا توجد إشارات طلب"
+    r"|المشهد التنافسي غير واضح"
+    r"|لا يمكن تقييم اقتصاديات"
+    r")",
     re.IGNORECASE,
 )
 
@@ -288,10 +277,9 @@ def is_reason_generic(text: str) -> bool:
     stripped = text.strip()
     # ---- Known fallback phrases (must be checked BEFORE has_real_signal) ----
     # These contain signal words like "demand" / "saturated" / "margin" but are
-    # still placeholder text, not real analysis.
-    if stripped.lower() in _KNOWN_FALLBACK_REASONS:
-        return True
-    if _fallback_phrasing_re.match(stripped):
+    # still placeholder text, not real analysis.  Substring matching ensures
+    # variations (extra punctuation, suffixes, ellipsis) are still caught.
+    if _KNOWN_FALLBACK_PATTERN.search(stripped):
         return True
     # Entirely a known generic phrase
     if _clearly_generic_re.match(stripped):
