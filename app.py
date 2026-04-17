@@ -2006,7 +2006,7 @@ long_description HTML structure:
                     output.get("short_summary", ""),
                 ]))
                 derived = derive_top_reasons_from_text(full_analysis_text)
-                print("DERIVED REASONS:", derived)
+                app.logger.debug("DERIVED REASONS: %s", derived)
                 if derived and len(derived) >= 1:
                     output["top_reasons"] = derived
                 else:
@@ -2016,7 +2016,7 @@ long_description HTML structure:
                         "Competitive landscape unclear — risk of entering a saturated space",
                         "Unit economics and margin potential cannot be assessed",
                     ]
-                print("FINAL TOP REASONS:", output["top_reasons"])
+                app.logger.debug("FINAL TOP REASONS: %s", output["top_reasons"])
             str_actions = [a for a in output.get("next_actions", []) if isinstance(a, str) and a.strip()]
             if not str_actions or all(is_action_generic(a) for a in str_actions):
                 output["next_actions"] = [
