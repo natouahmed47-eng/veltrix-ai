@@ -2071,8 +2071,9 @@ long_description HTML structure:
             str_reasons = [r for r in output.get("top_reasons", []) if isinstance(r, str) and r.strip()]
             generic_flags = []
             for r in str_reasons:
-                fallback_match = _KNOWN_FALLBACK_PATTERN.search(r.strip())
-                signal = has_real_signal(r.strip())
+                r_stripped = r.strip()
+                fallback_match = _KNOWN_FALLBACK_PATTERN.search(r_stripped)
+                signal = has_real_signal(r_stripped)
                 generic = is_reason_generic(r)
                 generic_flags.append((r, generic))
                 app.logger.debug(
