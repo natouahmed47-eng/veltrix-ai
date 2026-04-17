@@ -660,7 +660,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '<div class="verdict-banner" style="background:' + verdictBg + ';border:2px solid ' + verdictBorder + ';border-radius:14px;padding:28px 28px 24px;margin-bottom:24px;text-align:center;">' +
                 '<div style="font-size:36px;margin-bottom:8px;">' + verdictIcon + '</div>' +
                 '<div style="font-size:28px;font-weight:800;color:' + verdictColor + ';letter-spacing:-0.3px;margin-bottom:4px;">VERDICT: ' + verdictLabel + '</div>' +
-                '<div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:2px;">' + (item.confidence || 80) + '% Confidence</div>' +
+                '<div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:2px;">' + (item.confidence || 70) + '% Confidence</div>' +
                 topReasonsHtml +
                 reasoningHtml +
                 nextActionsHtml +
