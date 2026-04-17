@@ -220,9 +220,11 @@ _named_entity_re = re.compile(
 # is caught regardless of extra punctuation, suffixes, or wording tweaks.
 _KNOWN_FALLBACK_PATTERN = re.compile(
     r"("
-    r"no verifiable demand"
-    r"|competitive landscape unclear"
-    r"|unit economics.*cannot be assessed"
+    # Match progressively more of the known fallback phrases so that
+    # the *remainder* (checked for real signal) is truly what the AI added.
+    r"no verifiable demand(?:\s+signals)?(?:\s+or\s+market\s+data(?:\s+available)?)?"
+    r"|competitive landscape(?:\s+(?:is\s+)?unclear)?(?:\s*[-—–]+\s*risk\s+of\s+entering\s+a\s+saturated\s+space)?"
+    r"|unit economics(?:\s+and\s+margin\s+potential)?\s*(?:cannot|can(?:'|')t)\s+be\s+assessed"
     r"|لا توجد إشارات طلب"
     r"|المشهد التنافسي غير واضح"
     r"|لا يمكن تقييم اقتصاديات"
@@ -268,19 +270,33 @@ def is_reason_generic(text: str) -> bool:
     """Return True only if a reason is clearly generic filler with no real signal.
 
     A reason is generic if:
-    - it matches a known fallback/placeholder phrase, OR
+    - it matches a known fallback/placeholder phrase AND the remaining text
+      (beyond the fallback substring) does not contain real analytical signal, OR
     - it matches a known filler pattern entirely, OR
     - it is very short AND contains no quantitative or analytical signals.
     """
     if not text or not text.strip():
         return True
     stripped = text.strip()
-    # ---- Known fallback phrases (must be checked BEFORE has_real_signal) ----
+    # ---- Known fallback phrases ----
     # These contain signal words like "demand" / "saturated" / "margin" but are
     # still placeholder text, not real analysis.  Substring matching ensures
     # variations (extra punctuation, suffixes, ellipsis) are still caught.
-    if _KNOWN_FALLBACK_PATTERN.search(stripped):
-        return True
+    #
+    # HOWEVER, the AI sometimes expands a fallback phrase with real specifics
+    # (named competitors, dollar amounts, concrete data).  In that case the
+    # reason should be preserved.  We detect this by removing the matched
+    # fallback substring and checking whether the *remainder* contains real
+    # analytical signal.  This avoids false positives from signal words that
+    # are part of the fallback phrase itself (e.g. "saturated", "margin").
+    m = _KNOWN_FALLBACK_PATTERN.search(stripped)
+    if m:
+        # Remove the matched fallback substring and check the remainder.
+        remainder = (stripped[:m.start()] + stripped[m.end():]).strip()
+        if not remainder or not has_real_signal(remainder):
+            return True
+        # The reason contains the fallback substring but the surrounding text
+        # has real analytical signal — preserve it.
     # Entirely a known generic phrase
     if _clearly_generic_re.match(stripped):
         return True
@@ -2036,21 +2052,41 @@ long_description HTML structure:
             raw_verdict = str(output.get("verdict", "DON'T BUILD")).strip().upper()
             output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
+            # ---- Stage A: Log raw incoming fields ----
+            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — raw top_reasons: %s", output.get("top_reasons"))
+            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — verdict_reasoning (first 200): %.200s", output.get("verdict_reasoning", ""))
+            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — technical_analysis (first 200): %.200s", output.get("technical_analysis", ""))
+            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — target_audience: %s", output.get("target_audience", ""))
+            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — long_description (first 200): %.200s", output.get("long_description", ""))
+            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — short_summary: %s", output.get("short_summary", ""))
+
             # Ensure verdict section always has content — fallback ONLY when
             # the field is truly empty or entirely generic filler.
             # Preserve AI-generated reasoning that contains real signal.
             vr = output.get("verdict_reasoning", "")
             if not vr or not vr.strip() or is_reason_generic(vr):
                 output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
+
+            # ---- Stage B: Generic classification ----
             str_reasons = [r for r in output.get("top_reasons", []) if isinstance(r, str) and r.strip()]
-            generic_flags = [(r, is_reason_generic(r)) for r in str_reasons]
-            app.logger.debug("TOP_REASONS PIPELINE — initial str_reasons: %s", str_reasons)
-            app.logger.debug("TOP_REASONS PIPELINE — generic check per reason: %s", generic_flags)
+            generic_flags = []
+            for r in str_reasons:
+                fallback_match = _KNOWN_FALLBACK_PATTERN.search(r.strip())
+                signal = has_real_signal(r.strip())
+                generic = is_reason_generic(r)
+                generic_flags.append((r, generic))
+                app.logger.debug(
+                    "TOP_REASONS PIPELINE [Stage B] — reason: '%.100s' | fallback_match=%s | has_real_signal=%s | is_generic=%s",
+                    r, bool(fallback_match), signal, generic,
+                )
             all_generic = not str_reasons or all(g for _, g in generic_flags)
+            app.logger.debug("TOP_REASONS PIPELINE [Stage B] — all_generic: %s", all_generic)
             _reasons_from_derivation = False
             if all_generic:
                 # Attempt to derive reasons from the actual analysis text
                 # before falling back to generic placeholders.
+
+                # ---- Stage C: Derivation input ----
                 full_analysis_text = " ".join(filter(None, [
                     output.get("verdict_reasoning", ""),
                     output.get("technical_analysis", ""),
@@ -2058,13 +2094,16 @@ long_description HTML structure:
                     output.get("long_description", ""),
                     output.get("short_summary", ""),
                 ]))
-                app.logger.debug("TOP_REASONS PIPELINE — full_analysis_text (first 500 chars): %.500s", full_analysis_text)
+                app.logger.debug("TOP_REASONS PIPELINE [Stage C] — full_analysis_text length: %d", len(full_analysis_text))
+                app.logger.debug("TOP_REASONS PIPELINE [Stage C] — full_analysis_text (first 500 chars): %.500s", full_analysis_text)
+
+                # ---- Stage D: Derivation result ----
                 derived = derive_top_reasons_from_text(full_analysis_text)
-                app.logger.debug("TOP_REASONS PIPELINE — derive_top_reasons_from_text returned: %s", derived)
+                app.logger.debug("TOP_REASONS PIPELINE [Stage D] — derive_top_reasons_from_text returned %d reasons: %s", len(derived), derived)
                 if derived and len(derived) >= 1:
                     output["top_reasons"] = derived
                     _reasons_from_derivation = True
-                    app.logger.debug("TOP_REASONS PIPELINE — assigned derived reasons to output")
+                    app.logger.debug("TOP_REASONS PIPELINE [Stage D] — assigned derived reasons to output")
                 else:
                     # Only use fallback when derivation truly failed
                     output["top_reasons"] = [
@@ -2072,7 +2111,7 @@ long_description HTML structure:
                         "Competitive landscape unclear — risk of entering a saturated space",
                         "Unit economics and margin potential cannot be assessed",
                     ]
-                    app.logger.debug("TOP_REASONS PIPELINE — derivation empty, using static fallback")
+                    app.logger.debug("TOP_REASONS PIPELINE [Stage D] — derivation empty, using static fallback")
                 app.logger.debug("TOP_REASONS PIPELINE — after first pass: %s", output["top_reasons"])
             str_actions = [a for a in output.get("next_actions", []) if isinstance(a, str) and a.strip()]
             if not str_actions or all(is_action_generic(a) for a in str_actions):
@@ -2099,8 +2138,10 @@ long_description HTML structure:
             # Preserve any reason/action that contains real analytical signal.
             # For generic reasons, attempt to derive from analysis before falling back.
             # SKIP re-validation if reasons were already derived from analysis text.
+            # ---- Stage E: Post-derivation overwrite ----
+            app.logger.debug("TOP_REASONS PIPELINE [Stage E] — _reasons_from_derivation: %s", _reasons_from_derivation)
             if _reasons_from_derivation:
-                app.logger.debug("TOP_REASONS PIPELINE — skipping second-pass validation (reasons from derivation): %s", output["top_reasons"])
+                app.logger.debug("TOP_REASONS PIPELINE [Stage E] — skipping second-pass validation (reasons from derivation): %s", output["top_reasons"])
             else:
                 _fallback_reasons = [
                     "No verifiable demand signals or market data available",
@@ -2148,7 +2189,7 @@ long_description HTML structure:
                     else:
                         break
                 output["top_reasons"] = validated_reasons[:3]
-            app.logger.debug("TOP_REASONS PIPELINE — FINAL output[top_reasons]: %s", output["top_reasons"])
+            app.logger.debug("TOP_REASONS PIPELINE [Stage E] — FINAL output[top_reasons]: %s", output["top_reasons"])
 
             # Validate each next_action individually — keep strong, replace weak
             _fallback_actions = [
