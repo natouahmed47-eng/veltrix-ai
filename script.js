@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         var barCls = pct >= 100 ? "progress-critical" : (pct >= 80 ? "progress-warn" : "");
                         msgHtml += '<div class="usage-progress-wrap">' +
                             '<div class="usage-progress-bar"><div class="usage-progress-fill ' + barCls + '" style="width:' + pct + '%"></div></div>' +
-                            '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' analyses used</span>' +
+                            '<span class="usage-progress-label">' + ctx.analysisCount + ' / ' + ctx.analysisLimit + ' verdicts used</span>' +
                             '</div>';
                     }
 
@@ -178,7 +178,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(function (r) { return r.json(); })
             .then(function (d) {
                 if (d.analysis_count !== undefined) {
-                    var label = d.analysis_count + "/" + d.analysis_limit + " analyses";
+                    var label = d.analysis_count + "/" + d.analysis_limit + " verdicts";
                     if (d.plan === "pro") {
                         label = "Pro \u00b7 " + label;
                     }
@@ -338,7 +338,7 @@ document.addEventListener("DOMContentLoaded", function () {
         /* ── Soft paywall: delay 0.5s with loading feel, then show paywall ── */
         var ctx = window._veltrixCtx;
         if (ctx && ctx.atLimit && ctx.state === "free") {
-            messageEl.innerHTML = "\u23F3 Analyzing, please wait...";
+            messageEl.innerHTML = "\u23F3 Evaluating, please wait...";
             analyzeBtn.disabled = true;
             setTimeout(function() {
                 messageEl.innerHTML = "";
@@ -348,7 +348,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        messageEl.innerHTML = "\u23F3 Analyzing, please wait...";
+        messageEl.innerHTML = "\u23F3 Running decision engine...";
         resultsEl.innerHTML = "";
         analyzeBtn.disabled = true;
 
@@ -376,7 +376,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             if (!response.ok) {
-                var errMsg = data.message || data.error || "Analysis failed";
+                var errMsg = data.message || data.error || "Decision engine failed";
                 if (data.trace) {
                     console.error("Backend trace:", data.trace);
                 }
@@ -389,7 +389,7 @@ document.addEventListener("DOMContentLoaded", function () {
             lastAnalysisIdea = idea;
             lastAnalysisResult = data;
 
-            messageEl.innerHTML = '<div class="success">\u2705 Analysis completed successfully!</div>';
+            messageEl.innerHTML = '<div class="success">\u2705 Verdict ready.</div>';
             resultsEl.innerHTML = buildResultCard(data) + buildSaveButton();
         } catch (error) {
             messageEl.innerHTML = '<div class="error">Connection error: ' + error.message + '</div>';
@@ -402,12 +402,12 @@ document.addEventListener("DOMContentLoaded", function () {
     /* ── Save Button ── */
     function buildSaveButton() {
         if (!authToken) {
-            return '<div style="text-align:center;margin:20px 0;"><span style="color:#64748b;font-size:14px;"><a href="#" id="loginToSave" style="color:#4f46e5;font-weight:600;">Log in</a> to save this analysis to your dashboard.</span></div>';
+            return '<div style="text-align:center;margin:20px 0;"><span style="color:#64748b;font-size:14px;"><a href="#" id="loginToSave" style="color:#4f46e5;font-weight:600;">Log in</a> to save this verdict to your dashboard.</span></div>';
         }
         return (
             '<div style="text-align:center;margin:20px 0;">' +
                 '<button id="saveAnalysisBtn" style="padding:12px 32px;border-radius:10px;border:none;font-size:15px;font-weight:600;background:linear-gradient(135deg,#059669,#10b981);color:#fff;cursor:pointer;font-family:inherit;transition:transform 0.15s,box-shadow 0.15s;">' +
-                    '\uD83D\uDCBE Save Analysis' +
+                    '\uD83D\uDCBE Save Decision' +
                 '</button>' +
                 '<div id="saveMessage" style="margin-top:10px;font-size:14px;"></div>' +
             '</div>'
@@ -445,7 +445,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!resp.ok) {
                 msg.innerHTML = '<span style="color:#dc2626;">' + esc(data.error || "Failed to save") + '</span>';
                 btn.disabled = false;
-                btn.textContent = "\uD83D\uDCBE Save Analysis";
+                btn.textContent = "\uD83D\uDCBE Save Decision";
                 return;
             }
             msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4f46e5;font-weight:600;">Dashboard</a></span>';
@@ -454,7 +454,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (err) {
             msg.innerHTML = '<span style="color:#dc2626;">Connection error</span>';
             btn.disabled = false;
-            btn.textContent = "\uD83D\uDCBE Save Analysis";
+            btn.textContent = "\uD83D\uDCBE Save Decision";
         }
     }
 
@@ -468,10 +468,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     /**
-     * Calculate an AI confidence score (80-95) from the richness of the data.
+     * Get the decision confidence score from the API response,
+     * or calculate a fallback from the richness of the data.
      */
-    function calculateAIScore(item) {
-        var score = 80;
+    function getConfidenceScore(item) {
+        /* Use AI-provided confidence if available */
+        if (item.confidence && typeof item.confidence === "number") {
+            return Math.min(Math.max(item.confidence, 60), 97);
+        }
+        /* Fallback: calculate from data richness */
+        var score = 70;
         var perf = item.performance;
         if (perf && typeof perf === "object" && Object.keys(perf).length) {
             score += Math.min(Object.keys(perf).length, 3);
@@ -538,7 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         /* Ensure at least 3 tags */
-        var fillers = ["AI Analyzed", "Full Report", "Detailed"];
+        var fillers = ["Verified", "Full Report", "Detailed"];
         for (var k = 0; k < fillers.length && tags.length < 3; k++) {
             tags.push(fillers[k]);
         }
@@ -562,7 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     '<circle class="score-fill" cx="32" cy="32" r="26" stroke="' + color + '" stroke-dasharray="' + circumference + '" stroke-dashoffset="' + offset + '" transform="rotate(-90 32 32)" />' +
                     '<text class="score-text" x="32" y="36" text-anchor="middle">' + score + '</text>' +
                 '</svg>' +
-                '<div class="score-label">AI Score</div>' +
+                '<div class="score-label">Confidence</div>' +
             '</div>'
         );
     }
@@ -589,12 +595,27 @@ document.addEventListener("DOMContentLoaded", function () {
         var badge = badgeColors[category] || badgeColors.general;
         var categoryBadge = '<span class="badge" style="background:' + badge.bg + ';">' + badge.icon + " " + esc(item.category || "Product") + "</span>";
 
-        /* AI Score */
-        var aiScore = calculateAIScore(item);
+        /* Confidence Score */
+        var confidenceScore = getConfidenceScore(item);
 
         /* Smart Tags */
         var tags = extractTags(item);
         var tagsHtml = '<div class="tags-row">' + tags.map(function (t) { return '<span class="smart-tag">' + esc(t) + '</span>'; }).join("") + '</div>';
+
+        /* ── Verdict Banner ── */
+        var verdict = (item.verdict || "BUILD").toUpperCase();
+        var isBuild = verdict.indexOf("DON") === -1;
+        var verdictColor = isBuild ? "#059669" : "#dc2626";
+        var verdictBg = isBuild ? "#f0fdf4" : "#fef2f2";
+        var verdictBorder = isBuild ? "#bbf7d0" : "#fecaca";
+        var verdictIcon = isBuild ? "\u2705" : "\u274C";
+        var verdictLabel = isBuild ? "BUILD" : "DON\u2019T BUILD";
+        var verdictHtml =
+            '<div class="verdict-banner" style="background:' + verdictBg + ';border:2px solid ' + verdictBorder + ';border-radius:14px;padding:20px 28px;margin-bottom:20px;text-align:center;">' +
+                '<div style="font-size:32px;margin-bottom:8px;">' + verdictIcon + '</div>' +
+                '<div style="font-size:24px;font-weight:800;color:' + verdictColor + ';letter-spacing:-0.3px;margin-bottom:6px;">VERDICT: ' + verdictLabel + '</div>' +
+                (item.verdict_reasoning ? '<p style="font-size:14px;color:#475569;line-height:1.6;margin:0;max-width:600px;margin:0 auto;">' + esc(item.verdict_reasoning) + '</p>' : '') +
+            '</div>';
 
         /* ── Product Header ── */
         var headerHtml =
@@ -608,7 +629,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     (item.short_summary ? '<p class="summary-text">' + esc(item.short_summary) + '</p>' : '') +
                     tagsHtml +
                 '</div>' +
-                buildScoreRing(aiScore) +
+                buildScoreRing(confidenceScore) +
             '</div>';
 
         /* ── Technical Analysis Card ── */
@@ -726,11 +747,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* ── Assemble ── */
         return (
+            verdictHtml +
             headerHtml +
-            sectionDivider("\uD83D\uDD0D AI Analysis") +
+            sectionDivider("\uD83D\uDD0D Market Assessment") +
             analysisHtml +
             audienceHtml +
-            sectionDivider("\u2705 Product Intelligence") +
+            sectionDivider("\u2705 Key Strengths") +
             benefitsHtml +
             sellingHtml +
             useCasesHtml +

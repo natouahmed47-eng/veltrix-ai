@@ -1303,8 +1303,8 @@ No category-specific fields needed for general products.
 """
 
     prompt = f"""
-Analyze the following product or idea as an expert product analyst.
-Your job is to extract and structure real, concrete data — not marketing copy.
+Evaluate the following product or idea and deliver a clear BUILD or DON'T BUILD verdict.
+Your job is to assess market viability, extract structured data, and give a decisive recommendation — not marketing copy.
 
 ---
 INPUT:
@@ -1318,8 +1318,8 @@ Valid categories: fragrance, electronics, fashion, beauty, home, general
 ---
 STRICT RULES:
 
-1) You are an expert product analyst, NOT a marketing writer.
-2) Return ONLY factual, structured data.
+1) You are a product decision strategist, NOT a marketing writer.
+2) Return ONLY factual, structured data with a clear verdict.
 3) NEVER use these phrases:
    - "Likely", "likely"
    - "based on context"
@@ -1341,6 +1341,12 @@ STRICT RULES:
      "general" when a strong category can be inferred from the brand.
    - Only use "general" if the product is truly unknown or ambiguous after
      correction and no specific category can reasonably be determined.
+
+---
+VERDICT (required):
+- verdict: exactly "BUILD" or "DON'T BUILD" — your clear recommendation on whether to pursue, stock, or invest in this product
+- verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be direct and specific — reference market data, competition, demand signals, or product weaknesses.
+- confidence: integer 60-97 representing how confident you are in this verdict (based on data richness and market clarity)
 
 ---
 UNIVERSAL FIELDS (always required):
@@ -1375,7 +1381,7 @@ long_description HTML structure:
 <li><strong>Label:</strong> Specific data point.</li>
 <li><strong>Label:</strong> Specific data point.</li>
 </ul>
-<p>Closing paragraph — objective recommendation with stated reasoning.</p>
+<p>Closing paragraph — decisive recommendation with stated reasoning.</p>
 """
 
     for _ in range(MAX_AI_GENERATION_RETRIES):
@@ -1386,10 +1392,11 @@ long_description HTML structure:
                     {
                         "role": "system",
                         "content": (
-                            "You are an expert product analyst and domain specialist. "
-                            "You produce structured, factual product intelligence — not marketing copy. "
-                            "You analyze products across all categories: fragrances, electronics, fashion, beauty, home goods, and general products. "
+                            "You are Veltrix — a product decision engine. "
+                            "Your job is to evaluate products and deliver a clear BUILD or DON'T BUILD verdict backed by structured data. "
+                            "You assess products across all categories: fragrances, electronics, fashion, beauty, home goods, and general products. "
                             "You always return concrete data: real specifications, measurable attributes, and specific details. "
+                            "Every response MUST include a verdict (BUILD or DON'T BUILD), verdict_reasoning, and confidence score. "
                             "NEVER use vague hedging language like 'Likely', 'based on context', 'not specified'. "
                             "NEVER use marketing filler like 'luxurious', 'elegant', 'sophisticated'. "
                             "If information is missing from the input, derive it using domain expertise and state it directly. "
@@ -1433,6 +1440,9 @@ long_description HTML structure:
                 "title": idea,
                 "short_summary": cleaned[:200],
                 "category": detected_category,
+                "verdict": "BUILD",
+                "verdict_reasoning": "",
+                "confidence": 70,
                 "key_benefits": [],
                 "selling_points": [],
                 "target_audience": "",
@@ -1547,6 +1557,9 @@ long_description HTML structure:
             output = {
                 "title": data.get("title", idea),
                 "category": category,
+                "verdict": data.get("verdict", "BUILD"),
+                "verdict_reasoning": data.get("verdict_reasoning", ""),
+                "confidence": min(max(int(data.get("confidence", 80)), 60), 97),
                 "short_summary": data.get("short_summary", ""),
                 "technical_analysis": data.get("technical_analysis", ""),
                 "target_audience": data.get("target_audience", ""),
@@ -1560,6 +1573,10 @@ long_description HTML structure:
                 "meta_description": data.get("meta_description", ""),
                 "keywords": data.get("keywords", ""),
             }
+
+            # Normalize verdict to exactly "BUILD" or "DON'T BUILD"
+            raw_verdict = str(output.get("verdict", "BUILD")).strip().upper()
+            output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
@@ -1641,6 +1658,9 @@ long_description HTML structure:
     fallback = {
         "title": idea,
         "category": detected_category if detected_category in SUPPORTED_CATEGORIES else "general",
+        "verdict": "BUILD",
+        "verdict_reasoning": "",
+        "confidence": 70,
         "short_summary": "",
         "technical_analysis": "",
         "target_audience": "",
@@ -1700,11 +1720,11 @@ def looks_like_fragrance_product(product: dict) -> bool:
 
 
 def optimize_product_router(product, lang="en"):
-    """Route any product through the universal product intelligence engine.
+    """Route any product through the Veltrix product decision engine.
 
     Builds a rich input string from the product's fields and sends it through
     analyze_product_with_ai() which auto-detects the category and returns
-    category-specific structured data.
+    a verdict (BUILD / DON'T BUILD) with category-specific structured data.
     """
     title = product.get("title", "")
     brand = product.get("vendor", "")
