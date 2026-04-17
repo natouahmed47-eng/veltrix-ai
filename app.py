@@ -1595,13 +1595,13 @@ long_description HTML structure:
             # Ensure verdict section always has content (fallbacks)
             if not output.get("verdict_reasoning"):
                 output["verdict_reasoning"] = "Based on the available information, this product shows potential worth exploring further."
-            if not output.get("top_reasons") or len(output["top_reasons"]) < 1:
+            if not output.get("top_reasons"):
                 output["top_reasons"] = [
                     "Product addresses an identifiable market need",
                     "Feasible to develop or source with standard resources",
                     "Initial signals suggest viable demand",
                 ]
-            if not output.get("next_actions") or len(output["next_actions"]) < 1:
+            if not output.get("next_actions"):
                 output["next_actions"] = [
                     "Validate demand by surveying at least 20 potential customers",
                     "Research the top 3 competitors and identify your differentiation",
