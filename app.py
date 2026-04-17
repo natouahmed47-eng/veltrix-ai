@@ -354,9 +354,10 @@ _REASON_CATEGORIES = {
     },
     "differentiation": {
         "keywords": re.compile(
-            r"\b(differentiat|moat|unique|switching cost|barrier to entry"
-            r"|first mover|network effect|proprietary|IP\b|patent"
-            r"|trademark|licens)\b",
+            r"\b(differentiat\w*|undifferentiated|moat|unique|switching cost"
+            r"|barrier to entry|first mover|network effect|proprietary"
+            r"|IP\b|patent|trademark|licens\w*|weak|similar|copycat"
+            r"|overlap\w*|commodit\w*|no\s+(?:clear\s+)?moat)\b",
             re.IGNORECASE,
         ),
         "label": "Differentiation",
@@ -383,9 +384,10 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
     """Extract up to 3 specific reasons from analysis text using heuristic rules.
 
     Scans *text* (typically verdict_reasoning + long analysis sections) for
-    keyword signals in four categories: demand, competition, monetization,
-    differentiation.  For each matched category, it picks the most
-    signal-dense sentence and condenses it into a punchy reason.
+    keyword signals in six categories: demand, competition, monetization,
+    differentiation, saas_metrics, shopify_ecosystem.  For each matched
+    category, it picks the most signal-dense sentence and condenses it into
+    a punchy reason.
 
     Returns a list of up to 3 derived reasons (may be fewer if the text
     only touches fewer categories).
@@ -393,12 +395,25 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
     if not text or not text.strip():
         return []
 
-    # Split into sentences (roughly)
-    sentences = re.split(r"(?<=[.!?])\s+|\n+", text)
+    app.logger.debug("FULL ANALYSIS TEXT: %s", text)
+
+    # Split into sentences
+    sentences = re.split(r'[.!?]\s+|\n+', text)
     sentences = [s.strip() for s in sentences if s.strip() and len(s.strip()) >= 12]
+
+    app.logger.debug("SPLIT SENTENCES: %s", sentences)
 
     derived: list[str] = []
     used_categories: set[str] = set()
+
+    # --- Broad signal regex for sentences with quantitative / specific data ---
+    _broad_signal_re = re.compile(
+        r"(?:\$\s*[\d,.]+|\d+\s*%|\d{2,})"  # dollar amounts, percentages, numbers
+        r"|(?:\bCAC\b|\bchurn\b|\bLTV\b|\bARR\b|\bMRR\b|\bpric\w+)"  # SaaS metrics
+        r"|(?:\breturnly\b|\bnarvar\b|\bloop\s?returns?\b)"  # named competitors
+        r"|(?:\bweak\b|\bno moat\b|\bsimilar\b|\bundifferentiated\b|\boverlap)",  # differentiation
+        re.IGNORECASE,
+    )
 
     # Score each sentence by category and pick the best sentence per category
     category_best: dict[str, tuple[str, int]] = {}
@@ -407,6 +422,9 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
             matches = cat_info["keywords"].findall(sent)
             if matches:
                 score = len(matches)
+                # Bonus for sentences that also contain broad quantitative signals
+                if _broad_signal_re.search(sent):
+                    score += 1
                 if cat_key not in category_best or score > category_best[cat_key][1]:
                     category_best[cat_key] = (sent, score)
 
@@ -436,6 +454,11 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
                 reason = reason[:175].rsplit(" ", 1)[0] + "…"
         if reason and len(reason) >= MIN_SPECIFIC_REASON_LENGTH:
             derived.append(reason)
+
+    app.logger.debug("DERIVED REASONS: %s", derived)
+
+    if not derived:
+        app.logger.debug("DERIVATION FAILED — no reasons extracted")
 
     return derived
 
@@ -2036,6 +2059,7 @@ long_description HTML structure:
             app.logger.debug("TOP_REASONS PIPELINE — initial str_reasons: %s", str_reasons)
             app.logger.debug("TOP_REASONS PIPELINE — generic check per reason: %s", generic_flags)
             all_generic = not str_reasons or all(g for _, g in generic_flags)
+            _reasons_from_derivation = False
             if all_generic:
                 # Attempt to derive reasons from the actual analysis text
                 # before falling back to generic placeholders.
@@ -2051,6 +2075,7 @@ long_description HTML structure:
                 app.logger.debug("TOP_REASONS PIPELINE — derive_top_reasons_from_text returned: %s", derived)
                 if derived and len(derived) >= 1:
                     output["top_reasons"] = derived
+                    _reasons_from_derivation = True
                     app.logger.debug("TOP_REASONS PIPELINE — assigned derived reasons to output")
                 else:
                     # Only use fallback when derivation truly failed
@@ -2085,60 +2110,64 @@ long_description HTML structure:
             # Only replace items that are clearly generic filler.
             # Preserve any reason/action that contains real analytical signal.
             # For generic reasons, attempt to derive from analysis before falling back.
-            _fallback_reasons = [
-                "No verifiable demand signals or market data available",
-                "Competitive landscape unclear — risk of entering a saturated space",
-                "Unit economics and margin potential cannot be assessed",
-            ]
-            _fallback_actions = [
-                "Define the exact target customer and validate demand with 30+ survey responses",
-                "Identify the top 3 direct competitors and document how this product is concretely different",
-                "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
-            ]
+            # SKIP re-validation if reasons were already derived from analysis text.
+            if _reasons_from_derivation:
+                app.logger.debug("TOP_REASONS PIPELINE — skipping second-pass validation (reasons from derivation): %s", output["top_reasons"])
+            else:
+                _fallback_reasons = [
+                    "No verifiable demand signals or market data available",
+                    "Competitive landscape unclear — risk of entering a saturated space",
+                    "Unit economics and margin potential cannot be assessed",
+                ]
 
-            # Build the analysis text pool once for derivation
-            _analysis_pool = " ".join(filter(None, [
-                output.get("verdict_reasoning", ""),
-                output.get("technical_analysis", ""),
-                output.get("target_audience", ""),
-                output.get("long_description", ""),
-                output.get("short_summary", ""),
-            ]))
-            _derived_reasons_pool = derive_top_reasons_from_text(_analysis_pool) if _analysis_pool.strip() else []
-            app.logger.debug("TOP_REASONS PIPELINE — second-pass derived pool: %s", _derived_reasons_pool)
+                # Build the analysis text pool once for derivation
+                _analysis_pool = " ".join(filter(None, [
+                    output.get("verdict_reasoning", ""),
+                    output.get("technical_analysis", ""),
+                    output.get("target_audience", ""),
+                    output.get("long_description", ""),
+                    output.get("short_summary", ""),
+                ]))
+                _derived_reasons_pool = derive_top_reasons_from_text(_analysis_pool) if _analysis_pool.strip() else []
+                app.logger.debug("TOP_REASONS PIPELINE — second-pass derived pool: %s", _derived_reasons_pool)
 
-            # Validate each top_reason individually — keep strong, derive or replace weak
-            raw_reasons = output.get("top_reasons", [])
-            app.logger.debug("TOP_REASONS PIPELINE — second-pass raw_reasons before validation: %s", raw_reasons)
-            validated_reasons = []
-            derived_idx = 0
-            fallback_idx = 0
-            for r in raw_reasons:
-                if isinstance(r, str) and not is_reason_generic(r):
-                    validated_reasons.append(r)
-                else:
-                    app.logger.debug("TOP_REASONS PIPELINE — reason marked generic, replacing: %s", r)
-                    # Try to use a derived reason from analysis first
+                # Validate each top_reason individually — keep strong, derive or replace weak
+                raw_reasons = output.get("top_reasons", [])
+                app.logger.debug("TOP_REASONS PIPELINE — second-pass raw_reasons before validation: %s", raw_reasons)
+                validated_reasons = []
+                derived_idx = 0
+                fallback_idx = 0
+                for r in raw_reasons:
+                    if isinstance(r, str) and not is_reason_generic(r):
+                        validated_reasons.append(r)
+                    else:
+                        app.logger.debug("TOP_REASONS PIPELINE — reason marked generic, replacing: %s", r)
+                        # Try to use a derived reason from analysis first
+                        if derived_idx < len(_derived_reasons_pool):
+                            validated_reasons.append(_derived_reasons_pool[derived_idx])
+                            derived_idx += 1
+                        elif fallback_idx < len(_fallback_reasons):
+                            validated_reasons.append(_fallback_reasons[fallback_idx])
+                            fallback_idx += 1
+                # Pad to 3 if some were dropped
+                while len(validated_reasons) < 3:
                     if derived_idx < len(_derived_reasons_pool):
                         validated_reasons.append(_derived_reasons_pool[derived_idx])
                         derived_idx += 1
                     elif fallback_idx < len(_fallback_reasons):
                         validated_reasons.append(_fallback_reasons[fallback_idx])
                         fallback_idx += 1
-            # Pad to 3 if some were dropped
-            while len(validated_reasons) < 3:
-                if derived_idx < len(_derived_reasons_pool):
-                    validated_reasons.append(_derived_reasons_pool[derived_idx])
-                    derived_idx += 1
-                elif fallback_idx < len(_fallback_reasons):
-                    validated_reasons.append(_fallback_reasons[fallback_idx])
-                    fallback_idx += 1
-                else:
-                    break
-            output["top_reasons"] = validated_reasons[:3]
+                    else:
+                        break
+                output["top_reasons"] = validated_reasons[:3]
             app.logger.debug("TOP_REASONS PIPELINE — FINAL output[top_reasons]: %s", output["top_reasons"])
 
             # Validate each next_action individually — keep strong, replace weak
+            _fallback_actions = [
+                "Define the exact target customer and validate demand with 30+ survey responses",
+                "Identify the top 3 direct competitors and document how this product is concretely different",
+                "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
+            ]
             raw_actions = output.get("next_actions", [])
             validated_actions = []
             fallback_idx = 0
