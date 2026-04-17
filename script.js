@@ -603,7 +603,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var tagsHtml = '<div class="tags-row">' + tags.map(function (t) { return '<span class="smart-tag">' + esc(t) + '</span>'; }).join("") + '</div>';
 
         /* ── Verdict Banner ── */
-        var verdict = (item.verdict || "BUILD").toUpperCase();
+        var verdict = (item.verdict || "DON'T BUILD").toUpperCase();
         var isBuild = verdict === "BUILD";
         var verdictColor = isBuild ? "#059669" : "#dc2626";
         var verdictBg = isBuild ? "#f0fdf4" : "#fef2f2";
