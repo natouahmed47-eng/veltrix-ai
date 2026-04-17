@@ -237,7 +237,6 @@ _fallback_phrasing_re = re.compile(
     r"no verifiable demand signals.*"
     r"|competitive landscape unclear.*"
     r"|unit economics.*cannot be assessed.*"
-    r"|unit economics and margin potential cannot be assessed.*"
     r")\s{0,5}$",
     re.IGNORECASE,
 )
@@ -2033,10 +2032,11 @@ long_description HTML structure:
             if not vr or not vr.strip() or is_reason_generic(vr):
                 output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
             str_reasons = [r for r in output.get("top_reasons", []) if isinstance(r, str) and r.strip()]
+            generic_flags = [(r, is_reason_generic(r)) for r in str_reasons]
             app.logger.debug("TOP_REASONS PIPELINE — initial str_reasons: %s", str_reasons)
-            app.logger.debug("TOP_REASONS PIPELINE — generic check per reason: %s",
-                             [(r, is_reason_generic(r)) for r in str_reasons])
-            if not str_reasons or all(is_reason_generic(r) for r in str_reasons):
+            app.logger.debug("TOP_REASONS PIPELINE — generic check per reason: %s", generic_flags)
+            all_generic = not str_reasons or all(g for _, g in generic_flags)
+            if all_generic:
                 # Attempt to derive reasons from the actual analysis text
                 # before falling back to generic placeholders.
                 full_analysis_text = " ".join(filter(None, [
