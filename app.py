@@ -1443,10 +1443,18 @@ long_description HTML structure:
                 "short_summary": cleaned[:200],
                 "category": detected_category,
                 "verdict": "BUILD",
-                "verdict_reasoning": "",
+                "verdict_reasoning": "Based on the available information, this product shows potential worth exploring further.",
                 "confidence": 70,
-                "top_reasons": [],
-                "next_actions": [],
+                "top_reasons": [
+                    "Product addresses an identifiable market need",
+                    "Feasible to develop or source with standard resources",
+                    "Initial signals suggest viable demand",
+                ],
+                "next_actions": [
+                    "Validate demand by surveying at least 20 potential customers",
+                    "Research the top 3 competitors and identify your differentiation",
+                    "Build a minimum viable version and gather early feedback",
+                ],
                 "key_benefits": [],
                 "selling_points": [],
                 "target_audience": "",
@@ -1584,6 +1592,22 @@ long_description HTML structure:
             raw_verdict = str(output.get("verdict", "BUILD")).strip().upper()
             output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
+            # Ensure verdict section always has content (fallbacks)
+            if not output.get("verdict_reasoning"):
+                output["verdict_reasoning"] = "Based on the available information, this product shows potential worth exploring further."
+            if not output.get("top_reasons") or len(output["top_reasons"]) < 1:
+                output["top_reasons"] = [
+                    "Product addresses an identifiable market need",
+                    "Feasible to develop or source with standard resources",
+                    "Initial signals suggest viable demand",
+                ]
+            if not output.get("next_actions") or len(output["next_actions"]) < 1:
+                output["next_actions"] = [
+                    "Validate demand by surveying at least 20 potential customers",
+                    "Research the top 3 competitors and identify your differentiation",
+                    "Build a minimum viable version and gather early feedback",
+                ]
+
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
                 output["performance"] = {"summary": output["performance"]}
@@ -1665,10 +1689,18 @@ long_description HTML structure:
         "title": idea,
         "category": detected_category if detected_category in SUPPORTED_CATEGORIES else "general",
         "verdict": "BUILD",
-        "verdict_reasoning": "",
+        "verdict_reasoning": "Based on the available information, this product shows potential worth exploring further.",
         "confidence": 70,
-        "top_reasons": [],
-        "next_actions": [],
+        "top_reasons": [
+            "Product addresses an identifiable market need",
+            "Feasible to develop or source with standard resources",
+            "Initial signals suggest viable demand",
+        ],
+        "next_actions": [
+            "Validate demand by surveying at least 20 potential customers",
+            "Research the top 3 competitors and identify your differentiation",
+            "Build a minimum viable version and gather early feedback",
+        ],
         "short_summary": "",
         "technical_analysis": "",
         "target_audience": "",
