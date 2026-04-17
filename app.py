@@ -146,6 +146,20 @@ CATEGORY_SPECIFIC_FIELDS = [
 # Supported product categories
 SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home", "general"]
 
+# Pre-compiled regex for detecting negative signals in verdict reasoning/top_reasons.
+# Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
+_negative_signals_re = re.compile(
+    r"\b(no demand|no market|insufficient|cannot|unfeasible|infeasible"
+    r"|unclear market|lack of|not viable|no viable|not feasible"
+    r"|no evidence|no verifiable|oversaturated|saturated market"
+    r"|no competitive|no differentiation|no moat|no clear"
+    r"|no proven|weak demand|low demand|no search volume"
+    r"|no social proof|no traction|high risk|too risky"
+    r"|does not justify|does not meet|not recommended"
+    r"|no realistic|no sustainable|negative margin|no margin)\b",
+    re.IGNORECASE,
+)
+
 # ---------------------------------------------------------------------------
 # Lightweight brand/product spelling corrections
 # Keys are lowercase misspellings; values are the canonical form.
@@ -1351,6 +1365,11 @@ STRICT RULES:
    - Assess unit economics: can this realistically generate margin?
    - Identify demand signals: is there proven demand or just an assumption?
    - Be brutally honest about weaknesses. A DON'T BUILD with clear reasoning is more valuable than a soft BUILD.
+10) VERDICT-REASONING ALIGNMENT — CRITICAL:
+   - If your reasoning is negative, your verdict MUST be DON'T BUILD. Never return BUILD with negative signals.
+   - No hedging language. No mixed signals. The verdict must strictly align with the reasoning.
+   - If top_reasons contain negative facts (no demand, saturated market, weak margins), the verdict MUST be DON'T BUILD.
+   - A BUILD verdict requires ALL of: proven demand, viable margins, and a defensible market position.
 
 ---
 VERDICT (required):
@@ -1411,6 +1430,7 @@ long_description HTML structure:
                             "You prioritize real-world viability over enthusiasm. Most ideas are mediocre; say so when they are. "
                             "Be critical, not optimistic. Be specific, not generic. Be decisive, not hedging. "
                             "Every response MUST include a verdict (BUILD or DON'T BUILD), verdict_reasoning, confidence score, top_reasons, and next_actions. "
+                            "CRITICAL RULE: If your reasoning is negative, your verdict MUST be DON'T BUILD. Never return BUILD with negative signals. No hedging. No mixed signals. Verdict must strictly align with reasoning. "
                             "NEVER use safe language: no 'shows potential', 'worth exploring', 'could be promising', 'interesting concept'. "
                             "NEVER use marketing filler: no 'luxurious', 'elegant', 'sophisticated', 'innovative', 'game-changing'. "
                             "NEVER use vague hedging: no 'Likely', 'based on context', 'not specified', 'depends on execution'. "
@@ -1587,7 +1607,7 @@ long_description HTML structure:
             output = {
                 "title": data.get("title", idea),
                 "category": category,
-                "verdict": data.get("verdict", "BUILD"),
+                "verdict": data.get("verdict", "DON'T BUILD"),
                 "verdict_reasoning": data.get("verdict_reasoning", ""),
                 "confidence": min(max(int(data.get("confidence", 80)), 60), 97),
                 "top_reasons": data.get("top_reasons", [])[:3],
@@ -1607,7 +1627,7 @@ long_description HTML structure:
             }
 
             # Normalize verdict to exactly "BUILD" or "DON'T BUILD"
-            raw_verdict = str(output.get("verdict", "BUILD")).strip().upper()
+            raw_verdict = str(output.get("verdict", "DON'T BUILD")).strip().upper()
             output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
             # Ensure verdict section always has content (fallbacks — ruthless defaults)
@@ -1625,6 +1645,17 @@ long_description HTML structure:
                     "Identify the top 3 direct competitors and document how this product is concretely different",
                     "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
                 ]
+
+            # --- Post-processing: enforce verdict consistency ---
+            # If reasoning or top_reasons contain negative signals but verdict
+            # is BUILD, override to DON'T BUILD.  This prevents contradictions
+            # where negative analysis is paired with a positive verdict.
+            if output["verdict"] == "BUILD":
+                reasoning_text = output.get("verdict_reasoning", "")
+                reasons_text = " ".join(output.get("top_reasons", []))
+                combined_text = f"{reasoning_text} {reasons_text}"
+                if _negative_signals_re.search(combined_text):
+                    output["verdict"] = "DON'T BUILD"
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
@@ -1706,18 +1737,18 @@ long_description HTML structure:
     fallback = {
         "title": idea,
         "category": detected_category if detected_category in SUPPORTED_CATEGORIES else "general",
-        "verdict": "BUILD",
-        "verdict_reasoning": "Based on the available information, this product shows potential worth exploring further.",
-        "confidence": 70,
+        "verdict": "DON'T BUILD",
+        "verdict_reasoning": "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.",
+        "confidence": 62,
         "top_reasons": [
-            "Product addresses an identifiable market need",
-            "Feasible to develop or source with standard resources",
-            "Initial signals suggest viable demand",
+            "No verifiable demand signals or market data available",
+            "Competitive landscape unclear — risk of entering a saturated space",
+            "Unit economics and margin potential cannot be assessed",
         ],
         "next_actions": [
-            "Validate demand by surveying at least 20 potential customers",
-            "Research the top 3 competitors and identify your differentiation",
-            "Build a minimum viable version and gather early feedback",
+            "Define the exact target customer and validate demand with 30+ survey responses",
+            "Identify the top 3 direct competitors and document how this product is concretely different",
+            "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
         ],
         "short_summary": "",
         "technical_analysis": "",
