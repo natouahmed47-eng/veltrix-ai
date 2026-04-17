@@ -309,8 +309,8 @@ _REASON_CATEGORIES = {
     },
     "differentiation": {
         "keywords": re.compile(
-            r"\b(differentiat|moat|unique|switching cost|barrier.to.entry"
-            r"|first.mover|network effect|proprietary|IP |patent"
+            r"\b(differentiat|moat|unique|switching cost|barrier to entry"
+            r"|first mover|network effect|proprietary|IP\b|patent"
             r"|trademark|licens)\b",
             re.IGNORECASE,
         ),
