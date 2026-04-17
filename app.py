@@ -146,6 +146,20 @@ CATEGORY_SPECIFIC_FIELDS = [
 # Supported product categories
 SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home", "general"]
 
+# Pre-compiled regex for detecting negative signals in verdict reasoning/top_reasons.
+# Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
+_negative_signals_re = re.compile(
+    r"\b(no demand|no market|insufficient|cannot|unfeasible|infeasible"
+    r"|unclear market|lack of|not viable|no viable|not feasible"
+    r"|no evidence|no verifiable|oversaturated|saturated market"
+    r"|no competitive|no differentiation|no moat|no clear"
+    r"|no proven|weak demand|low demand|no search volume"
+    r"|no social proof|no traction|high risk|too risky"
+    r"|does not justify|does not meet|not recommended"
+    r"|no realistic|no sustainable|negative margin|no margin)\b",
+    re.IGNORECASE,
+)
+
 # ---------------------------------------------------------------------------
 # Lightweight brand/product spelling corrections
 # Keys are lowercase misspellings; values are the canonical form.
@@ -1636,23 +1650,11 @@ long_description HTML structure:
             # If reasoning or top_reasons contain negative signals but verdict
             # is BUILD, override to DON'T BUILD.  This prevents contradictions
             # where negative analysis is paired with a positive verdict.
-            _negative_signals = re.compile(
-                r"\b(no demand|no market|insufficient|cannot|unfeasible|infeasible"
-                r"|unclear market|lack of|not viable|no viable|not feasible"
-                r"|no evidence|no verifiable|oversaturated|saturated market"
-                r"|no competitive|no differentiation|no moat|no clear"
-                r"|no proven|weak demand|low demand|no search volume"
-                r"|no social proof|no traction|high risk|too risky"
-                r"|does not justify|does not meet|not recommended"
-                r"|no realistic|no sustainable|negative margin|no margin)\b",
-                re.IGNORECASE,
-            )
-
             if output["verdict"] == "BUILD":
                 reasoning_text = output.get("verdict_reasoning", "")
                 reasons_text = " ".join(output.get("top_reasons", []))
                 combined_text = f"{reasoning_text} {reasons_text}"
-                if _negative_signals.search(combined_text):
+                if _negative_signals_re.search(combined_text):
                     output["verdict"] = "DON'T BUILD"
 
             # Ensure performance and specifications are dicts
