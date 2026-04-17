@@ -146,6 +146,9 @@ CATEGORY_SPECIFIC_FIELDS = [
 # Supported product categories
 SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home", "general"]
 
+# Minimum character length for a reason/action to be considered specific (not generic).
+MIN_SPECIFIC_REASON_LENGTH = 25
+
 # Pre-compiled regex for detecting negative signals in verdict reasoning/top_reasons.
 # Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
 _negative_signals_re = re.compile(
@@ -1753,7 +1756,7 @@ long_description HTML structure:
                 if _generic_action_re.match(stripped):
                     return True
                 # Also flag very short entries that lack specifics
-                if len(stripped) < 25 and not any(
+                if len(stripped) < MIN_SPECIFIC_REASON_LENGTH and not any(
                     c.isdigit() for c in stripped
                 ):
                     return True
