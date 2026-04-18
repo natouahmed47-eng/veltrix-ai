@@ -13,28 +13,28 @@
         .app-container {
             max-width: 840px;
             margin: 0 auto;
-            padding: 40px 24px 120px;
+            padding: var(--v-sp-10) var(--v-sp-6) 120px;
         }
         .app-search-card {
-            background: #fff;
-            border-radius: 20px;
-            padding: 40px 36px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
-            margin-bottom: 32px;
+            background: var(--v-bg-elevated);
+            border-radius: var(--v-radius-xl);
+            padding: var(--v-sp-10) var(--v-sp-8);
+            box-shadow: var(--v-shadow);
+            margin-bottom: var(--v-sp-8);
             text-align: center;
-            border: 1px solid #f1f5f9;
+            border: 1px solid var(--v-border-light);
         }
         .app-search-card h1 {
             margin: 0 0 6px;
-            font-size: 26px;
+            font-size: var(--v-text-3xl);
             font-weight: 700;
-            color: #0f172a;
+            color: var(--v-text);
             letter-spacing: -0.5px;
         }
         .app-search-card .muted {
-            color: #64748b;
-            margin-bottom: 28px;
-            font-size: 15px;
+            color: var(--v-text-muted);
+            margin-bottom: var(--v-sp-6);
+            font-size: var(--v-text-md);
             line-height: 1.5;
         }
 
@@ -46,27 +46,27 @@
             left: 0;
             right: 0;
             z-index: 90;
-            background: #fff;
-            border-top: 1px solid #f1f5f9;
-            padding: 10px 24px;
+            background: var(--v-bg-elevated);
+            border-top: 1px solid var(--v-border-light);
+            padding: 10px var(--v-sp-6);
             text-align: center;
-            font-size: 13px;
-            color: #475569;
+            font-size: var(--v-text-sm);
+            color: var(--v-text-muted);
             font-weight: 500;
         }
         .upgrade-bar a {
-            color: #4f46e5;
+            color: var(--v-brand);
             font-weight: 600;
             text-decoration: none;
             margin-left: 6px;
         }
         .upgrade-bar a:hover {
-            color: #4338ca;
+            color: var(--v-brand-hover);
             text-decoration: underline;
         }
         .upgrade-bar.at-limit {
-            background: #fffbeb;
-            border-top-color: #fde68a;
+            background: var(--v-warning-light);
+            border-top-color: var(--v-warning-border);
             color: #92400e;
         }
         .upgrade-bar.at-limit a {
@@ -78,64 +78,65 @@
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15,23,42,0.45);
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
+            background: rgba(15,23,42,0.35);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             z-index: 1000;
             justify-content: center;
             align-items: center;
         }
         .paywall-box {
-            background: #fff;
-            border-radius: 20px;
-            padding: 40px 36px;
+            background: var(--v-bg-elevated);
+            border-radius: var(--v-radius-xl);
+            padding: var(--v-sp-10) var(--v-sp-8);
             max-width: 400px;
             width: 90%;
             text-align: center;
             position: relative;
-            box-shadow: 0 24px 48px rgba(0,0,0,0.12);
+            box-shadow: var(--v-shadow-xl);
         }
         .paywall-close {
             position: absolute;
             top: 14px; right: 18px;
             border: none;
             background: none;
-            font-size: 22px;
+            font-size: 20px;
             cursor: pointer;
-            color: #94a3b8;
-            transition: color 0.15s;
+            color: #cbd5e1;
+            transition: color var(--v-duration) var(--v-ease);
         }
-        .paywall-close:hover { color: #475569; }
+        .paywall-close:hover { color: var(--v-text-muted); }
         .paywall-icon {
-            font-size: 40px;
+            font-size: 36px;
             margin-bottom: 12px;
         }
         .paywall-title {
-            font-size: 20px;
+            font-size: var(--v-text-2xl);
             font-weight: 700;
-            color: #0f172a;
-            margin: 0 0 8px;
+            color: var(--v-text);
+            margin: 0 0 var(--v-sp-2);
+            letter-spacing: -0.3px;
         }
         .paywall-text {
-            font-size: 14px;
-            color: #64748b;
-            margin: 0 0 24px;
+            font-size: var(--v-text-base);
+            color: var(--v-text-muted);
+            margin: 0 0 var(--v-sp-5);
             line-height: 1.6;
         }
         .paywall-cta {
             display: inline-block;
-            padding: 13px 32px;
-            border-radius: 12px;
-            background: #4f46e5;
+            padding: 12px 32px;
+            border-radius: var(--v-radius-md);
+            background: var(--v-brand);
             color: #fff;
-            font-size: 15px;
+            font-size: var(--v-text-md);
             font-weight: 600;
             text-decoration: none;
-            transition: background 0.15s, box-shadow 0.15s;
+            transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease);
         }
         .paywall-cta:hover {
-            background: #4338ca;
-            box-shadow: 0 4px 14px rgba(79,70,229,0.3);
+            background: var(--v-brand-hover);
+            box-shadow: var(--v-shadow-brand);
         }
 
         /* ── Responsive ── */
@@ -143,8 +144,8 @@
             .top-bar { padding: 0 16px; gap: 8px; }
             .top-bar .tagline { display: none; }
             .app-container { padding: 24px 16px 120px; }
-            .app-search-card { padding: 28px 20px; }
-            .app-search-card h1 { font-size: 22px; }
+            .app-search-card { padding: var(--v-sp-6) var(--v-sp-5); }
+            .app-search-card h1 { font-size: var(--v-text-2xl); }
             .search-row { flex-direction: column; }
             .search-row button { width: 100%; }
             .user-area { gap: 8px; }

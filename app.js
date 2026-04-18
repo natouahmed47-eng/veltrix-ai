@@ -321,13 +321,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var isBuild = verdict === "BUILD";
         var isConditional = verdict.indexOf("CONDITION") !== -1;
         var isDontBuild = !isBuild && !isConditional;
+        var verdictType = isBuild ? "build" : (isConditional ? "conditional" : "dont");
         var verdictColor = isBuild ? "#059669" : (isConditional ? "#d97706" : "#dc2626");
-        var verdictBg = isBuild ? "#f0fdf4" : (isConditional ? "#fffbeb" : "#fef2f2");
-        var verdictBorder = isBuild ? "#bbf7d0" : (isConditional ? "#fde68a" : "#fecaca");
         var verdictIcon = isBuild ? "\u2705" : (isConditional ? "\u26A0\uFE0F" : "\u274C");
         var verdictLabel = isBuild ? "BUILD" : (isConditional ? "BUILD WITH CONDITIONS" : "DON\u2019T BUILD");
         var verdictArrow = isBuild ? "\u25B2" : (isConditional ? "\u25C6" : "\u25BC");
-        var verdictActionBg = isBuild ? "rgba(5,150,105,0.06)" : (isConditional ? "rgba(217,119,6,0.06)" : "rgba(220,38,38,0.06)");
 
         /* Opportunity Summary + Biggest Risk */
         var opportunitySummary = item.opportunity_summary || "";
@@ -335,14 +333,14 @@ document.addEventListener("DOMContentLoaded", function () {
         var opportunityRiskHtml = "";
         if (opportunitySummary || biggestRisk) {
             opportunityRiskHtml =
-                '<div style="text-align:left;max-width:560px;margin:18px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
-                    (opportunitySummary ? '<div style="padding:14px 16px;background:rgba(5,150,105,0.06);border-radius:12px;border-left:3px solid #059669;">' +
-                        '<div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">\uD83D\uDCA1 Opportunity</div>' +
-                        '<p style="font-size:14px;color:#334155;line-height:1.6;margin:0;">' + esc(opportunitySummary) + '</p>' +
+                '<div class="verdict-grid">' +
+                    (opportunitySummary ? '<div class="verdict-insight verdict-insight--opportunity">' +
+                        '<div class="verdict-insight-label verdict-insight-label--opportunity">\uD83D\uDCA1 Opportunity</div>' +
+                        '<p>' + esc(opportunitySummary) + '</p>' +
                     '</div>' : '') +
-                    (biggestRisk ? '<div style="padding:14px 16px;background:rgba(220,38,38,0.06);border-radius:12px;border-left:3px solid #dc2626;">' +
-                        '<div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">\u26A0\uFE0F Biggest Risk</div>' +
-                        '<p style="font-size:14px;color:#334155;line-height:1.6;margin:0;">' + esc(biggestRisk) + '</p>' +
+                    (biggestRisk ? '<div class="verdict-insight verdict-insight--risk">' +
+                        '<div class="verdict-insight-label verdict-insight-label--risk">\u26A0\uFE0F Biggest Risk</div>' +
+                        '<p>' + esc(biggestRisk) + '</p>' +
                     '</div>' : '') +
                 '</div>';
         }
@@ -352,12 +350,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var conditionsHtml = "";
         if (isConditional && requiredConditions.length) {
             conditionsHtml =
-                '<div style="text-align:left;max-width:560px;margin:18px auto 0;padding:16px 18px;background:#fffbeb;border:1px solid #fef3c7;border-radius:14px;">' +
-                    '<div style="font-size:12px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">\uD83D\uDD12 Required Conditions</div>' +
-                    '<ul style="list-style:none;padding:0;margin:0;">' +
+                '<div class="verdict-conditions">' +
+                    '<div class="verdict-conditions-label">\uD83D\uDD12 Required Conditions</div>' +
+                    '<ul>' +
                         requiredConditions.map(function (c, i) {
-                            return '<li style="padding:7px 0;font-size:14px;color:#92400e;line-height:1.55;display:flex;align-items:flex-start;gap:8px;">' +
-                                '<span style="color:#d97706;font-size:14px;flex-shrink:0;font-weight:700;">' + (i + 1) + '.</span>' +
+                            return '<li>' +
+                                '<span>' + (i + 1) + '.</span>' +
                                 '<span>' + esc(c) + '</span>' +
                             '</li>';
                         }).join("") +
@@ -372,12 +370,12 @@ document.addEventListener("DOMContentLoaded", function () {
             "FRONTEND FALLBACK 3"
         ];
         var topReasonsHtml =
-            '<div style="text-align:left;max-width:560px;margin:20px auto 0;">' +
-                '<div style="font-size:12px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Top 3 Reasons</div>' +
-                '<ul style="list-style:none;padding:0;margin:0;">' +
+            '<div class="verdict-reasons">' +
+                '<div class="verdict-reasons-label" style="color:' + verdictColor + ';">Top 3 Reasons</div>' +
+                '<ul>' +
                     topReasons.map(function (r) {
-                        return '<li style="padding:7px 0;font-size:14px;color:#1e293b;line-height:1.55;display:flex;align-items:flex-start;gap:8px;">' +
-                            '<span style="color:' + verdictColor + ';font-size:16px;flex-shrink:0;margin-top:1px;">' + verdictArrow + '</span>' +
+                        return '<li>' +
+                            '<span style="color:' + verdictColor + ';">' + verdictArrow + '</span>' +
                             '<span>' + esc(r) + '</span>' +
                         '</li>';
                     }).join("") +
@@ -387,9 +385,9 @@ document.addEventListener("DOMContentLoaded", function () {
         /* Verdict Reasoning */
         var verdictReasoning = item.verdict_reasoning || "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.";
         var reasoningHtml =
-            '<div style="max-width:560px;margin:18px auto 0;text-align:left;">' +
-                '<div style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Why This Verdict</div>' +
-                '<p style="font-size:14px;color:#475569;line-height:1.7;margin:0;">' + esc(verdictReasoning) + '</p>' +
+            '<div class="verdict-why">' +
+                '<div class="verdict-why-label">Why This Verdict</div>' +
+                '<p>' + esc(verdictReasoning) + '</p>' +
             '</div>';
 
         /* Next Actions */
@@ -400,21 +398,21 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
         var actionIcons = ["\u0031\uFE0F\u20E3", "\u0032\uFE0F\u20E3", "\u0033\uFE0F\u20E3"];
         var nextActionsHtml =
-            '<div style="text-align:left;max-width:560px;margin:20px auto 0;padding-top:18px;border-top:1px solid ' + verdictBorder + ';">' +
-                '<div style="font-size:12px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">\uD83D\uDE80 What Should I Do Next?</div>' +
+            '<div class="verdict-actions">' +
+                '<div class="verdict-actions-label" style="color:' + verdictColor + ';">\uD83D\uDE80 What Should I Do Next?</div>' +
                 nextActions.map(function (a, i) {
-                    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:8px;background:' + verdictActionBg + ';border-radius:12px;">' +
-                        '<span style="font-size:16px;flex-shrink:0;">' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
-                        '<span style="font-size:14px;color:#1e293b;line-height:1.55;">' + esc(a) + '</span>' +
+                    return '<div class="verdict-action-item verdict-action-item--' + verdictType + '">' +
+                        '<span>' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
+                        '<span>' + esc(a) + '</span>' +
                     '</div>';
                 }).join("") +
             '</div>';
 
         var verdictHtml =
-            '<div class="verdict-banner" style="background:' + verdictBg + ';border:1.5px solid ' + verdictBorder + ';border-radius:20px;padding:32px 32px 28px;margin-bottom:28px;text-align:center;">' +
-                '<div style="font-size:36px;margin-bottom:10px;">' + verdictIcon + '</div>' +
-                '<div style="font-size:26px;font-weight:800;color:' + verdictColor + ';letter-spacing:-0.4px;margin-bottom:6px;">VERDICT: ' + verdictLabel + '</div>' +
-                '<div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:2px;">' + (item.confidence || 70) + '% Confidence</div>' +
+            '<div class="verdict-banner verdict-banner--' + verdictType + '">' +
+                '<div class="verdict-icon">' + verdictIcon + '</div>' +
+                '<div class="verdict-label verdict-label--' + verdictType + '">VERDICT: ' + verdictLabel + '</div>' +
+                '<div class="verdict-confidence">' + (item.confidence || 70) + '% Confidence</div>' +
                 opportunityRiskHtml +
                 conditionsHtml +
                 topReasonsHtml +
@@ -545,16 +543,15 @@ document.addEventListener("DOMContentLoaded", function () {
             seoHtml =
                 '<div class="card card--seo">' +
                     '<div class="card-header"><div class="card-icon">\uD83D\uDCC8</div><h4>SEO Optimization</h4></div>' +
-                    (item.meta_description ? '<div style="margin-bottom:12px;"><strong style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Meta Description</strong><p style="margin:6px 0 0;font-size:14px;color:#475569;line-height:1.65;">' + esc(item.meta_description) + '</p></div>' : '') +
-                    (item.keywords ? '<div><strong style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Keywords</strong><p style="margin:6px 0 0;font-size:14px;color:#475569;line-height:1.65;">' + esc(item.keywords) + '</p></div>' : '') +
+                    (item.meta_description ? '<div style="margin-bottom:12px;"><strong class="chip-label">Meta Description</strong><p style="margin:6px 0 0;">' + esc(item.meta_description) + '</p></div>' : '') +
+                    (item.keywords ? '<div><strong class="chip-label">Keywords</strong><p style="margin:6px 0 0;">' + esc(item.keywords) + '</p></div>' : '') +
                 '</div>';
         }
 
         /* ── Assemble ── */
         var secondaryDivider =
-            '<div style="text-align:center;margin:32px 0 20px;position:relative;">' +
-                '<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#f1f5f9;"></div>' +
-                '<span style="position:relative;background:#fafbfd;padding:0 18px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Detailed Breakdown</span>' +
+            '<div class="detail-break">' +
+                '<span>Detailed Breakdown</span>' +
             '</div>';
         return (
             verdictHtml +
