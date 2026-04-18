@@ -184,6 +184,125 @@ _negative_signals_re = re.compile(
 )
 
 # ---------------------------------------------------------------------------
+# Jurion Protection — condition quality & anti-default enforcement
+# ---------------------------------------------------------------------------
+
+# Prohibited generic condition phrases.  Any required_condition that matches
+# one of these (case-insensitive, anchored to whole phrase) is rejected as
+# non-actionable.  The list mirrors the prompt-level FORBIDDEN list so that
+# any model slip-through is caught at the backend level.
+_PROHIBITED_CONDITION_RE = re.compile(
+    r"^\s{0,10}("
+    r"check the market|talk to customers|do more research"
+    r"|validate demand|validate the market|validate the idea"
+    r"|research competitors|research the market|test the market"
+    r"|test your idea|test the concept|explore partnerships"
+    r"|gather feedback|seek feedback|get feedback"
+    r"|conduct market research|build an mvp"
+    r"|تحقق من السوق|تحدث مع العملاء|قم بمزيد من البحث"
+    r")\.?\s{0,10}$",
+    re.IGNORECASE,
+)
+
+# Condition must be *actionable*: contain at least one number/metric AND
+# a concrete channel/method.  This is a lightweight heuristic, not a
+# full NLP parse.
+_CONDITION_HAS_NUMBER_RE = re.compile(
+    r"(?:\d+\s{0,3}%|\$\s{0,3}[\d,.]+|\d[\d,]{0,15}\s{0,3}(?:unit|user|customer|interview|survey|response|day|week|month|hour|subscriber|order|quote|supplier|ad|campaign))",
+    re.IGNORECASE,
+)
+
+
+def _is_condition_prohibited(text: str) -> bool:
+    """Return True if a condition matches a prohibited generic phrase."""
+    return bool(_PROHIBITED_CONDITION_RE.match(text.strip()))
+
+
+def _is_condition_actionable(text: str) -> bool:
+    """Return True if a condition appears actionable.
+
+    An actionable condition must:
+    - not be a prohibited generic phrase
+    - meet a minimum length threshold
+    - contain real analytical signal (channel, metric, specific action)
+      OR a quantitative element (number, dollar amount, percentage)
+    """
+    stripped = text.strip()
+    if not stripped or len(stripped) < MIN_SPECIFIC_REASON_LENGTH:
+        return False
+    if _is_condition_prohibited(stripped):
+        return False
+    has_number = bool(_CONDITION_HAS_NUMBER_RE.search(stripped))
+    has_signal = has_real_signal(stripped)
+    return has_number or has_signal
+
+
+def _is_condition_risk_linked(condition: str, top_reasons: list,
+                              biggest_risk: str, verdict_reasoning: str) -> bool:
+    """Return True if a condition references a risk mentioned in the analysis.
+
+    Extracts key risk terms from top_reasons, biggest_risk, and
+    verdict_reasoning, then checks whether the condition text contains
+    at least one overlapping risk term.
+    """
+    risk_pool = " ".join(filter(None, [
+        biggest_risk,
+        verdict_reasoning,
+        " ".join(top_reasons) if top_reasons else "",
+    ])).lower()
+    if not risk_pool.strip():
+        return True  # No risk context to compare against — pass through
+
+    # Extract meaningful risk terms (3+ character words, skip stopwords)
+    _stopwords = frozenset({
+        "the", "and", "for", "that", "this", "with", "are", "not", "but",
+        "has", "was", "can", "will", "from", "you", "your", "its", "all",
+        "any", "been", "have", "more", "also", "very", "than", "does",
+        "into", "about", "just", "should", "could", "would", "there",
+        "their", "only", "which", "when", "what", "they", "each",
+    })
+    risk_words = {
+        w for w in re.findall(r"[a-z]{3,}", risk_pool)
+        if w not in _stopwords
+    }
+    condition_words = set(re.findall(r"[a-z]{3,}", condition.lower()))
+    # Require at least 2 overlapping meaningful words
+    overlap = risk_words & condition_words
+    return len(overlap) >= 2
+
+
+def _has_specific_opportunity_and_differentiation(opportunity_summary: str) -> bool:
+    """Anti-default rule: verify the model named a *specific* opportunity.
+
+    Returns True only when opportunity_summary contains real analytical
+    signal (market data, competitors, numbers, concrete wedge).  Generic
+    summaries like "there may be an opportunity" fail this check.
+    """
+    if not opportunity_summary or not opportunity_summary.strip():
+        return False
+    # Must pass the real-signal check AND not be a known generic phrase
+    if is_reason_generic(opportunity_summary):
+        return False
+    return has_real_signal(opportunity_summary)
+
+
+# Regex to detect *generic / summary-only* opportunity descriptions.
+# These are full-sentence patterns that sound analytical but are actually
+# content-free — the model summarised instead of identifying a concrete gap.
+_GENERIC_OPPORTUNITY_RE = re.compile(
+    r"("
+    r"no specific opportunity|no opportunity identified"
+    r"|opportunity unclear|unclear opportunity"
+    r"|general market opportunity|broad market opportunity"
+    r"|there may be an opportunity|there could be an opportunity"
+    r"|potential opportunity exists|an opportunity may exist"
+    r"|further research needed|more data needed"
+    r"|لا توجد فرصة محددة|فرصة غير واضحة"
+    r")",
+    re.IGNORECASE,
+)
+
+# ---------------------------------------------------------------------------
 # Smart validation helpers for reasoning preservation
 # ---------------------------------------------------------------------------
 # Detects real analytical signals that indicate the AI produced specific,
@@ -2148,36 +2267,86 @@ long_description HTML structure:
             else:
                 output["verdict"] = "BUILD"
 
+            # ── Jurion Protection — anti-default & quality gates ──
+
             # Ensure required_conditions is consistent with verdict
             if output["verdict"] == "BUILD WITH CONDITIONS":
+                app.logger.info("Jurion protection enabled: enforcing verdict quality gates on BWC verdict")
                 rc = output.get("required_conditions", [])
                 if not isinstance(rc, list) or len(rc) < 1:
                     # Model returned BUILD WITH CONDITIONS but no conditions — downgrade to DON'T BUILD
                     output["verdict"] = "DON'T BUILD"
-                    app.logger.info("VERDICT GUARD: BWC downgraded to DON'T BUILD — no conditions provided")
+                    output["required_conditions"] = []
+                    app.logger.info("Jurion protection enabled: BWC downgraded to DON'T BUILD — no conditions provided")
                 else:
                     output["required_conditions"] = [str(c) for c in rc[:3]]
 
-                    # --- BWC quality gate: opportunity must contain real signal ---
+                    # ── Anti-default rule (Jurion Gate 0) ──
+                    # BWC must NOT become a catch-all.  If the model cannot name a
+                    # *specific* opportunity (Featured Opportunity) AND a
+                    # differentiation path, downgrade to DON'T BUILD.
                     opp = output.get("opportunity_summary", "")
-                    if not opp.strip() or not has_real_signal(opp):
-                        # No identifiable opportunity → cannot justify BWC
+                    if not _has_specific_opportunity_and_differentiation(opp):
                         output["verdict"] = "DON'T BUILD"
                         output["required_conditions"] = []
-                        app.logger.info("VERDICT GUARD: BWC downgraded to DON'T BUILD — opportunity_summary has no real signal")
+                        app.logger.info(
+                            "Jurion protection enabled: anti-default rule triggered — "
+                            "no specific opportunity or differentiation path in opportunity_summary"
+                        )
 
-                    # --- BWC quality gate: conditions must be non-generic ---
+                    # ── Gate 1: opportunity must not be generic / summary-only ──
                     if output["verdict"] == "BUILD WITH CONDITIONS":
-                        generic_conditions = 0
-                        for cond in output["required_conditions"]:
-                            if is_action_generic(cond):
-                                generic_conditions += 1
-                        if generic_conditions >= 2:
-                            # Most conditions are generic boilerplate → downgrade
+                        opp_text = output.get("opportunity_summary", "")
+                        if (not opp_text.strip()
+                                or not has_real_signal(opp_text)
+                                or _GENERIC_OPPORTUNITY_RE.search(opp_text)):
                             output["verdict"] = "DON'T BUILD"
                             output["required_conditions"] = []
-                            app.logger.info("VERDICT GUARD: BWC downgraded to DON'T BUILD — %d/%d conditions are generic",
-                                            generic_conditions, len(output.get("required_conditions", [])))
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 1 triggered — "
+                                "opportunity_summary is generic or summary-only"
+                            )
+
+                    # ── Gate 2: conditions must be non-generic & risk-linked ──
+                    if output["verdict"] == "BUILD WITH CONDITIONS":
+                        generic_conditions = 0
+                        prohibited_conditions = 0
+                        unlinked_conditions = 0
+                        tr = output.get("top_reasons", [])
+                        br = output.get("biggest_risk", "")
+                        vr_text = output.get("verdict_reasoning", "")
+                        for cond in output["required_conditions"]:
+                            if _is_condition_prohibited(cond):
+                                prohibited_conditions += 1
+                                generic_conditions += 1
+                            elif is_action_generic(cond):
+                                generic_conditions += 1
+                            elif not _is_condition_actionable(cond):
+                                generic_conditions += 1
+                            if not _is_condition_risk_linked(cond, tr, br, vr_text):
+                                unlinked_conditions += 1
+                        if prohibited_conditions > 0:
+                            output["verdict"] = "DON'T BUILD"
+                            output["required_conditions"] = []
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 2 triggered — "
+                                "%d prohibited condition(s) detected",
+                                prohibited_conditions,
+                            )
+                        elif generic_conditions >= 2:
+                            output["verdict"] = "DON'T BUILD"
+                            output["required_conditions"] = []
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 2 triggered — "
+                                "%d/%d conditions are generic",
+                                generic_conditions, len(output.get("required_conditions", [])),
+                            )
+                        elif unlinked_conditions >= 2:
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 2 warning — "
+                                "%d/%d conditions not linked to identified risks",
+                                unlinked_conditions, len(output.get("required_conditions", [])),
+                            )
             else:
                 output["required_conditions"] = []
 
@@ -2258,7 +2427,7 @@ long_description HTML structure:
                     "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
                 ]
 
-            # --- Post-processing: enforce verdict consistency ---
+            # ── Jurion Gate 3: enforce verdict consistency on BUILD ──
             # If reasoning or top_reasons contain hard negative signals but verdict
             # is BUILD, check whether a real opportunity exists before deciding.
             # If opportunity has real signal → BUILD WITH CONDITIONS
@@ -2274,11 +2443,17 @@ long_description HTML structure:
                         # Generate conditions from the negative signals if none exist
                         if not output.get("required_conditions"):
                             output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
-                        app.logger.info("VERDICT GUARD: BUILD overridden to BWC — negative signals + real opportunity")
+                        app.logger.info(
+                            "Jurion protection enabled: Gate 3 — BUILD overridden to BWC "
+                            "(negative signals detected but real opportunity exists)"
+                        )
                     else:
                         output["verdict"] = "DON'T BUILD"
                         output["required_conditions"] = []
-                        app.logger.info("VERDICT GUARD: BUILD overridden to DON'T BUILD — negative signals + no real opportunity")
+                        app.logger.info(
+                            "Jurion protection enabled: Gate 3 — BUILD overridden to DON'T BUILD "
+                            "(negative signals detected and no real opportunity)"
+                        )
 
             # --- Post-processing: selective validation of top_reasons
             # and next_actions using smart validators ---
@@ -2360,7 +2535,7 @@ long_description HTML structure:
                 fallback_idx += 1
             output["next_actions"] = validated_actions[:3]
 
-            # --- Post-processing: enforce verdict consistency AFTER validation ---
+            # ── Jurion Gate 3 (final pass): enforce verdict consistency AFTER validation ──
             # Re-check verdict alignment now that reasons are finalized.
             if output["verdict"] == "BUILD":
                 final_reasoning = output.get("verdict_reasoning", "")
@@ -2371,11 +2546,17 @@ long_description HTML structure:
                         output["verdict"] = "BUILD WITH CONDITIONS"
                         if not output.get("required_conditions"):
                             output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
-                        app.logger.info("VERDICT GUARD (final): BUILD overridden to BWC — negative signals + real opportunity")
+                        app.logger.info(
+                            "Jurion protection enabled: Gate 3 (final) — BUILD overridden to BWC "
+                            "(negative signals + real opportunity)"
+                        )
                     else:
                         output["verdict"] = "DON'T BUILD"
                         output["required_conditions"] = []
-                        app.logger.info("VERDICT GUARD (final): BUILD overridden to DON'T BUILD — negative signals + no real opportunity")
+                        app.logger.info(
+                            "Jurion protection enabled: Gate 3 (final) — BUILD overridden to DON'T BUILD "
+                            "(negative signals + no real opportunity)"
+                        )
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
