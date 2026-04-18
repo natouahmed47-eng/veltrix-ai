@@ -591,8 +591,10 @@
         var token = localStorage.getItem("veltrix_token");
         var isLoggedIn = !!token;
 
-        /* Update nav */
+        /* Update nav for logged-in users */
         if (isLoggedIn) {
+            var loginBtn = document.getElementById("navLoginBtn");
+            if (loginBtn) loginBtn.style.display = "none";
             var signupBtn = document.getElementById("navSignupBtn");
             if (signupBtn) {
                 signupBtn.textContent = "Go to App";
@@ -657,6 +659,93 @@
             });
         } else {
             updatePricingState(null);
+        }
+    })();
+    </script>
+
+    <!-- ── PayPal Subscription Button ── -->
+    <script>
+    (function() {
+        var token = localStorage.getItem("veltrix_token") || "";
+
+        function _initPayPalButton() {
+            fetch("/api/config")
+                .then(function(res) { return res.json(); })
+                .then(function(cfg) {
+                    var planId = cfg.paypal_plan_id;
+                    if (!planId) return;
+                    var container = document.getElementById("paypal-button-container");
+                    if (!container) return;
+                    container.addEventListener("click", function() {
+                        if (window.trackEvent) {
+                            window.trackEvent("upgrade_click", {
+                                plan: "pro",
+                                source: "landing_pricing",
+                                user_state: (localStorage.getItem("veltrix_token") ? "logged_in" : "logged_out")
+                            });
+                        }
+                    }, { once: true });
+
+                    paypal.Buttons({
+                        style: { label: "pay" },
+                        createSubscription: function(data, actions) {
+                            return actions.subscription.create({ plan_id: planId });
+                        },
+                        onApprove: function(data) {
+                            if (window.trackEvent) {
+                                window.trackEvent("paypal_subscription_approved", {
+                                    plan: "pro",
+                                    source: "landing_pricing",
+                                    subscription_id: data.subscriptionID
+                                });
+                            }
+                            var t = localStorage.getItem("veltrix_token") || "";
+                            return fetch("/api/paypal/activate-subscription", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "Authorization": "Bearer " + t
+                                },
+                                body: JSON.stringify({ subscriptionID: data.subscriptionID })
+                            }).then(function(res) { return res.json(); })
+                              .then(function(details) {
+                                  if (details.error) { alert("Subscription failed: " + details.error); return; }
+                                  window.location.href = "/success";
+                              });
+                        },
+                        onCancel: function() {
+                            window.location.href = "/cancel";
+                        }
+                    }).render('#paypal-button-container').then(function() {
+                        if (window.trackEvent) {
+                            window.trackEvent("paypal_button_rendered", {
+                                plan: "pro",
+                                source: "landing_pricing"
+                            });
+                        }
+                    });
+                })
+                .catch(function(err) { if (typeof console !== "undefined") console.warn("PayPal init skipped:", err); });
+        }
+
+        function renderPayPal() {
+            if (typeof paypal !== "undefined") {
+                _initPayPalButton();
+            } else {
+                document.addEventListener("paypal-sdk-ready", _initPayPalButton);
+            }
+        }
+
+        /* Skip if user is already Pro */
+        if (token) {
+            fetch("/api/me", { headers: { "Authorization": "Bearer " + token } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.is_pro) { renderPayPal(); }
+                })
+                .catch(function() { renderPayPal(); });
+        } else {
+            renderPayPal();
         }
     })();
     </script>
