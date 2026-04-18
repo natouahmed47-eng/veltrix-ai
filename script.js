@@ -208,8 +208,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("authModalTitle").textContent = mode === "login" ? "Log In" : "Create Account";
         document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
         document.getElementById("authSwitch").innerHTML = mode === "login"
-            ? 'Don\'t have an account? <a href="#" id="switchToRegister" style="color:#4f46e5;font-weight:600;">Sign Up</a>'
-            : 'Already have an account? <a href="#" id="switchToLogin" style="color:#4f46e5;font-weight:600;">Log In</a>';
+            ? 'Don\'t have an account? <a href="#" id="switchToRegister" style="color:#4338ca;font-weight:600;">Sign Up</a>'
+            : 'Already have an account? <a href="#" id="switchToLogin" style="color:#4338ca;font-weight:600;">Log In</a>';
         document.getElementById("authUsername").value = "";
         document.getElementById("authPassword").value = "";
         document.getElementById("authError").style.display = "none";
@@ -403,7 +403,7 @@ document.addEventListener("DOMContentLoaded", function () {
     /* ── Save Button ── */
     function buildSaveButton() {
         if (!authToken) {
-            return '<div style="text-align:center;margin:20px 0;"><span style="color:#64748b;font-size:14px;"><a href="#" id="loginToSave" style="color:#4f46e5;font-weight:600;">Log in</a> to save this verdict to your dashboard.</span></div>';
+            return '<div style="text-align:center;margin:20px 0;"><span style="color:#64748b;font-size:14px;"><a href="#" id="loginToSave" style="color:#4338ca;font-weight:600;">Log in</a> to save this verdict to your dashboard.</span></div>';
         }
         return (
             '<div style="text-align:center;margin:20px 0;">' +
@@ -449,7 +449,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 btn.textContent = "\uD83D\uDCBE Save Decision";
                 return;
             }
-            msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4f46e5;font-weight:600;">Dashboard</a></span>';
+            msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4338ca;font-weight:600;">Dashboard</a></span>';
             btn.style.display = "none";
             fetchUsage();
         } catch (err) {

@@ -80,6 +80,7 @@
     --v-shadow-lg:  0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.03);
     --v-shadow-xl:  0 20px 48px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.03);
     --v-shadow-brand: 0 4px 14px rgba(67,56,202,0.18);
+    --v-shadow-brand-lg: 0 8px 32px rgba(67,56,202,0.15);
 
     /* Transitions */
     --v-ease:       cubic-bezier(0.4, 0, 0.2, 1);
@@ -613,7 +614,7 @@ body {
     color: var(--v-text-secondary);
     min-width: 120px;
 }
-.detail-chip .chip-label {
+.chip-label {
     font-weight: 600;
     color: var(--v-text-faint);
     font-size: 10px;
@@ -743,7 +744,7 @@ body {
     box-shadow: 0 4px 24px var(--v-brand-glow);
 }
 .pricing-card.pricing-pro:hover {
-    box-shadow: 0 8px 32px rgba(67, 56, 202, 0.15);
+    box-shadow: var(--v-shadow-brand-lg);
     transform: translateY(-2px);
 }
 .pricing-popular {
@@ -1028,7 +1029,7 @@ body {
 
 /* ── CTA Pulse / Glow Animation ── */
 @keyframes ctaPulse {
-    0% { box-shadow: 0 0 0 0 rgba(67, 56, 202, 0.35); }
+    0% { box-shadow: 0 0 0 0 var(--v-brand-glow); }
     70% { box-shadow: 0 0 0 10px rgba(67, 56, 202, 0); }
     100% { box-shadow: 0 0 0 0 rgba(67, 56, 202, 0); }
 }
@@ -1209,7 +1210,7 @@ body {
     background: var(--v-danger-light);
     border: 1px solid var(--v-danger-border);
 }
-.verdict-icon { font-size: 32px; margin-bottom: var(--v-sp-2); }
+.verdict-icon { font-size: var(--v-text-4xl); margin-bottom: var(--v-sp-2); }
 .verdict-label {
     font-size: var(--v-text-3xl);
     font-weight: 700;

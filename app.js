@@ -722,7 +722,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 btn.textContent = "\uD83D\uDCBE Save Decision";
                 return;
             }
-            msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4f46e5;font-weight:600;">Dashboard</a></span>';
+            msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4338ca;font-weight:600;">Dashboard</a></span>';
             btn.style.display = "none";
             fetchUsage();
         } catch (err) {
