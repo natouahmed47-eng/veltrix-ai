@@ -764,7 +764,7 @@
                 "display:flex;align-items:center;justify-content:space-between;gap:8px");
             d.innerHTML =
                 '<span>If you opened this inside Messenger/Instagram and the page looks outdated, tap <b>Open in Browser</b>.</span>' +
-                '<button onclick="this.parentNode.remove()" style="' +
+                '<button aria-label="Close notification" onclick="this.parentNode.remove()" style="' +
                 "background:none;border:none;font-size:18px;cursor:pointer;color:#92400e;padding:0 4px;line-height:1" +
                 '">&times;</button>';
             document.body.appendChild(d);
