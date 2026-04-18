@@ -192,7 +192,7 @@ _negative_signals_re = re.compile(
 # non-actionable.  The list mirrors the prompt-level FORBIDDEN list so that
 # any model slip-through is caught at the backend level.
 _PROHIBITED_CONDITION_RE = re.compile(
-    r"^\s*("
+    r"^\s{0,10}("
     r"check the market|talk to customers|do more research"
     r"|validate demand|validate the market|validate the idea"
     r"|research competitors|research the market|test the market"
@@ -200,7 +200,7 @@ _PROHIBITED_CONDITION_RE = re.compile(
     r"|gather feedback|seek feedback|get feedback"
     r"|conduct market research|build an mvp"
     r"|تحقق من السوق|تحدث مع العملاء|قم بمزيد من البحث"
-    r")\s*\.?\s*$",
+    r")\.?\s{0,10}$",
     re.IGNORECASE,
 )
 
@@ -208,7 +208,7 @@ _PROHIBITED_CONDITION_RE = re.compile(
 # a concrete channel/method.  This is a lightweight heuristic, not a
 # full NLP parse.
 _CONDITION_HAS_NUMBER_RE = re.compile(
-    r"(?:\d+\s*%|\$\s*[\d,.]+|\d[\d,]*\s*(?:unit|user|customer|interview|survey|response|day|week|month|hour|subscriber|order|quote|supplier|ad|campaign))",
+    r"(?:\d+\s{0,3}%|\$\s{0,3}[\d,.]+|\d[\d,]{0,15}\s{0,3}(?:unit|user|customer|interview|survey|response|day|week|month|hour|subscriber|order|quote|supplier|ad|campaign))",
     re.IGNORECASE,
 )
 
@@ -219,12 +219,13 @@ def _is_condition_prohibited(text: str) -> bool:
 
 
 def _is_condition_actionable(text: str) -> bool:
-    """Return True if a condition appears actionable (has numbers AND signal).
+    """Return True if a condition appears actionable.
 
     An actionable condition must:
-    - contain at least one quantitative element (number, dollar amount, percentage)
-    - contain real analytical signal (channel, metric, specific action)
     - not be a prohibited generic phrase
+    - meet a minimum length threshold
+    - contain real analytical signal (channel, metric, specific action)
+      OR a quantitative element (number, dollar amount, percentage)
     """
     stripped = text.strip()
     if not stripped or len(stripped) < MIN_SPECIFIC_REASON_LENGTH:
@@ -2267,10 +2268,10 @@ long_description HTML structure:
                 output["verdict"] = "BUILD"
 
             # ── Jurion Protection — anti-default & quality gates ──
-            app.logger.info("Jurion protection enabled: enforcing verdict quality gates")
 
             # Ensure required_conditions is consistent with verdict
             if output["verdict"] == "BUILD WITH CONDITIONS":
+                app.logger.info("Jurion protection enabled: enforcing verdict quality gates on BWC verdict")
                 rc = output.get("required_conditions", [])
                 if not isinstance(rc, list) or len(rc) < 1:
                     # Model returned BUILD WITH CONDITIONS but no conditions — downgrade to DON'T BUILD
