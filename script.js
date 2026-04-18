@@ -208,8 +208,8 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("authModalTitle").textContent = mode === "login" ? "Log In" : "Create Account";
         document.getElementById("authSubmitBtn").textContent = mode === "login" ? "Log In" : "Sign Up";
         document.getElementById("authSwitch").innerHTML = mode === "login"
-            ? 'Don\'t have an account? <a href="#" id="switchToRegister" style="color:#4f46e5;font-weight:600;">Sign Up</a>'
-            : 'Already have an account? <a href="#" id="switchToLogin" style="color:#4f46e5;font-weight:600;">Log In</a>';
+            ? 'Don\'t have an account? <a href="#" id="switchToRegister">Sign Up</a>'
+            : 'Already have an account? <a href="#" id="switchToLogin">Log In</a>';
         document.getElementById("authUsername").value = "";
         document.getElementById("authPassword").value = "";
         document.getElementById("authError").style.display = "none";
@@ -403,14 +403,14 @@ document.addEventListener("DOMContentLoaded", function () {
     /* ── Save Button ── */
     function buildSaveButton() {
         if (!authToken) {
-            return '<div style="text-align:center;margin:20px 0;"><span style="color:#64748b;font-size:14px;"><a href="#" id="loginToSave" style="color:#4f46e5;font-weight:600;">Log in</a> to save this verdict to your dashboard.</span></div>';
+            return '<div class="save-prompt"><a href="#" id="loginToSave">Log in</a> to save this verdict to your dashboard.</div>';
         }
         return (
-            '<div style="text-align:center;margin:20px 0;">' +
-                '<button id="saveAnalysisBtn" style="padding:12px 32px;border-radius:10px;border:none;font-size:15px;font-weight:600;background:linear-gradient(135deg,#059669,#10b981);color:#fff;cursor:pointer;font-family:inherit;transition:transform 0.15s,box-shadow 0.15s;">' +
+            '<div class="save-prompt">' +
+                '<button id="saveAnalysisBtn" class="btn-save">' +
                     '\uD83D\uDCBE Save Decision' +
                 '</button>' +
-                '<div id="saveMessage" style="margin-top:10px;font-size:14px;"></div>' +
+                '<div id="saveMessage" class="save-msg"></div>' +
             '</div>'
         );
     }
@@ -444,16 +444,16 @@ document.addEventListener("DOMContentLoaded", function () {
             });
             var data = await resp.json();
             if (!resp.ok) {
-                msg.innerHTML = '<span style="color:#dc2626;">' + esc(data.error || "Failed to save") + '</span>';
+                msg.innerHTML = '<span class="save-error">' + esc(data.error || "Failed to save") + '</span>';
                 btn.disabled = false;
                 btn.textContent = "\uD83D\uDCBE Save Decision";
                 return;
             }
-            msg.innerHTML = '<span style="color:#059669;">\u2705 Saved! View it on your <a href="/dashboard" style="color:#4f46e5;font-weight:600;">Dashboard</a></span>';
+            msg.innerHTML = '<span class="save-success">\u2705 Saved! View it on your <a href="/dashboard">Dashboard</a></span>';
             btn.style.display = "none";
             fetchUsage();
         } catch (err) {
-            msg.innerHTML = '<span style="color:#dc2626;">Connection error</span>';
+            msg.innerHTML = '<span class="save-error">Connection error</span>';
             btn.disabled = false;
             btn.textContent = "\uD83D\uDCBE Save Decision";
         }
@@ -608,13 +608,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var isBuild = verdict === "BUILD";
         var isConditional = verdict.indexOf("CONDITION") !== -1;
         var isDontBuild = !isBuild && !isConditional;
+        var verdictType = isBuild ? "build" : (isConditional ? "conditional" : "dont");
         var verdictColor = isBuild ? "#059669" : (isConditional ? "#d97706" : "#dc2626");
-        var verdictBg = isBuild ? "#f0fdf4" : (isConditional ? "#fffbeb" : "#fef2f2");
-        var verdictBorder = isBuild ? "#bbf7d0" : (isConditional ? "#fde68a" : "#fecaca");
         var verdictIcon = isBuild ? "\u2705" : (isConditional ? "\u26A0\uFE0F" : "\u274C");
         var verdictLabel = isBuild ? "BUILD" : (isConditional ? "BUILD WITH CONDITIONS" : "DON\u2019T BUILD");
         var verdictArrow = isBuild ? "\u25B2" : (isConditional ? "\u25C6" : "\u25BC");
-        var verdictActionBg = isBuild ? "rgba(5,150,105,0.06)" : (isConditional ? "rgba(217,119,6,0.06)" : "rgba(220,38,38,0.06)");
 
         /* Opportunity Summary + Biggest Risk */
         var opportunitySummary = item.opportunity_summary || "";
@@ -622,14 +620,14 @@ document.addEventListener("DOMContentLoaded", function () {
         var opportunityRiskHtml = "";
         if (opportunitySummary || biggestRisk) {
             opportunityRiskHtml =
-                '<div style="text-align:left;max-width:560px;margin:18px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
-                    (opportunitySummary ? '<div style="padding:14px 16px;background:rgba(5,150,105,0.06);border-radius:12px;border-left:3px solid #059669;">' +
-                        '<div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">\uD83D\uDCA1 Opportunity</div>' +
-                        '<p style="font-size:14px;color:#334155;line-height:1.6;margin:0;">' + esc(opportunitySummary) + '</p>' +
+                '<div class="verdict-grid">' +
+                    (opportunitySummary ? '<div class="verdict-insight verdict-insight--opportunity">' +
+                        '<div class="verdict-insight-label verdict-insight-label--opportunity">\uD83D\uDCA1 Opportunity</div>' +
+                        '<p>' + esc(opportunitySummary) + '</p>' +
                     '</div>' : '') +
-                    (biggestRisk ? '<div style="padding:14px 16px;background:rgba(220,38,38,0.06);border-radius:12px;border-left:3px solid #dc2626;">' +
-                        '<div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">\u26A0\uFE0F Biggest Risk</div>' +
-                        '<p style="font-size:14px;color:#334155;line-height:1.6;margin:0;">' + esc(biggestRisk) + '</p>' +
+                    (biggestRisk ? '<div class="verdict-insight verdict-insight--risk">' +
+                        '<div class="verdict-insight-label verdict-insight-label--risk">\u26A0\uFE0F Biggest Risk</div>' +
+                        '<p>' + esc(biggestRisk) + '</p>' +
                     '</div>' : '') +
                 '</div>';
         }
@@ -639,12 +637,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var conditionsHtml = "";
         if (isConditional && requiredConditions.length) {
             conditionsHtml =
-                '<div style="text-align:left;max-width:560px;margin:18px auto 0;padding:16px 18px;background:#fffbeb;border:1px solid #fef3c7;border-radius:14px;">' +
-                    '<div style="font-size:12px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">\uD83D\uDD12 Required Conditions</div>' +
-                    '<ul style="list-style:none;padding:0;margin:0;">' +
+                '<div class="verdict-conditions">' +
+                    '<div class="verdict-conditions-label">\uD83D\uDD12 Required Conditions</div>' +
+                    '<ul>' +
                         requiredConditions.map(function (c, i) {
-                            return '<li style="padding:7px 0;font-size:14px;color:#92400e;line-height:1.55;display:flex;align-items:flex-start;gap:8px;">' +
-                                '<span style="color:#d97706;font-size:14px;flex-shrink:0;font-weight:700;">' + (i + 1) + '.</span>' +
+                            return '<li>' +
+                                '<span>' + (i + 1) + '.</span>' +
                                 '<span>' + esc(c) + '</span>' +
                             '</li>';
                         }).join("") +
@@ -659,12 +657,12 @@ document.addEventListener("DOMContentLoaded", function () {
             "FRONTEND FALLBACK 3"
         ];
         var topReasonsHtml =
-            '<div style="text-align:left;max-width:560px;margin:20px auto 0;">' +
-                '<div style="font-size:12px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Top 3 Reasons</div>' +
-                '<ul style="list-style:none;padding:0;margin:0;">' +
+            '<div class="verdict-reasons">' +
+                '<div class="verdict-reasons-label" style="color:' + verdictColor + ';">Top 3 Reasons</div>' +
+                '<ul>' +
                     topReasons.map(function (r) {
-                        return '<li style="padding:7px 0;font-size:14px;color:#1e293b;line-height:1.55;display:flex;align-items:flex-start;gap:8px;">' +
-                            '<span style="color:' + verdictColor + ';font-size:16px;flex-shrink:0;margin-top:1px;">' + verdictArrow + '</span>' +
+                        return '<li>' +
+                            '<span style="color:' + verdictColor + ';">' + verdictArrow + '</span>' +
                             '<span>' + esc(r) + '</span>' +
                         '</li>';
                     }).join("") +
@@ -674,9 +672,9 @@ document.addEventListener("DOMContentLoaded", function () {
         /* Verdict Reasoning */
         var verdictReasoning = item.verdict_reasoning || "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.";
         var reasoningHtml =
-            '<div style="max-width:560px;margin:18px auto 0;text-align:left;">' +
-                '<div style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Why This Verdict</div>' +
-                '<p style="font-size:14px;color:#475569;line-height:1.7;margin:0;">' + esc(verdictReasoning) + '</p>' +
+            '<div class="verdict-why">' +
+                '<div class="verdict-why-label">Why This Verdict</div>' +
+                '<p>' + esc(verdictReasoning) + '</p>' +
             '</div>';
 
         /* Next Actions */
@@ -687,21 +685,21 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
         var actionIcons = ["\u0031\uFE0F\u20E3", "\u0032\uFE0F\u20E3", "\u0033\uFE0F\u20E3"];
         var nextActionsHtml =
-            '<div style="text-align:left;max-width:560px;margin:20px auto 0;padding-top:18px;border-top:1px solid ' + verdictBorder + ';">' +
-                '<div style="font-size:12px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">\uD83D\uDE80 What Should I Do Next?</div>' +
+            '<div class="verdict-actions">' +
+                '<div class="verdict-actions-label" style="color:' + verdictColor + ';">\uD83D\uDE80 What Should I Do Next?</div>' +
                 nextActions.map(function (a, i) {
-                    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:8px;background:' + verdictActionBg + ';border-radius:12px;">' +
-                        '<span style="font-size:16px;flex-shrink:0;">' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
-                        '<span style="font-size:14px;color:#1e293b;line-height:1.55;">' + esc(a) + '</span>' +
+                    return '<div class="verdict-action-item verdict-action-item--' + verdictType + '">' +
+                        '<span>' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
+                        '<span>' + esc(a) + '</span>' +
                     '</div>';
                 }).join("") +
             '</div>';
 
         var verdictHtml =
-            '<div class="verdict-banner" style="background:' + verdictBg + ';border:1.5px solid ' + verdictBorder + ';border-radius:20px;padding:32px 32px 28px;margin-bottom:28px;text-align:center;">' +
-                '<div style="font-size:36px;margin-bottom:10px;">' + verdictIcon + '</div>' +
-                '<div style="font-size:26px;font-weight:800;color:' + verdictColor + ';letter-spacing:-0.4px;margin-bottom:6px;">VERDICT: ' + verdictLabel + '</div>' +
-                '<div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:2px;">' + (item.confidence || 70) + '% Confidence</div>' +
+            '<div class="verdict-banner verdict-banner--' + verdictType + '">' +
+                '<div class="verdict-icon">' + verdictIcon + '</div>' +
+                '<div class="verdict-label verdict-label--' + verdictType + '">VERDICT: ' + verdictLabel + '</div>' +
+                '<div class="verdict-confidence">' + (item.confidence || 70) + '% Confidence</div>' +
                 opportunityRiskHtml +
                 conditionsHtml +
                 topReasonsHtml +
@@ -832,16 +830,15 @@ document.addEventListener("DOMContentLoaded", function () {
             seoHtml =
                 '<div class="card card--seo">' +
                     '<div class="card-header"><div class="card-icon">\uD83D\uDCC8</div><h4>SEO Optimization</h4></div>' +
-                    (item.meta_description ? '<div style="margin-bottom:12px;"><strong style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Meta Description</strong><p style="margin:6px 0 0;font-size:14px;color:#475569;line-height:1.65;">' + esc(item.meta_description) + '</p></div>' : '') +
-                    (item.keywords ? '<div><strong style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Keywords</strong><p style="margin:6px 0 0;font-size:14px;color:#475569;line-height:1.65;">' + esc(item.keywords) + '</p></div>' : '') +
+                    (item.meta_description ? '<div style="margin-bottom:12px;"><strong class="chip-label">Meta Description</strong><p style="margin:6px 0 0;">' + esc(item.meta_description) + '</p></div>' : '') +
+                    (item.keywords ? '<div><strong class="chip-label">Keywords</strong><p style="margin:6px 0 0;">' + esc(item.keywords) + '</p></div>' : '') +
                 '</div>';
         }
 
         /* ── Assemble ── */
         var secondaryDivider =
-            '<div style="text-align:center;margin:32px 0 20px;position:relative;">' +
-                '<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#f1f5f9;"></div>' +
-                '<span style="position:relative;background:#fafbfd;padding:0 18px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Detailed Breakdown</span>' +
+            '<div class="detail-break">' +
+                '<span>Detailed Breakdown</span>' +
             '</div>';
         return (
             verdictHtml +
@@ -896,10 +893,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (cs.best_season) {
-            html += '<div style="margin-top:10px;font-size:13px;"><strong style="color:#92400e;">Best Season:</strong> ' + esc(cs.best_season) + "</div>";
+            html += '<div class="cat-field cat-field--fragrance"><strong>Best Season:</strong> ' + esc(cs.best_season) + "</div>";
         }
         if (Array.isArray(cs.best_occasions) && cs.best_occasions.length) {
-            html += '<div style="margin-top:8px;"><strong style="font-size:13px;color:#92400e;">Best Occasions</strong><ul class="tag-list">' + cs.best_occasions.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul></div>";
+            html += '<div style="margin-top:8px;"><strong class="cat-field--fragrance" style="font-size:13px;">Best Occasions</strong><ul class="tag-list">' + cs.best_occasions.map(function (o) { return "<li>" + esc(o) + "</li>"; }).join("") + "</ul></div>";
         }
 
         html += "</div>";
@@ -908,8 +905,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Electronics category section ── */
     function buildElectronicsSection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #3b82f6;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#eff6ff;color:#3b82f6;">\uD83D\uDD0C</div><h4>Electronics Details</h4></div>';
+        var html = '<div class="card card--electronics">' +
+            '<div class="card-header"><div class="card-icon">\uD83D\uDD0C</div><h4>Electronics Details</h4></div>';
         var fields = [
             { key: "battery", label: "Battery" },
             { key: "connectivity", label: "Connectivity" },
@@ -919,7 +916,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
         fields.forEach(function (f) {
             if (cs[f.key]) {
-                html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#1e40af;">' + esc(f.label) + ':</strong> <span style="color:#475569;">' + esc(cs[f.key]) + '</span></div>';
+                html += '<div class="cat-field cat-field--electronics"><strong>' + esc(f.label) + ':</strong> <span>' + esc(cs[f.key]) + '</span></div>';
             }
         });
         html += "</div>";
@@ -928,43 +925,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Fashion category section ── */
     function buildFashionSection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #ec4899;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#fdf2f8;color:#ec4899;">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
-        if (cs.style) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Style:</strong> <span style="color:#475569;">' + esc(cs.style) + '</span></div>';
-        if (cs.material) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Material:</strong> <span style="color:#475569;">' + esc(formatMaterial(cs.material)) + '</span></div>';
-        if (cs.fit) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Fit:</strong> <span style="color:#475569;">' + esc(cs.fit) + '</span></div>';
+        var html = '<div class="card card--fashion">' +
+            '<div class="card-header"><div class="card-icon">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
+        if (cs.style) html += '<div class="cat-field cat-field--fashion"><strong>Style:</strong> <span>' + esc(cs.style) + '</span></div>';
+        if (cs.material) html += '<div class="cat-field cat-field--fashion"><strong>Material:</strong> <span>' + esc(formatMaterial(cs.material)) + '</span></div>';
+        if (cs.fit) html += '<div class="cat-field cat-field--fashion"><strong>Fit:</strong> <span>' + esc(cs.fit) + '</span></div>';
         if (Array.isArray(cs.occasion) && cs.occasion.length) {
-            html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Occasion:</strong> <span style="color:#475569;">' + esc(cs.occasion.join(", ")) + '</span></div>';
+            html += '<div class="cat-field cat-field--fashion"><strong>Occasion:</strong> <span>' + esc(cs.occasion.join(", ")) + '</span></div>';
         } else if (typeof cs.occasion === "string" && cs.occasion) {
-            html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Occasion:</strong> <span style="color:#475569;">' + esc(cs.occasion) + '</span></div>';
+            html += '<div class="cat-field cat-field--fashion"><strong>Occasion:</strong> <span>' + esc(cs.occasion) + '</span></div>';
         }
-        if (cs.season) html += '<div style="font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Season:</strong> <span style="color:#475569;">' + esc(cs.season) + '</span></div>';
+        if (cs.season) html += '<div class="cat-field cat-field--fashion"><strong>Season:</strong> <span>' + esc(cs.season) + '</span></div>';
         html += "</div>";
         return html;
     }
 
     /* ── Beauty category section ── */
     function buildBeautySection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #a855f7;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#faf5ff;color:#a855f7;">\u2728</div><h4>Beauty Details</h4></div>';
-        if (cs.skin_type) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Skin Type:</strong> <span style="color:#475569;">' + esc(cs.skin_type) + '</span></div>';
+        var html = '<div class="card card--beauty">' +
+            '<div class="card-header"><div class="card-icon">\u2728</div><h4>Beauty Details</h4></div>';
+        if (cs.skin_type) html += '<div class="cat-field cat-field--beauty"><strong>Skin Type:</strong> <span>' + esc(cs.skin_type) + '</span></div>';
         if (Array.isArray(cs.key_ingredients) && cs.key_ingredients.length) {
-            html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Key Ingredients:</strong> <span style="color:#475569;">' + esc(cs.key_ingredients.join(", ")) + '</span></div>';
+            html += '<div class="cat-field cat-field--beauty"><strong>Key Ingredients:</strong> <span>' + esc(cs.key_ingredients.join(", ")) + '</span></div>';
         }
-        if (cs.texture) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Texture:</strong> <span style="color:#475569;">' + esc(cs.texture) + '</span></div>';
-        if (cs.routine_fit) html += '<div style="font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Routine Fit:</strong> <span style="color:#475569;">' + esc(cs.routine_fit) + '</span></div>';
+        if (cs.texture) html += '<div class="cat-field cat-field--beauty"><strong>Texture:</strong> <span>' + esc(cs.texture) + '</span></div>';
+        if (cs.routine_fit) html += '<div class="cat-field cat-field--beauty"><strong>Routine Fit:</strong> <span>' + esc(cs.routine_fit) + '</span></div>';
         html += "</div>";
         return html;
     }
 
     /* ── Home category section ── */
     function buildHomeSection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #10b981;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#ecfdf5;color:#10b981;">\uD83C\uDFE0</div><h4>Home & Living Details</h4></div>';
-        if (cs.room_fit) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Room Fit:</strong> <span style="color:#475569;">' + esc(cs.room_fit) + '</span></div>';
-        if (cs.material) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Material:</strong> <span style="color:#475569;">' + esc(cs.material) + '</span></div>';
-        if (cs.practicality) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Practicality:</strong> <span style="color:#475569;">' + esc(cs.practicality) + '</span></div>';
-        if (cs.maintenance) html += '<div style="font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Maintenance:</strong> <span style="color:#475569;">' + esc(cs.maintenance) + '</span></div>';
+        var html = '<div class="card card--home">' +
+            '<div class="card-header"><div class="card-icon">\uD83C\uDFE0</div><h4>Home & Living Details</h4></div>';
+        if (cs.room_fit) html += '<div class="cat-field cat-field--home"><strong>Room Fit:</strong> <span>' + esc(cs.room_fit) + '</span></div>';
+        if (cs.material) html += '<div class="cat-field cat-field--home"><strong>Material:</strong> <span>' + esc(cs.material) + '</span></div>';
+        if (cs.practicality) html += '<div class="cat-field cat-field--home"><strong>Practicality:</strong> <span>' + esc(cs.practicality) + '</span></div>';
+        if (cs.maintenance) html += '<div class="cat-field cat-field--home"><strong>Maintenance:</strong> <span>' + esc(cs.maintenance) + '</span></div>';
         html += "</div>";
         return html;
     }
