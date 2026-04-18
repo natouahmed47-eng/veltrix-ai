@@ -312,6 +312,15 @@ body {
     font-size: var(--v-text-sm);
     color: var(--v-text-faint);
 }
+.auth-switch a {
+    color: var(--v-brand);
+    font-weight: 600;
+    text-decoration: none;
+}
+.auth-switch a:hover {
+    color: var(--v-brand-hover);
+    text-decoration: underline;
+}
 
 /* ── Container ── */
 .container {
@@ -586,6 +595,31 @@ body {
 .card--specs .card-icon { background: var(--v-bg); color: var(--v-text-muted); }
 .card--description .card-icon { background: var(--v-bg); color: #6b7280; }
 .card--seo .card-icon { background: #f0fdf4; color: #22c55e; }
+
+/* ── Category-Specific Cards ── */
+.card--electronics { border-left: 3px solid #3b82f6; }
+.card--electronics .card-icon { background: #eff6ff; color: #3b82f6; }
+.card--fashion { border-left: 3px solid #ec4899; }
+.card--fashion .card-icon { background: #fdf2f8; color: #ec4899; }
+.card--beauty { border-left: 3px solid #a855f7; }
+.card--beauty .card-icon { background: #faf5ff; color: #a855f7; }
+.card--home { border-left: 3px solid #10b981; }
+.card--home .card-icon { background: #ecfdf5; color: #10b981; }
+
+/* ── Category Detail Field ── */
+.cat-field {
+    margin-bottom: var(--v-sp-3);
+    font-size: var(--v-text-base);
+    line-height: 1.6;
+}
+.cat-field:last-child { margin-bottom: 0; }
+.cat-field strong { font-weight: 600; }
+.cat-field span { color: var(--v-text-secondary); }
+.cat-field--electronics strong { color: #1e40af; }
+.cat-field--fashion strong { color: #9d174d; }
+.cat-field--beauty strong { color: #7e22ce; }
+.cat-field--home strong { color: #065f46; }
+.cat-field--fragrance strong { color: #92400e; }
 
 /* ── Lists inside cards ── */
 .card ul {
@@ -878,6 +912,14 @@ body {
     margin: 0;
     line-height: 1.6;
 }
+.pricing-pro-active-msg .pam-link {
+    color: #166534;
+    font-weight: 600;
+    text-decoration: none;
+}
+.pricing-pro-active-msg .pam-link:hover {
+    text-decoration: underline;
+}
 
 /* ── Pricing State Message Banner ── */
 .pricing-state-msg {
@@ -926,13 +968,14 @@ body {
         padding-top: var(--v-sp-3);
         padding-bottom: var(--v-sp-3);
     }
+    .top-bar .tagline { display: none; }
     .product-header { flex-direction: column; padding: var(--v-sp-5); }
     .product-header .ph-image { width: 64px; height: 64px; font-size: 28px; }
     .search-card { padding: var(--v-sp-8) var(--v-sp-5); }
     .search-card h1 { font-size: var(--v-text-3xl); }
     .search-card .muted { font-size: var(--v-text-md); margin-bottom: var(--v-sp-6); }
     .search-row { flex-direction: column; }
-    .search-row button { width: 100%; }
+    .search-row button { width: 100%; padding: 14px 24px; }
     .card { padding: var(--v-sp-5) var(--v-sp-5); }
     .container { padding: var(--v-sp-6) var(--v-sp-4) var(--v-sp-12); }
     .modal-box { padding: var(--v-sp-6) var(--v-sp-5); }
@@ -941,12 +984,22 @@ body {
     .pricing-section-title { font-size: var(--v-text-3xl); }
     .pricing-section-sub { font-size: var(--v-text-md); margin-bottom: var(--v-sp-6); }
     .pricing-card { padding: var(--v-sp-6) var(--v-sp-5); }
-    /* Verdict banner inline — tighten on mobile */
+    /* Verdict banner — tighten on mobile */
     .verdict-banner { padding: var(--v-sp-6) var(--v-sp-4) var(--v-sp-5) !important; }
+    .verdict-grid { grid-template-columns: 1fr; }
+    .verdict-label { font-size: var(--v-text-2xl); }
+    .verdict-reasons, .verdict-actions, .verdict-why, .verdict-conditions {
+        max-width: 100%;
+    }
     /* Status pages */
     .status-page { margin: var(--v-sp-10) var(--v-sp-4); padding: var(--v-sp-8) var(--v-sp-6); border-radius: var(--v-radius-xl); }
     .status-icon { font-size: 40px; margin-bottom: var(--v-sp-4); }
     .status-title { font-size: var(--v-text-2xl); }
+    /* Detail chips */
+    .detail-row { flex-direction: column; }
+    .detail-chip { min-width: 0; }
+    /* Save button */
+    .btn-save { width: 100%; }
 }
 
 /* ── Status Pages (Success / Cancel) ── */
@@ -1407,3 +1460,49 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.1em;
 }
+
+/* ── Save Button & Messages ── */
+.save-prompt {
+    text-align: center;
+    margin: var(--v-sp-5) 0;
+}
+.save-prompt a {
+    color: var(--v-brand);
+    font-weight: 600;
+    text-decoration: none;
+}
+.save-prompt a:hover {
+    color: var(--v-brand-hover);
+    text-decoration: underline;
+}
+.btn-save {
+    padding: 12px 32px;
+    border-radius: var(--v-radius-md);
+    border: none;
+    font-size: var(--v-text-md);
+    font-weight: 600;
+    background: var(--v-success);
+    color: #fff;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease), transform 0.1s var(--v-ease);
+}
+.btn-save:hover {
+    background: #047857;
+    box-shadow: 0 4px 14px rgba(5,150,105,0.18);
+    transform: translateY(-1px);
+}
+.btn-save:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+.save-msg {
+    margin-top: var(--v-sp-3);
+    font-size: var(--v-text-base);
+}
+.save-error { color: var(--v-danger); }
+.save-success { color: var(--v-success); }
+.save-success a { color: var(--v-brand); font-weight: 600; text-decoration: none; }
+.save-success a:hover { color: var(--v-brand-hover); text-decoration: underline; }
