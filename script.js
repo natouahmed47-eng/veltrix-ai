@@ -622,14 +622,14 @@ document.addEventListener("DOMContentLoaded", function () {
         var opportunityRiskHtml = "";
         if (opportunitySummary || biggestRisk) {
             opportunityRiskHtml =
-                '<div style="text-align:left;max-width:560px;margin:14px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
-                    (opportunitySummary ? '<div style="padding:10px 14px;background:rgba(5,150,105,0.06);border-radius:8px;border-left:3px solid #059669;">' +
-                        '<div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">\uD83D\uDCA1 Opportunity</div>' +
-                        '<p style="font-size:13px;color:#334155;line-height:1.5;margin:0;">' + esc(opportunitySummary) + '</p>' +
+                '<div style="text-align:left;max-width:560px;margin:18px auto 0;display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+                    (opportunitySummary ? '<div style="padding:14px 16px;background:rgba(5,150,105,0.06);border-radius:12px;border-left:3px solid #059669;">' +
+                        '<div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">\uD83D\uDCA1 Opportunity</div>' +
+                        '<p style="font-size:14px;color:#334155;line-height:1.6;margin:0;">' + esc(opportunitySummary) + '</p>' +
                     '</div>' : '') +
-                    (biggestRisk ? '<div style="padding:10px 14px;background:rgba(220,38,38,0.06);border-radius:8px;border-left:3px solid #dc2626;">' +
-                        '<div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">\u26A0\uFE0F Biggest Risk</div>' +
-                        '<p style="font-size:13px;color:#334155;line-height:1.5;margin:0;">' + esc(biggestRisk) + '</p>' +
+                    (biggestRisk ? '<div style="padding:14px 16px;background:rgba(220,38,38,0.06);border-radius:12px;border-left:3px solid #dc2626;">' +
+                        '<div style="font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">\u26A0\uFE0F Biggest Risk</div>' +
+                        '<p style="font-size:14px;color:#334155;line-height:1.6;margin:0;">' + esc(biggestRisk) + '</p>' +
                     '</div>' : '') +
                 '</div>';
         }
@@ -639,11 +639,11 @@ document.addEventListener("DOMContentLoaded", function () {
         var conditionsHtml = "";
         if (isConditional && requiredConditions.length) {
             conditionsHtml =
-                '<div style="text-align:left;max-width:560px;margin:16px auto 0;padding:14px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;">' +
-                    '<div style="font-size:13px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">\uD83D\uDD12 Required Conditions</div>' +
+                '<div style="text-align:left;max-width:560px;margin:18px auto 0;padding:16px 18px;background:#fffbeb;border:1px solid #fef3c7;border-radius:14px;">' +
+                    '<div style="font-size:12px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">\uD83D\uDD12 Required Conditions</div>' +
                     '<ul style="list-style:none;padding:0;margin:0;">' +
                         requiredConditions.map(function (c, i) {
-                            return '<li style="padding:6px 0;font-size:14px;color:#92400e;line-height:1.5;display:flex;align-items:flex-start;gap:8px;">' +
+                            return '<li style="padding:7px 0;font-size:14px;color:#92400e;line-height:1.55;display:flex;align-items:flex-start;gap:8px;">' +
                                 '<span style="color:#d97706;font-size:14px;flex-shrink:0;font-weight:700;">' + (i + 1) + '.</span>' +
                                 '<span>' + esc(c) + '</span>' +
                             '</li>';
@@ -659,11 +659,11 @@ document.addEventListener("DOMContentLoaded", function () {
             "FRONTEND FALLBACK 3"
         ];
         var topReasonsHtml =
-            '<div style="text-align:left;max-width:560px;margin:16px auto 0;">' +
-                '<div style="font-size:13px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Top 3 Reasons</div>' +
+            '<div style="text-align:left;max-width:560px;margin:20px auto 0;">' +
+                '<div style="font-size:12px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">Top 3 Reasons</div>' +
                 '<ul style="list-style:none;padding:0;margin:0;">' +
                     topReasons.map(function (r) {
-                        return '<li style="padding:6px 0;font-size:14px;color:#1e293b;line-height:1.5;display:flex;align-items:flex-start;gap:8px;">' +
+                        return '<li style="padding:7px 0;font-size:14px;color:#1e293b;line-height:1.55;display:flex;align-items:flex-start;gap:8px;">' +
                             '<span style="color:' + verdictColor + ';font-size:16px;flex-shrink:0;margin-top:1px;">' + verdictArrow + '</span>' +
                             '<span>' + esc(r) + '</span>' +
                         '</li>';
@@ -674,9 +674,9 @@ document.addEventListener("DOMContentLoaded", function () {
         /* Verdict Reasoning */
         var verdictReasoning = item.verdict_reasoning || "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.";
         var reasoningHtml =
-            '<div style="max-width:560px;margin:14px auto 0;text-align:left;">' +
-                '<div style="font-size:13px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Why This Verdict</div>' +
-                '<p style="font-size:14px;color:#334155;line-height:1.65;margin:0;">' + esc(verdictReasoning) + '</p>' +
+            '<div style="max-width:560px;margin:18px auto 0;text-align:left;">' +
+                '<div style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Why This Verdict</div>' +
+                '<p style="font-size:14px;color:#475569;line-height:1.7;margin:0;">' + esc(verdictReasoning) + '</p>' +
             '</div>';
 
         /* Next Actions */
@@ -687,20 +687,20 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
         var actionIcons = ["\u0031\uFE0F\u20E3", "\u0032\uFE0F\u20E3", "\u0033\uFE0F\u20E3"];
         var nextActionsHtml =
-            '<div style="text-align:left;max-width:560px;margin:18px auto 0;padding-top:14px;border-top:1px solid ' + verdictBorder + ';">' +
-                '<div style="font-size:13px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;">\uD83D\uDE80 What Should I Do Next?</div>' +
+            '<div style="text-align:left;max-width:560px;margin:20px auto 0;padding-top:18px;border-top:1px solid ' + verdictBorder + ';">' +
+                '<div style="font-size:12px;font-weight:700;color:' + verdictColor + ';text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;">\uD83D\uDE80 What Should I Do Next?</div>' +
                 nextActions.map(function (a, i) {
-                    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 12px;margin-bottom:6px;background:' + verdictActionBg + ';border-radius:8px;">' +
+                    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;margin-bottom:8px;background:' + verdictActionBg + ';border-radius:12px;">' +
                         '<span style="font-size:16px;flex-shrink:0;">' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
-                        '<span style="font-size:14px;color:#1e293b;line-height:1.5;">' + esc(a) + '</span>' +
+                        '<span style="font-size:14px;color:#1e293b;line-height:1.55;">' + esc(a) + '</span>' +
                     '</div>';
                 }).join("") +
             '</div>';
 
         var verdictHtml =
-            '<div class="verdict-banner" style="background:' + verdictBg + ';border:2px solid ' + verdictBorder + ';border-radius:14px;padding:28px 28px 24px;margin-bottom:24px;text-align:center;">' +
-                '<div style="font-size:36px;margin-bottom:8px;">' + verdictIcon + '</div>' +
-                '<div style="font-size:28px;font-weight:800;color:' + verdictColor + ';letter-spacing:-0.3px;margin-bottom:4px;">VERDICT: ' + verdictLabel + '</div>' +
+            '<div class="verdict-banner" style="background:' + verdictBg + ';border:1.5px solid ' + verdictBorder + ';border-radius:20px;padding:32px 32px 28px;margin-bottom:28px;text-align:center;">' +
+                '<div style="font-size:36px;margin-bottom:10px;">' + verdictIcon + '</div>' +
+                '<div style="font-size:26px;font-weight:800;color:' + verdictColor + ';letter-spacing:-0.4px;margin-bottom:6px;">VERDICT: ' + verdictLabel + '</div>' +
                 '<div style="font-size:13px;color:#94a3b8;font-weight:600;margin-bottom:2px;">' + (item.confidence || 70) + '% Confidence</div>' +
                 opportunityRiskHtml +
                 conditionsHtml +
@@ -832,16 +832,16 @@ document.addEventListener("DOMContentLoaded", function () {
             seoHtml =
                 '<div class="card card--seo">' +
                     '<div class="card-header"><div class="card-icon">\uD83D\uDCC8</div><h4>SEO Optimization</h4></div>' +
-                    (item.meta_description ? '<div style="margin-bottom:8px;"><strong style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Meta Description</strong><p style="margin:4px 0 0;">' + esc(item.meta_description) + '</p></div>' : '') +
-                    (item.keywords ? '<div><strong style="font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Keywords</strong><p style="margin:4px 0 0;">' + esc(item.keywords) + '</p></div>' : '') +
+                    (item.meta_description ? '<div style="margin-bottom:12px;"><strong style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Meta Description</strong><p style="margin:6px 0 0;font-size:14px;color:#475569;line-height:1.65;">' + esc(item.meta_description) + '</p></div>' : '') +
+                    (item.keywords ? '<div><strong style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.06em;">Keywords</strong><p style="margin:6px 0 0;font-size:14px;color:#475569;line-height:1.65;">' + esc(item.keywords) + '</p></div>' : '') +
                 '</div>';
         }
 
         /* ── Assemble ── */
         var secondaryDivider =
-            '<div style="text-align:center;margin:28px 0 18px;position:relative;">' +
-                '<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#e2e8f0;"></div>' +
-                '<span style="position:relative;background:#f8fafc;padding:0 16px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Detailed Breakdown</span>' +
+            '<div style="text-align:center;margin:32px 0 20px;position:relative;">' +
+                '<div style="position:absolute;top:50%;left:0;right:0;height:1px;background:#f1f5f9;"></div>' +
+                '<span style="position:relative;background:#fafbfd;padding:0 18px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;">Detailed Breakdown</span>' +
             '</div>';
         return (
             verdictHtml +
@@ -908,8 +908,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Electronics category section ── */
     function buildElectronicsSection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #2563eb;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#dbeafe;">\uD83D\uDD0C</div><h4>Electronics Details</h4></div>';
+        var html = '<div class="card" style="border-left:3px solid #3b82f6;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#eff6ff;color:#3b82f6;">\uD83D\uDD0C</div><h4>Electronics Details</h4></div>';
         var fields = [
             { key: "battery", label: "Battery" },
             { key: "connectivity", label: "Connectivity" },
@@ -919,7 +919,7 @@ document.addEventListener("DOMContentLoaded", function () {
         ];
         fields.forEach(function (f) {
             if (cs[f.key]) {
-                html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#1e40af;">' + esc(f.label) + ':</strong> ' + esc(cs[f.key]) + "</div>";
+                html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#1e40af;">' + esc(f.label) + ':</strong> <span style="color:#475569;">' + esc(cs[f.key]) + '</span></div>';
             }
         });
         html += "</div>";
@@ -928,43 +928,43 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Fashion category section ── */
     function buildFashionSection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #db2777;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#fce7f3;">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
-        if (cs.style) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Style:</strong> ' + esc(cs.style) + "</div>";
-        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Material:</strong> ' + esc(formatMaterial(cs.material)) + "</div>";
-        if (cs.fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Fit:</strong> ' + esc(cs.fit) + "</div>";
+        var html = '<div class="card" style="border-left:3px solid #ec4899;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#fdf2f8;color:#ec4899;">\uD83D\uDC57</div><h4>Fashion Details</h4></div>';
+        if (cs.style) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Style:</strong> <span style="color:#475569;">' + esc(cs.style) + '</span></div>';
+        if (cs.material) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Material:</strong> <span style="color:#475569;">' + esc(formatMaterial(cs.material)) + '</span></div>';
+        if (cs.fit) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Fit:</strong> <span style="color:#475569;">' + esc(cs.fit) + '</span></div>';
         if (Array.isArray(cs.occasion) && cs.occasion.length) {
-            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion.join(", ")) + "</div>";
+            html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Occasion:</strong> <span style="color:#475569;">' + esc(cs.occasion.join(", ")) + '</span></div>';
         } else if (typeof cs.occasion === "string" && cs.occasion) {
-            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#9d174d;">Occasion:</strong> ' + esc(cs.occasion) + "</div>";
+            html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Occasion:</strong> <span style="color:#475569;">' + esc(cs.occasion) + '</span></div>';
         }
-        if (cs.season) html += '<div style="font-size:14px;"><strong style="color:#9d174d;">Season:</strong> ' + esc(cs.season) + "</div>";
+        if (cs.season) html += '<div style="font-size:14px;line-height:1.6;"><strong style="color:#9d174d;">Season:</strong> <span style="color:#475569;">' + esc(cs.season) + '</span></div>';
         html += "</div>";
         return html;
     }
 
     /* ── Beauty category section ── */
     function buildBeautySection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #9333ea;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#f3e8ff;">\u2728</div><h4>Beauty Details</h4></div>';
-        if (cs.skin_type) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Skin Type:</strong> ' + esc(cs.skin_type) + "</div>";
+        var html = '<div class="card" style="border-left:3px solid #a855f7;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#faf5ff;color:#a855f7;">\u2728</div><h4>Beauty Details</h4></div>';
+        if (cs.skin_type) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Skin Type:</strong> <span style="color:#475569;">' + esc(cs.skin_type) + '</span></div>';
         if (Array.isArray(cs.key_ingredients) && cs.key_ingredients.length) {
-            html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Key Ingredients:</strong> ' + esc(cs.key_ingredients.join(", ")) + "</div>";
+            html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Key Ingredients:</strong> <span style="color:#475569;">' + esc(cs.key_ingredients.join(", ")) + '</span></div>';
         }
-        if (cs.texture) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#7e22ce;">Texture:</strong> ' + esc(cs.texture) + "</div>";
-        if (cs.routine_fit) html += '<div style="font-size:14px;"><strong style="color:#7e22ce;">Routine Fit:</strong> ' + esc(cs.routine_fit) + "</div>";
+        if (cs.texture) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Texture:</strong> <span style="color:#475569;">' + esc(cs.texture) + '</span></div>';
+        if (cs.routine_fit) html += '<div style="font-size:14px;line-height:1.6;"><strong style="color:#7e22ce;">Routine Fit:</strong> <span style="color:#475569;">' + esc(cs.routine_fit) + '</span></div>';
         html += "</div>";
         return html;
     }
 
     /* ── Home category section ── */
     function buildHomeSection(cs) {
-        var html = '<div class="card" style="border-left:3px solid #059669;">' +
-            '<div class="card-header"><div class="card-icon" style="background:#d1fae5;">\uD83C\uDFE0</div><h4>Home & Living Details</h4></div>';
-        if (cs.room_fit) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Room Fit:</strong> ' + esc(cs.room_fit) + "</div>";
-        if (cs.material) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Material:</strong> ' + esc(cs.material) + "</div>";
-        if (cs.practicality) html += '<div style="margin-bottom:8px;font-size:14px;"><strong style="color:#065f46;">Practicality:</strong> ' + esc(cs.practicality) + "</div>";
-        if (cs.maintenance) html += '<div style="font-size:14px;"><strong style="color:#065f46;">Maintenance:</strong> ' + esc(cs.maintenance) + "</div>";
+        var html = '<div class="card" style="border-left:3px solid #10b981;">' +
+            '<div class="card-header"><div class="card-icon" style="background:#ecfdf5;color:#10b981;">\uD83C\uDFE0</div><h4>Home & Living Details</h4></div>';
+        if (cs.room_fit) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Room Fit:</strong> <span style="color:#475569;">' + esc(cs.room_fit) + '</span></div>';
+        if (cs.material) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Material:</strong> <span style="color:#475569;">' + esc(cs.material) + '</span></div>';
+        if (cs.practicality) html += '<div style="margin-bottom:10px;font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Practicality:</strong> <span style="color:#475569;">' + esc(cs.practicality) + '</span></div>';
+        if (cs.maintenance) html += '<div style="font-size:14px;line-height:1.6;"><strong style="color:#065f46;">Maintenance:</strong> <span style="color:#475569;">' + esc(cs.maintenance) + '</span></div>';
         html += "</div>";
         return html;
     }

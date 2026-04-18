@@ -830,13 +830,6 @@ body {
     padding-top: 16px;
 }
 
-@media (max-width: 640px) {
-    .pricing-grid { grid-template-columns: 1fr; }
-    .pricing-section-title { font-size: 24px; }
-    .pricing-section-sub { font-size: 15px; margin-bottom: 28px; }
-    .pricing-card { padding: 28px 24px 24px; }
-}
-
 /* ── Responsive ── */
 @media (max-width: 640px) {
     .top-bar {
@@ -849,14 +842,25 @@ body {
     }
     .product-header { flex-direction: column; padding: 24px; }
     .product-header .ph-image { width: 72px; height: 72px; font-size: 32px; }
-    .search-card { padding: 32px 24px; }
+    .search-card { padding: 32px 20px; }
     .search-card h1 { font-size: 26px; }
     .search-card .muted { font-size: 15px; margin-bottom: 24px; }
     .search-row { flex-direction: column; }
     .search-row button { width: 100%; }
-    .card { padding: 22px 24px; }
-    .container { padding: 32px 16px 48px; }
+    .card { padding: 22px 20px; }
+    .container { padding: 28px 16px 48px; }
     .modal-box { padding: 28px 24px; }
+    /* Pricing */
+    .pricing-grid { grid-template-columns: 1fr; }
+    .pricing-section-title { font-size: 24px; }
+    .pricing-section-sub { font-size: 15px; margin-bottom: 28px; }
+    .pricing-card { padding: 28px 24px 24px; }
+    /* Verdict banner inline — tighten on mobile */
+    .verdict-banner { padding: 24px 16px 20px !important; }
+    /* Status pages */
+    .status-page { margin: 40px 16px; padding: 36px 24px; border-radius: 20px; }
+    .status-icon { font-size: 44px; margin-bottom: 16px; }
+    .status-title { font-size: 22px; }
 }
 
 /* ── Status Pages (Success / Cancel) ── */
@@ -1044,7 +1048,7 @@ body {
 
 /* ── Dashboard: Loss Aversion Block ── */
 .billing-lost-features {
-    padding: 0 28px 16px; font-size: 13px;
+    padding: 0 32px 20px; font-size: 13px;
 }
 .billing-lost-title {
     font-weight: 700; margin-bottom: 6px; color: inherit;
