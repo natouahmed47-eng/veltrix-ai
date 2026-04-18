@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Veltrix AI — Should You Build It?</title>
-    <meta name="description" content="Get a ruthless, data-backed BUILD or DON'T BUILD verdict on any product idea — in seconds." />
+    <title>Veltrix AI — Know Before You Build</title>
+    <meta name="description" content="Describe your product idea. Get a definitive BUILD or DON'T BUILD verdict backed by structured market reasoning — in seconds." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -43,7 +43,7 @@
         color: var(--v-text-muted);
         line-height: 1.6;
         margin: 0 0 36px;
-        max-width: 400px;
+        max-width: 440px;
         letter-spacing: -0.01em;
     }
     .lp-hero-ctas {
@@ -286,27 +286,23 @@
     .lp-verdict-card {
         background: var(--v-bg-elevated);
         border: 1px solid var(--v-border);
-        border-radius: var(--v-radius-lg);
+        border-radius: var(--v-radius-md);
         overflow: hidden;
         box-shadow: var(--v-shadow-xs);
-        transition: box-shadow 0.2s var(--v-ease);
-    }
-    .lp-verdict-card:hover {
-        box-shadow: var(--v-shadow-md);
     }
     /* Verdict header strip */
     .lp-verdict-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 12px 16px;
+        padding: 10px 16px;
         border-bottom: 1px solid var(--v-border);
     }
     .lp-verdict-header.build    { background: var(--v-success-light); border-bottom-color: var(--v-success-border); }
     .lp-verdict-header.bwc      { background: var(--v-warning-light); border-bottom-color: var(--v-warning-border); }
     .lp-verdict-header.dont     { background: var(--v-danger-light);  border-bottom-color: var(--v-danger-border);  }
     .lp-verdict-status {
-        font-size: var(--v-text-xs);
+        font-size: 13px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -325,20 +321,20 @@
     .lp-verdict-score.bwc       { color: var(--v-warning); border: 1px solid var(--v-warning-border); }
     .lp-verdict-score.dont      { color: var(--v-danger);  border: 1px solid var(--v-danger-border);  }
     .lp-verdict-body {
-        padding: 16px;
+        padding: 14px 16px;
     }
     .lp-verdict-body h4 {
         font-size: var(--v-text-md);
         font-weight: 700;
         color: var(--v-text);
-        margin: 0 0 8px;
+        margin: 0 0 5px;
         letter-spacing: -0.2px;
     }
     .lp-verdict-body .verdict-reason {
         font-size: var(--v-text-sm);
         color: var(--v-text-muted);
         line-height: 1.55;
-        margin: 0 0 12px;
+        margin: 0;
     }
     /* Structured data row at bottom of verdict card */
     .lp-verdict-data {
@@ -348,7 +344,7 @@
     }
     .lp-verdict-data-item {
         flex: 1;
-        padding: 10px 12px;
+        padding: 8px 10px;
         text-align: center;
         border-right: 1px solid var(--v-border);
     }
@@ -356,7 +352,7 @@
         border-right: none;
     }
     .lp-verdict-data-label {
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -502,8 +498,8 @@
     <!-- ── Hero: Split layout with product preview ── -->
     <section class="lp-hero">
         <div class="lp-hero-text">
-            <h1>Should You <span class="hero-accent">Build It?</span></h1>
-            <p class="hero-sub">Enter any product idea. Get a ruthless, data-backed BUILD or DON'T BUILD verdict — with confidence scoring and structured reasoning.</p>
+            <h1>Know Before You <span class="hero-accent">Build.</span></h1>
+            <p class="hero-sub">Describe your product idea. Get a definitive BUILD or DON'T BUILD verdict — backed by structured market reasoning. No hedging. No "it depends."</p>
             <div class="lp-hero-ctas">
                 <a class="lp-btn-primary cta-signup" href="/signup">Start Free &rarr;</a>
                 <a class="lp-btn-secondary" href="#verdictExamples">See Verdicts</a>
@@ -527,7 +523,7 @@
                         <span class="lp-preview-conf">87% confidence</span>
                     </div>
                     <div class="lp-preview-product">Reusable Water Bottle Brand</div>
-                    <p class="lp-preview-reasoning">Strong market tailwinds in sustainability. Growing consumer shift from single-use plastic. Healthy margins in DTC model with repeat purchase potential.</p>
+                    <p class="lp-preview-reasoning">Structural demand shift from single-use plastics — strong tailwind. DTC model supports healthy gross margins with repeat-purchase dynamics. Competition moderate; niche positioning viable.</p>
                     <div class="lp-preview-meta">
                         <div class="lp-preview-meta-item">Market <span>Growing</span></div>
                         <div class="lp-preview-meta-item">Competition <span>Moderate</span></div>
@@ -569,7 +565,7 @@
                 </div>
                 <div class="lp-verdict-body">
                     <h4>Reusable Water Bottle Brand</h4>
-                    <p class="verdict-reason">Strong market tailwinds in sustainability. Growing consumer shift from single-use plastic. Healthy margins in DTC model.</p>
+                    <p class="verdict-reason">Structural demand shift from single-use plastics. DTC margin profile supports scale. Repeat-purchase dynamics create compounding revenue.</p>
                 </div>
                 <div class="lp-verdict-data">
                     <div class="lp-verdict-data-item">
@@ -594,7 +590,7 @@
                 </div>
                 <div class="lp-verdict-body">
                     <h4>AI Resume Builder SaaS</h4>
-                    <p class="verdict-reason">Viable if differentiated from 50+ existing tools. Requires a clear niche and strong distribution channel.</p>
+                    <p class="verdict-reason">Market has 50+ incumbents — undifferentiated entry will fail. Viable only with a defined niche and an owned distribution channel.</p>
                 </div>
                 <div class="lp-verdict-data">
                     <div class="lp-verdict-data-item">
@@ -619,7 +615,7 @@
                 </div>
                 <div class="lp-verdict-body">
                     <h4>Generic Dropship Phone Cases</h4>
-                    <p class="verdict-reason">Saturated commodity market with razor-thin margins. No defensible moat. Race to the bottom on price.</p>
+                    <p class="verdict-reason">Commodity market with no defensible moat. Margins compressed below viability. Price competition is terminal — no path to sustainable unit economics.</p>
                 </div>
                 <div class="lp-verdict-data">
                     <div class="lp-verdict-data-item">
