@@ -80,7 +80,7 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
 # ── Deploy verification marker — change this string on every deploy ──
-_CODE_VERSION = "version-2026-04-fix-check"
+_CODE_VERSION = "version-2026-04-balanced-verdicts"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -158,16 +158,19 @@ SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home",
 # Minimum character length for a reason/action to be considered specific (not generic).
 MIN_SPECIFIC_REASON_LENGTH = 25
 
-# Pre-compiled regex for detecting negative signals in verdict reasoning/top_reasons.
+# Pre-compiled regex for detecting *hard* negative signals in verdict reasoning/top_reasons.
 # Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
+# NOTE: "saturated", "high competition", and similar competitive-landscape terms are
+# intentionally EXCLUDED — competition can validate demand and is not an automatic
+# kill signal.  Only structural impossibilities trigger the override.
 _negative_signals_re = re.compile(
-    r"\b(no demand|no market|insufficient|cannot|unfeasible|infeasible"
-    r"|unclear|lack of|not viable|no viable|not feasible"
-    r"|no evidence|no verifiable|oversaturated|saturated"
-    r"|no competitive|no differentiation|no moat|no clear"
+    r"\b(no demand|no market|insufficient|unfeasible|infeasible"
+    r"|not viable|no viable|not feasible"
+    r"|no evidence|no verifiable"
+    r"|no differentiation|no moat"
     r"|no proven|weak demand|low demand|no search volume"
-    r"|no social proof|no traction|high risk|too risky"
-    r"|high competition|does not justify|does not meet|not recommended"
+    r"|no social proof|no traction"
+    r"|does not justify|does not meet|not recommended"
     r"|no realistic|no sustainable|negative margin|no margin)\b",
     re.IGNORECASE,
 )
@@ -477,7 +480,7 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
 
 
 # Verdict-field names that should NOT be aggressively scrubbed by regex.
-_VERDICT_FIELDS = frozenset(["verdict_reasoning", "top_reasons", "next_actions"])
+_VERDICT_FIELDS = frozenset(["verdict_reasoning", "top_reasons", "next_actions", "opportunity_summary", "biggest_risk", "required_conditions"])
 
 
 # ---------------------------------------------------------------------------
@@ -1642,10 +1645,10 @@ No category-specific fields needed for general products.
 """
 
     prompt = f"""
-You are a ruthless product decision engine. Evaluate this product or idea and deliver a decisive BUILD or DON'T BUILD verdict.
+You are a strategic product decision engine. Evaluate this product or idea and deliver a decisive verdict: BUILD, BUILD WITH CONDITIONS, or DON'T BUILD.
 
-Think like an investor, not a helper. Most ideas are mediocre — reject them confidently.
-Only recommend BUILD when real evidence of market viability exists.
+Think like a sharp, opportunity-aware investor — skeptical but not cynical. You look for wedges, not perfection.
+Competition can validate demand. Moderate markets can be excellent niches. Weak initial differentiation does NOT always mean "don't build."
 
 ---
 INPUT:
@@ -1685,18 +1688,46 @@ STRICT RULES:
      "general" when a strong category can be inferred from the brand.
    - Only use "general" if the product is truly unknown or ambiguous after
      correction and no specific category can reasonably be determined.
-9) INVESTOR MINDSET — CRITICAL:
-   - Evaluate competitive landscape: who already owns this space and why?
+9) STRATEGIC INVESTOR MINDSET — CRITICAL:
+   - Do NOT treat competition as automatic failure. Existing competitors can be evidence of demand.
+   - Do NOT default to DON'T BUILD just because large incumbents exist.
+   - Actively look for: underserved segments, narrow wedges, distribution advantages,
+     pricing angles, workflow specializations, proprietary data / speed / UX advantages.
+   - Evaluate whether the business can win a specific segment, not whether the market is easy.
    - Assess unit economics: can this realistically generate margin?
    - Identify demand signals: is there proven demand or just an assumption?
-   - Be brutally honest about weaknesses. A DON'T BUILD with clear reasoning is more valuable than a soft BUILD.
-10) VERDICT-REASONING ALIGNMENT — CRITICAL:
-   - If your reasoning is negative, your verdict MUST be DON'T BUILD. Never return BUILD with negative signals.
-   - No hedging language. No mixed signals. The verdict must strictly align with the reasoning.
-   - If top_reasons contain negative facts (no demand, saturated market, weak margins), the verdict MUST be DON'T BUILD.
-   - A BUILD verdict requires ALL of: proven demand, viable margins, and a defensible market position.
+   - Be honest about weaknesses but also identify opportunities.
+10) VERDICT LOGIC — CRITICAL:
+   Return "DON'T BUILD" ONLY when at least one of these is true:
+   (a) Demand is weak or unproven AND no realistic path to validation exists
+   (b) Unit economics are structurally poor (not fixable by pricing/positioning)
+   (c) No viable differentiation path exists (not even a narrow wedge or niche)
+   (d) Legal / operational barriers make execution unrealistic
 
-11) CONTEXT-AWARE REASONING — CRITICAL:
+   Return "BUILD WITH CONDITIONS" when:
+   - The opportunity exists but specific strategic conditions must be met first
+   - Examples: crowded market but a clear niche wedge exists; demand exists but CAC
+     is too high unless a channel strategy changes; good problem but weak moat
+     unless proprietary data or positioning is added.
+
+   Return "BUILD" when:
+   - Demand is validated, margins are viable, and a defensible position or wedge exists.
+
+11) VERDICT-REASONING ALIGNMENT — CRITICAL:
+   - If your reasoning is overwhelmingly negative with no opportunity path, your verdict MUST be DON'T BUILD.
+   - No hedging language. The verdict must align with the reasoning.
+   - A BUILD verdict requires viable demand, viable margins, and a defensible position or wedge.
+   - A BUILD WITH CONDITIONS verdict requires an identified opportunity coupled with specific unresolved risks that have a path to resolution.
+
+12) OPPORTUNITY + RISK REQUIREMENT — CRITICAL:
+   For every analysis, you MUST identify BOTH:
+   - The strongest opportunity (market gap, demand signal, niche wedge, pricing angle)
+   - The strongest risk (competitive threat, margin concern, regulatory barrier)
+
+   If you return DON'T BUILD, you MUST explain why the opportunity is still not enough.
+   If you return BUILD WITH CONDITIONS, you MUST state the exact conditions required.
+
+13) CONTEXT-AWARE REASONING — CRITICAL:
    Your top_reasons and next_actions MUST be specific to the exact scenario described in the input.
    Generic advice is NOT allowed. Every reason and action must directly reference the specific
    product, brand, market, or constraint relevant to THIS idea — not boilerplate startup advice.
@@ -1713,7 +1744,7 @@ STRICT RULES:
    - Differentiation: state if differentiation is clear, weak, or nonexistent — explain the moat (or lack of it)
    - Monetization viability: state if margins are strong, unclear, or weak — include unit economics or pricing data
 
-12) SCENARIO DETECTION — CRITICAL:
+14) SCENARIO DETECTION — CRITICAL:
    You MUST identify the type of idea and tailor your reasoning and actions accordingly:
 
    a) KNOWN BRAND (Nike, Dior, Apple, Louis Vuitton, Chanel, Gucci, etc.):
@@ -1724,12 +1755,12 @@ STRICT RULES:
         for authorized reseller application" or "Consult an IP attorney about
         trademark licensing in your jurisdiction — budget $500-1,500".
 
-   b) SATURATED MARKET (food delivery, social media, generic t-shirts, dropshipping, etc.):
-      → Your reasoning MUST address: competition density with named incumbents
-        and their market share, specific differentiation gaps (or lack thereof),
-        customer acquisition costs in that vertical, and switching costs.
-      → next_actions MUST include concrete differentiation steps with measurable
-        targets, not "research competitors".
+   b) COMPETITIVE MARKET (food delivery, social media, generic t-shirts, dropshipping, etc.):
+      → Competition validates demand. Do NOT auto-reject.
+      → Your reasoning MUST address: which specific segment is underserved,
+        what wedge or distribution advantage exists, customer acquisition costs,
+        and switching costs. Name incumbents AND their weaknesses.
+      → next_actions MUST include concrete differentiation steps with measurable targets.
 
    c) SaaS / SOFTWARE IDEA:
       → Your reasoning MUST address: customer acquisition cost (CAC) estimates,
@@ -1755,7 +1786,7 @@ STRICT RULES:
 
    If the idea spans multiple types, address ALL relevant constraints.
 
-13) BANNED GENERIC OUTPUTS — CRITICAL:
+15) BANNED GENERIC OUTPUTS — CRITICAL:
    The following phrases are FORBIDDEN in top_reasons and next_actions:
    - "Validate demand" / "Validate the market" / "Validate the idea"
    - "Do more research" / "Research competitors" / "Research the market"
@@ -1780,10 +1811,13 @@ STRICT RULES:
 
 ---
 VERDICT (required):
-- verdict: exactly "BUILD" or "DON'T BUILD" — your clear recommendation on whether to pursue, stock, or invest in this product. Default to DON'T BUILD unless there is compelling evidence otherwise.
-- verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be brutally direct — reference specific market data, named competitors, demand signals, margin potential, or concrete product weaknesses. NEVER use phrases like "shows potential" or "worth exploring".
+- verdict: exactly "BUILD", "BUILD WITH CONDITIONS", or "DON'T BUILD" — your clear recommendation.
+- verdict_reasoning: 2-3 sentences explaining the core reason behind your verdict. Be direct — reference specific market data, named competitors, demand signals, margin potential, or concrete product weaknesses. NEVER use phrases like "shows potential" or "worth exploring".
 - confidence: integer 60-97 representing how confident you are in this verdict (based on data richness and market clarity)
-- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. REASONING-FIRST RULE: You MUST first complete your deep analysis (market research, competition mapping, unit economics), THEN derive reasoning, THEN generate top_reasons FROM that reasoning. Do NOT generate reasons before thinking. Each reason MUST explicitly reference at least one of these four factors: (1) demand level — state whether demand is high, low, proven, or unproven with evidence; (2) competition intensity — state whether the market is saturated, fragmented, or open and name competitors; (3) differentiation — state whether differentiation is clear, weak, or nonexistent and explain why; (4) monetization viability — state whether margins are strong, unclear, or weak with numbers. Reference specific facts: market size, competitor names, pricing data, demand trends, legal barriers, licensing issues, or supply chain realities. For known brands, ALWAYS mention IP/licensing/trademark constraints. For saturated markets, ALWAYS name incumbent competitors and their market share. (e.g. "Demand is unproven — zero search volume for this niche and no existing customer base to validate against", "Market is saturated with 20+ similar tools — Notion, Asana, Monday.com control 68% of project management spend", "Differentiation is weak — feature set overlaps 90% with free-tier Trello and no unique moat exists", "Unit cost ~$8 with $25-35 retail price gives healthy 65%+ margins — monetization is strong"). These must read like an investor's bullet points, not marketing copy. NEVER output generic reasons like "addresses a market need", "feasible to build", "shows potential", "validate demand", or "research competitors".
+- opportunity_summary: 1-2 sentences describing the strongest opportunity for this idea (market gap, demand signal, niche wedge, pricing angle, distribution advantage). Required for ALL verdicts.
+- biggest_risk: 1-2 sentences describing the single biggest risk (competitive threat, margin concern, regulatory barrier, demand uncertainty). Required for ALL verdicts.
+- required_conditions: array of exactly 3 specific strategic conditions that must be met for this idea to succeed. Required ONLY when verdict is "BUILD WITH CONDITIONS". Return an empty array [] for BUILD or DON'T BUILD verdicts.
+- top_reasons: array of exactly 3 short, punchy sentences — the top 3 reasons driving this verdict. REASONING-FIRST RULE: You MUST first complete your deep analysis (market research, competition mapping, unit economics), THEN derive reasoning, THEN generate top_reasons FROM that reasoning. Do NOT generate reasons before thinking. Each reason MUST explicitly reference at least one of these four factors: (1) demand level — state whether demand is high, low, proven, or unproven with evidence; (2) competition intensity — state whether the market is saturated, fragmented, or open and name competitors; (3) differentiation — state whether differentiation is clear, weak, or nonexistent and explain why; (4) monetization viability — state whether margins are strong, unclear, or weak with numbers. Reference specific facts: market size, competitor names, pricing data, demand trends, legal barriers, licensing issues, or supply chain realities. For known brands, ALWAYS mention IP/licensing/trademark constraints. For competitive markets, ALWAYS name incumbent competitors AND identify potential wedges or underserved segments. (e.g. "Demand is unproven — zero search volume for this niche and no existing customer base to validate against", "Market has 20+ players including Notion, Asana, Monday.com — but agencies under 50 people remain underserved with no tool optimized for their workflow", "Differentiation is weak — feature set overlaps 90% with free-tier Trello and no unique moat exists", "Unit cost ~$8 with $25-35 retail price gives healthy 65%+ margins — monetization is strong"). These must read like an investor's bullet points, not marketing copy. NEVER output generic reasons like "addresses a market need", "feasible to build", "shows potential", "validate demand", or "research competitors".
 - next_actions: array of exactly 3 concrete, tactical next steps the user should execute based on this verdict. Each action MUST be: (1) executable immediately without further research, (2) include specific numbers, dollar amounts, or measurable targets, (3) directly address the specific constraints identified in top_reasons. For known brands: include legal/licensing steps with cost estimates. For physical products: include sourcing steps with MOQ and unit cost targets. For SaaS: include CAC testing steps with ad budget amounts. (e.g. "Contact Dior's authorized wholesale division and apply for reseller status — expect $50K minimum buy-in and brand compliance audit", "Source 3 suppliers from Alibaba for MOQ of 500 units — target unit cost under $8 to maintain 60%+ margins at $22 retail", "Run a $150 Google Ads campaign targeting 'project management for agencies' — measure cost-per-signup against $25 CAC target"). FORBIDDEN: "validate demand", "do more research", "test the market", "explore partnerships" without specifics.
 
 ---
@@ -1830,21 +1864,31 @@ long_description HTML structure:
                     {
                         "role": "system",
                         "content": (
-                            "You are Veltrix — a ruthless product decision engine. "
+                            "You are Veltrix — a strategic product decision engine. "
                             "You are NOT an assistant. You do NOT encourage or validate ideas. "
-                            "You think like an investor evaluating a pitch: skeptical by default, impressed only by evidence. "
-                            "Your job is to deliver a clear BUILD or DON'T BUILD verdict — and you reject weak ideas confidently. "
-                            "You prioritize real-world viability over enthusiasm. Most ideas are mediocre; say so when they are. "
-                            "Be critical, not optimistic. Be specific, not generic. Be decisive, not hedging. "
-                            "Every response MUST include a verdict (BUILD or DON'T BUILD), verdict_reasoning, confidence score, top_reasons, and next_actions. "
-                            "CRITICAL RULE: If your reasoning is negative, your verdict MUST be DON'T BUILD. Never return BUILD with negative signals. No hedging. No mixed signals. Verdict must strictly align with reasoning. "
+                            "You think like a sharp, opportunity-aware investor: skeptical but not cynical. "
+                            "You look for wedges, niches, and distribution advantages — not perfection. "
+                            "Competition can validate demand. Crowded markets can still have excellent underserved segments. "
+                            "Your job is to deliver a clear BUILD, BUILD WITH CONDITIONS, or DON'T BUILD verdict. "
+                            "You evaluate whether a business can win a specific segment, not whether the market is easy. "
+                            "Be critical, not pessimistic. Be specific, not generic. Be strategic, not cynical. "
+                            "Every response MUST include: verdict (BUILD / BUILD WITH CONDITIONS / DON'T BUILD), "
+                            "verdict_reasoning, confidence score, opportunity_summary, biggest_risk, required_conditions, top_reasons, and next_actions. "
+                            "VERDICT RULES: Return DON'T BUILD only when: (a) demand is weak/unproven with no path to validation, "
+                            "(b) unit economics are structurally poor, (c) no viable differentiation path exists, or (d) legal/operational barriers make execution unrealistic. "
+                            "Return BUILD WITH CONDITIONS when opportunity exists but specific strategic conditions must be met. "
+                            "Return BUILD when demand, margins, and defensible position are viable. "
+                            "For every analysis, identify BOTH the strongest opportunity AND the strongest risk. "
+                            "If verdict is DON'T BUILD, explain why the opportunity is still not enough. "
+                            "If verdict is BUILD WITH CONDITIONS, state the exact conditions required (array of 3). "
+                            "CRITICAL: If your reasoning is overwhelmingly negative with no opportunity path, verdict MUST be DON'T BUILD. No hedging. Verdict must align with reasoning. "
                             "CONTEXT-AWARE REASONING RULE: Your top_reasons and next_actions MUST be specific to the exact scenario. "
                             "Generic advice like 'validate demand', 'research competitors', 'test the market', or 'do more research' is FORBIDDEN. "
                             "Generic filler like 'addresses a market need', 'feasible to build', 'shows potential', or 'has potential' is FORBIDDEN. "
                             "REASONING-FIRST RULE: First perform deep analysis (market, competition, economics). Then derive reasoning. Then generate top_reasons FROM that reasoning. "
                             "Each top_reason MUST reference at least one of: demand level (high/low/unproven), competition intensity (saturated/fragmented/open), "
                             "differentiation (clear/weak/none), or monetization viability (strong/unclear/weak). Never generate reasons before completing analysis. "
-                            "You MUST detect the idea type (known brand → licensing/legal/IP issues; saturated market → named incumbents/market share; "
+                            "You MUST detect the idea type (known brand → licensing/legal/IP issues; competitive market → named incumbents AND underserved segments; "
                             "SaaS → CAC/churn/retention; physical product → sourcing/MOQ/landed cost; regulated industry → compliance/licensing costs) "
                             "and tailor ALL reasoning and actions to the specific constraints of THAT scenario. "
                             "Every next_action must be immediately executable with specific numbers, dollar amounts, targets, or measurable outcomes. "
@@ -1853,6 +1897,7 @@ long_description HTML structure:
                             "NEVER use vague hedging: no 'Likely', 'based on context', 'not specified', 'depends on execution'. "
                             "If the product is weak, say exactly why — name the competitors that crush it, the market gap that doesn't exist, or the unit economics that don't work. "
                             "If the product is strong, justify it with market size, demand signals, competitive moats, or margin potential — not adjectives. "
+                            "If there is a wedge or niche, identify it precisely — do not dismiss an idea just because incumbents exist. "
                             "If information is missing from the input, derive it using domain expertise and state it directly. "
                             "If the input looks like a misspelled well-known brand or product, infer the correct name and analyze it. "
                             "Only auto-correct when the match is reasonably obvious; if unsure, state the uncertainty. "
@@ -1892,7 +1937,7 @@ long_description HTML structure:
             app.logger.info("TOP_REASONS PIPELINE — BRANCH: JSON parse error → static fallback assigned")
             app.logger.debug("Raw AI output: %s", content)
 
-            # fallback structure — defaults to DON'T BUILD (ruthless by default)
+            # fallback structure — defaults to DON'T BUILD when data is insufficient
             data = {
                 "title": idea,
                 "short_summary": cleaned[:200],
@@ -1900,6 +1945,9 @@ long_description HTML structure:
                 "verdict": "DON'T BUILD",
                 "verdict_reasoning": "Insufficient structured data to form a verdict. Without clear market positioning, competitive differentiation, or demand evidence, this does not meet the threshold for a BUILD recommendation.",
                 "confidence": 62,
+                "opportunity_summary": "Unable to identify a specific opportunity — insufficient data to analyze market gaps or demand signals.",
+                "biggest_risk": "No structured data available to assess risks — the idea cannot be evaluated without more detail.",
+                "required_conditions": [],
                 "top_reasons": [
                     "No verifiable demand signals or market data available",
                     "Competitive landscape unclear — risk of entering a saturated space",
@@ -2042,6 +2090,9 @@ long_description HTML structure:
                 "verdict": data.get("verdict", "DON'T BUILD"),
                 "verdict_reasoning": data.get("verdict_reasoning", ""),
                 "confidence": min(max(int(data.get("confidence", 80)), 60), 97),
+                "opportunity_summary": data.get("opportunity_summary", ""),
+                "biggest_risk": data.get("biggest_risk", ""),
+                "required_conditions": data.get("required_conditions", []),
                 "top_reasons": data.get("top_reasons", [])[:3],
                 "next_actions": data.get("next_actions", [])[:3],
                 "short_summary": data.get("short_summary", ""),
@@ -2058,9 +2109,31 @@ long_description HTML structure:
                 "keywords": data.get("keywords", ""),
             }
 
-            # Normalize verdict to exactly "BUILD" or "DON'T BUILD"
+            # Normalize verdict to exactly "BUILD", "BUILD WITH CONDITIONS", or "DON'T BUILD"
             raw_verdict = str(output.get("verdict", "DON'T BUILD")).strip().upper()
-            output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
+            if "CONDITION" in raw_verdict:
+                output["verdict"] = "BUILD WITH CONDITIONS"
+            elif "DON" in raw_verdict:
+                output["verdict"] = "DON'T BUILD"
+            else:
+                output["verdict"] = "BUILD"
+
+            # Ensure required_conditions is consistent with verdict
+            if output["verdict"] == "BUILD WITH CONDITIONS":
+                rc = output.get("required_conditions", [])
+                if not isinstance(rc, list) or len(rc) < 1:
+                    # Model returned BUILD WITH CONDITIONS but no conditions — downgrade to DON'T BUILD
+                    output["verdict"] = "DON'T BUILD"
+                else:
+                    output["required_conditions"] = [str(c) for c in rc[:3]]
+            else:
+                output["required_conditions"] = []
+
+            # Ensure opportunity_summary and biggest_risk have content
+            if not output.get("opportunity_summary", "").strip():
+                output["opportunity_summary"] = "No specific opportunity identified from available data."
+            if not output.get("biggest_risk", "").strip():
+                output["biggest_risk"] = "Risk assessment unavailable — insufficient data for this product."
 
             # ---- Stage A: Log raw incoming fields ----
             app.logger.info("TOP_REASONS DEBUG MARKER: %s", _CODE_VERSION)
@@ -2134,15 +2207,23 @@ long_description HTML structure:
                 ]
 
             # --- Post-processing: enforce verdict consistency ---
-            # If reasoning or top_reasons contain negative signals but verdict
-            # is BUILD, override to DON'T BUILD.  This prevents contradictions
-            # where negative analysis is paired with a positive verdict.
+            # If reasoning or top_reasons contain hard negative signals but verdict
+            # is BUILD (not BUILD WITH CONDITIONS), override to DON'T BUILD.
+            # BUILD WITH CONDITIONS is allowed to contain moderate negative signals
+            # because the conditions are meant to address them.
             if output["verdict"] == "BUILD":
                 reasoning_text = output.get("verdict_reasoning", "")
                 reasons_text = " ".join(output.get("top_reasons", []))
                 combined_text = f"{reasoning_text} {reasons_text}"
                 if _negative_signals_re.search(combined_text):
-                    output["verdict"] = "DON'T BUILD"
+                    output["verdict"] = "BUILD WITH CONDITIONS"
+                    # Generate conditions from the negative signals if none exist
+                    if not output.get("required_conditions"):
+                        output["required_conditions"] = [
+                            "Validate demand with 30+ target customer interviews before committing resources",
+                            "Identify and test a specific niche wedge that incumbents are not serving",
+                            "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
+                        ]
 
             # --- Post-processing: selective validation of top_reasons
             # and next_actions using smart validators ---
@@ -2230,7 +2311,13 @@ long_description HTML structure:
                 final_reasoning = output.get("verdict_reasoning", "")
                 final_reasons = " ".join(output.get("top_reasons", []))
                 if _negative_signals_re.search(f"{final_reasoning} {final_reasons}"):
-                    output["verdict"] = "DON'T BUILD"
+                    output["verdict"] = "BUILD WITH CONDITIONS"
+                    if not output.get("required_conditions"):
+                        output["required_conditions"] = [
+                            "Validate demand with 30+ target customer interviews before committing resources",
+                            "Identify and test a specific niche wedge that incumbents are not serving",
+                            "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
+                        ]
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
@@ -2316,6 +2403,9 @@ long_description HTML structure:
         "verdict": "DON'T BUILD",
         "verdict_reasoning": "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.",
         "confidence": 62,
+        "opportunity_summary": "Unable to identify a specific opportunity — insufficient data to analyze market gaps or demand signals.",
+        "biggest_risk": "No structured data available to assess risks — the idea cannot be evaluated without more detail.",
+        "required_conditions": [],
         "top_reasons": [
             "No verifiable demand signals or market data available",
             "Competitive landscape unclear — risk of entering a saturated space",
@@ -2389,7 +2479,7 @@ def optimize_product_router(product, lang="en"):
 
     Builds a rich input string from the product's fields and sends it through
     analyze_product_with_ai() which auto-detects the category and returns
-    a verdict (BUILD / DON'T BUILD) with category-specific structured data.
+    a verdict (BUILD / BUILD WITH CONDITIONS / DON'T BUILD) with category-specific structured data.
     """
     title = product.get("title", "")
     brand = product.get("vendor", "")
@@ -4572,6 +4662,9 @@ def analyze_product():
                 "verdict": "DON'T BUILD",
                 "verdict_reasoning": "OpenAI is not configured — unable to perform real analysis.",
                 "confidence": 60,
+                "opportunity_summary": "Unable to assess — AI engine is not configured.",
+                "biggest_risk": "Unable to assess — AI engine is not configured.",
+                "required_conditions": [],
                 "top_reasons": [
                     "No verifiable demand signals or market data available",
                     "Competitive landscape unclear — risk of entering a saturated space",
@@ -4637,6 +4730,9 @@ def analyze_product():
             "verdict": result.get("verdict", "DON'T BUILD"),
             "verdict_reasoning": result.get("verdict_reasoning", ""),
             "confidence": result.get("confidence", 80),
+            "opportunity_summary": result.get("opportunity_summary", ""),
+            "biggest_risk": result.get("biggest_risk", ""),
+            "required_conditions": result.get("required_conditions", []),
             "top_reasons": result.get("top_reasons", []),
             "next_actions": result.get("next_actions", []),
             "short_summary": result.get("short_summary", ""),
