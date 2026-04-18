@@ -272,6 +272,7 @@ def _has_strong_fundamentals(output: dict) -> bool:
         r"(?:clear niche|specific niche|defined niche|niche (?:market|segment|audience)"
         r"|underserved (?:segment|niche|market)|target(?:ed)? (?:segment|niche)"
         r"|شريحة محددة|سوق متخصص|تخصص واضح|شريحة مستهدفة|قطاع محدد"
+        # Venue/club management signals a specific vertical niche
         r"|صالات|نادي|أندية|إدارة صالات)",
         combined, re.IGNORECASE,
     ))
@@ -290,7 +291,7 @@ def _has_strong_fundamentals(output: dict) -> bool:
         r"|profitable|revenue model|monetization (?:path|strategy|model)"
         r"|unit economics (?:work|viable|positive|strong)"
         r"|(?:50|60|70|80)\+?\s*%\s*(?:gross )?margin"
-        r"|saas|اشتراك|نموذج ربحي|هامش ربح|إيرادات متكررة|دفع محلي)",
+        r"|\bsaas\b|اشتراك|نموذج ربحي|هامش ربح|إيرادات متكررة|دفع محلي)",
         combined, re.IGNORECASE,
     ))
 
