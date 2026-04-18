@@ -2938,6 +2938,21 @@ def payment_cancel():
     return send_file("cancel.html")
 
 
+@app.route("/login")
+def login_page():
+    return send_file("login.html")
+
+
+@app.route("/signup")
+def signup_page():
+    return send_file("signup.html")
+
+
+@app.route("/app")
+def app_page():
+    return send_file("app.html")
+
+
 @app.route("/admin")
 def admin_page():
     """Serve admin dashboard only if a valid admin session cookie exists."""

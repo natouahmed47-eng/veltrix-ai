@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign Up — Veltrix AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #fafbfd;
+        }
+        .auth-page {
+            width: 100%;
+            max-width: 420px;
+            padding: 0 20px;
+        }
+        .auth-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 44px 36px 36px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.06);
+            border: 1px solid #f1f5f9;
+        }
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .auth-logo a {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            text-decoration: none;
+            letter-spacing: -0.6px;
+        }
+        .auth-logo a span {
+            color: #4f46e5;
+            font-weight: 700;
+        }
+        .auth-tagline {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            font-weight: 500;
+            margin-bottom: 32px;
+        }
+        .auth-title {
+            margin: 0 0 28px;
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+            text-align: center;
+            letter-spacing: -0.3px;
+        }
+        .auth-error {
+            color: #dc2626;
+            font-size: 13px;
+            margin-bottom: 12px;
+            display: none;
+            text-align: center;
+            background: #fef2f2;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid #fecaca;
+        }
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+        .auth-switch a {
+            color: #4f46e5;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .auth-switch a:hover {
+            color: #4338ca;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-page">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <a href="/">Veltrix<span>AI</span></a>
+            </div>
+            <div class="auth-tagline">Product Decision Engine</div>
+
+            <h1 class="auth-title">Create your account</h1>
+
+            <div class="auth-error" id="authError"></div>
+
+            <div class="form-group">
+                <label class="form-label" for="authUsername">Username</label>
+                <input class="form-input" type="text" id="authUsername" autocomplete="username" />
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="authPassword">Password</label>
+                <input class="form-input" type="password" id="authPassword" autocomplete="new-password" />
+            </div>
+
+            <button class="btn-auth-submit" id="authSubmitBtn">Create Account</button>
+
+            <div class="auth-switch">
+                Already have an account? <a href="/login">Log In</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session tracking -->
+    <script>
+    (function() {
+        var key = "veltrix_session_id";
+        var tsKey = "veltrix_session_ts";
+        var MAX_AGE_MS = 24 * 60 * 60 * 1000;
+        var existing = localStorage.getItem(key);
+        var ts = parseInt(localStorage.getItem(tsKey) || "0", 10);
+        if (!existing || (Date.now() - ts) > MAX_AGE_MS) {
+            var sid = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem(key, sid);
+            localStorage.setItem(tsKey, String(Date.now()));
+        }
+    })();
+
+    window.trackEvent = function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString(), session_id: localStorage.getItem("veltrix_session_id") || "" },
+            data || {}
+        );
+        try {
+            var headers = { "Content-Type": "application/json" };
+            var token = localStorage.getItem("veltrix_token");
+            if (token) headers["Authorization"] = "Bearer " + token;
+            fetch("/api/track-event", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        } catch(e) {}
+    };
+    </script>
+
+    <script>
+    (function() {
+        // Redirect if already logged in
+        if (localStorage.getItem("veltrix_token")) {
+            window.location.replace("/app");
+            return;
+        }
+
+        var submitBtn = document.getElementById("authSubmitBtn");
+        var usernameInput = document.getElementById("authUsername");
+        var passwordInput = document.getElementById("authPassword");
+        var errorDiv = document.getElementById("authError");
+
+        function showError(msg) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = "block";
+        }
+        function hideError() {
+            errorDiv.style.display = "none";
+        }
+
+        function doRegister() {
+            hideError();
+            var username = usernameInput.value.trim();
+            var password = passwordInput.value;
+
+            if (!username || !password) {
+                showError("Please enter a username and password.");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Creating account\u2026";
+
+            fetch("/api/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username: username, password: password })
+            })
+            .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+            .then(function(res) {
+                if (!res.ok) {
+                    showError(res.data.error || "Registration failed.");
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Create Account";
+                    return;
+                }
+                localStorage.setItem("veltrix_token", res.data.token);
+                localStorage.setItem("veltrix_username", res.data.username);
+                window.trackEvent("signup_success", { source: "signup_page" });
+                window.location.replace("/app");
+            })
+            .catch(function() {
+                showError("Network error. Please try again.");
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Create Account";
+            });
+        }
+
+        submitBtn.addEventListener("click", doRegister);
+        passwordInput.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") doRegister();
+        });
+        usernameInput.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") doRegister();
+        });
+    })();
+    </script>
+</body>
+</html>
