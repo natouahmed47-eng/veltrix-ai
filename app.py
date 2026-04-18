@@ -80,12 +80,41 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
 # ── Deploy verification marker — change this string on every deploy ──
-_CODE_VERSION = "version-2026-04-risk-classification"
+_CODE_VERSION = "version-2026-04-cache-fix"
+
+# ── Static asset cache-busting version ──
+# Used as ?v= query parameter on all CSS/JS references in HTML files.
+# Derived from _CODE_VERSION so it auto-changes with each deploy marker update.
+import hashlib as _hashlib
+_ASSET_VERSION = _hashlib.md5(_CODE_VERSION.encode()).hexdigest()[:10]
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 MAX_AI_GENERATION_RETRIES = 3
 FREE_ANALYSIS_LIMIT = 5
+
+
+# ── Cache-busted HTML serving ──
+_STATIC_ASSET_RE = re.compile(
+    r'((?:href|src)\s*=\s*["\'])(/?)('
+    r'style\.css|script\.js|app\.js|upsell\.js'
+    r')(["\'])',
+    re.IGNORECASE,
+)
+
+
+def _serve_html_with_versioned_assets(filename):
+    """Read an HTML file and inject ?v=<hash> on every static asset reference,
+    then return a proper Response with text/html content type."""
+    filepath = os.path.join(os.path.dirname(__file__), filename)
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+    versioned = _STATIC_ASSET_RE.sub(
+        rf'\1\2\3?v={_ASSET_VERSION}\4', content
+    )
+    resp = make_response(versioned)
+    resp.headers["Content-Type"] = "text/html; charset=utf-8"
+    return resp
 
 
 # ── Secure browser headers ──
@@ -97,6 +126,17 @@ def _set_security_headers(response):
         "max-age=63072000; includeSubDomains; preload"
     )
     response.headers["Referrer-Policy"] = "same-origin"
+
+    # ── Cache control — prevent stale static assets ──
+    content_type = response.content_type or ""
+    if "text/html" in content_type:
+        # HTML pages: always revalidate with server
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    elif any(t in content_type for t in ("text/css", "javascript")):
+        # CSS/JS: short cache with mandatory revalidation (versioned via ?v= query)
+        response.headers["Cache-Control"] = "public, max-age=300, must-revalidate"
     return response
 
 
@@ -2905,7 +2945,7 @@ def optimize_product_router(product, lang="en"):
 
 @app.route("/")
 def home():
-    return send_file("landing.html")
+    return _serve_html_with_versioned_assets("landing.html")
 
 
 @app.route("/script.js")
@@ -2930,32 +2970,32 @@ def serve_style():
 
 @app.route("/dashboard")
 def dashboard():
-    return send_file("dashboard.html")
+    return _serve_html_with_versioned_assets("dashboard.html")
 
 
 @app.route("/success")
 def payment_success():
-    return send_file("success.html")
+    return _serve_html_with_versioned_assets("success.html")
 
 
 @app.route("/cancel")
 def payment_cancel():
-    return send_file("cancel.html")
+    return _serve_html_with_versioned_assets("cancel.html")
 
 
 @app.route("/login")
 def login_page():
-    return send_file("login.html")
+    return _serve_html_with_versioned_assets("login.html")
 
 
 @app.route("/signup")
 def signup_page():
-    return send_file("signup.html")
+    return _serve_html_with_versioned_assets("signup.html")
 
 
 @app.route("/app")
 def app_page():
-    return send_file("app.html")
+    return _serve_html_with_versioned_assets("app.html")
 
 
 @app.route("/admin")
@@ -2963,7 +3003,7 @@ def admin_page():
     """Serve admin dashboard only if a valid admin session cookie exists."""
     if not session.get("admin_authenticated"):
         return render_template_string(ADMIN_LOGIN_HTML, error=False)
-    return send_file("admin.html")
+    return _serve_html_with_versioned_assets("admin.html")
 
 
 @app.route("/api/admin/login", methods=["POST"])
