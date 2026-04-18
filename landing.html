@@ -11,45 +11,49 @@
     <link rel="stylesheet" href="/style.css" />
     <style>
     /* ══════════════════════════════════════════════════════════════
-       Landing Page — Premium SaaS Styles
+       Landing Page — Product-Grade AI Decision Engine
        ══════════════════════════════════════════════════════════════ */
 
-    /* ── Hero ── */
+    /* ── Hero: Split layout with product preview ── */
     .lp-hero {
-        text-align: center;
-        padding: 120px 24px 96px;
-        max-width: 720px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 64px;
+        align-items: center;
+        max-width: 1080px;
         margin: 0 auto;
+        padding: 100px 40px 80px;
     }
-    .lp-hero h1 {
-        font-size: 3.5rem;
+    .lp-hero-text {
+        text-align: left;
+    }
+    .lp-hero-text h1 {
+        font-size: 3.25rem;
         font-weight: 700;
-        letter-spacing: -1.5px;
+        letter-spacing: -1.8px;
         color: var(--v-text);
-        line-height: 1.08;
+        line-height: 1.06;
         margin: 0 0 20px;
     }
-    .lp-hero h1 .hero-accent {
+    .lp-hero-text h1 .hero-accent {
         color: var(--v-brand);
     }
-    .lp-hero .hero-sub {
-        font-size: 1.125rem;
+    .lp-hero-text .hero-sub {
+        font-size: var(--v-text-md);
         color: var(--v-text-muted);
-        line-height: 1.7;
-        margin: 0 0 44px;
-        max-width: 520px;
-        margin-left: auto;
-        margin-right: auto;
+        line-height: 1.6;
+        margin: 0 0 36px;
+        max-width: 400px;
+        letter-spacing: -0.01em;
     }
     .lp-hero-ctas {
         display: flex;
         gap: 12px;
-        justify-content: center;
         flex-wrap: wrap;
     }
     .lp-btn-primary {
         display: inline-block;
-        padding: 13px 30px;
+        padding: 12px 28px;
         border-radius: var(--v-radius-md);
         background: var(--v-brand);
         color: #fff;
@@ -59,16 +63,16 @@
         font-family: inherit;
         border: none;
         cursor: pointer;
-        transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease), transform 0.1s var(--v-ease);
+        letter-spacing: -0.01em;
+        transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease);
     }
     .lp-btn-primary:hover {
         background: var(--v-brand-hover);
         box-shadow: var(--v-shadow-brand);
-        transform: translateY(-1px);
     }
     .lp-btn-secondary {
         display: inline-block;
-        padding: 13px 30px;
+        padding: 12px 28px;
         border-radius: var(--v-radius-md);
         background: transparent;
         color: var(--v-text-muted);
@@ -78,152 +82,293 @@
         font-family: inherit;
         border: 1px solid var(--v-border);
         cursor: pointer;
+        letter-spacing: -0.01em;
         transition: border-color var(--v-duration) var(--v-ease), color var(--v-duration) var(--v-ease);
     }
     .lp-btn-secondary:hover {
-        border-color: var(--v-brand);
-        color: var(--v-brand);
+        border-color: var(--v-text-faint);
+        color: var(--v-text-secondary);
+    }
+
+    /* ── Product Preview Mock (hero right side) ── */
+    .lp-preview {
+        background: var(--v-bg-elevated);
+        border: 1px solid var(--v-border);
+        border-radius: var(--v-radius-xl);
+        box-shadow: var(--v-shadow-lg);
+        overflow: hidden;
+    }
+    .lp-preview-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--v-bg-subtle);
+        border-bottom: 1px solid var(--v-border);
+    }
+    .lp-preview-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--v-border);
+    }
+    .lp-preview-url {
+        flex: 1;
+        text-align: center;
+        font-size: var(--v-text-xs);
+        color: var(--v-text-faint);
+        font-weight: 500;
+        letter-spacing: 0.02em;
+    }
+    .lp-preview-body {
+        padding: 24px 20px;
+    }
+    .lp-preview-input {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+    .lp-preview-input-field {
+        flex: 1;
+        padding: 9px 14px;
+        border-radius: var(--v-radius-md);
+        border: 1px solid var(--v-border);
+        font-size: var(--v-text-sm);
+        color: var(--v-text);
+        background: var(--v-bg);
+        font-family: inherit;
+    }
+    .lp-preview-input-btn {
+        padding: 9px 16px;
+        border-radius: var(--v-radius-md);
+        border: none;
+        background: var(--v-brand);
+        color: #fff;
+        font-size: var(--v-text-sm);
+        font-weight: 600;
+        font-family: inherit;
+        white-space: nowrap;
+    }
+    .lp-preview-result {
+        border: 1px solid var(--v-success-border);
+        border-radius: var(--v-radius-lg);
+        background: var(--v-success-light);
+        padding: 16px;
+    }
+    .lp-preview-verdict-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+    }
+    .lp-preview-verdict-label {
+        font-size: var(--v-text-lg);
+        font-weight: 700;
+        color: var(--v-success);
+        letter-spacing: -0.3px;
+    }
+    .lp-preview-conf {
+        font-size: var(--v-text-xs);
+        font-weight: 600;
+        color: var(--v-success);
+        background: #fff;
+        padding: 2px 8px;
+        border-radius: var(--v-radius-full);
+        border: 1px solid var(--v-success-border);
+    }
+    .lp-preview-product {
+        font-size: var(--v-text-sm);
+        font-weight: 600;
+        color: var(--v-text);
+        margin-bottom: 8px;
+    }
+    .lp-preview-reasoning {
+        font-size: var(--v-text-xs);
+        color: var(--v-text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+    .lp-preview-meta {
+        display: flex;
+        gap: 12px;
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--v-success-border);
+    }
+    .lp-preview-meta-item {
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--v-text-faint);
+    }
+    .lp-preview-meta-item span {
+        color: var(--v-text-secondary);
+        font-weight: 700;
+    }
+
+    /* ── Process strip (replaces How It Works section) ── */
+    .lp-process-strip {
+        display: flex;
+        justify-content: center;
+        gap: 48px;
+        padding: 40px 24px;
+        border-top: 1px solid var(--v-border);
+        border-bottom: 1px solid var(--v-border);
+        background: var(--v-bg-elevated);
+    }
+    .lp-process-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .lp-process-num {
+        width: 28px;
+        height: 28px;
+        border-radius: var(--v-radius-full);
+        background: var(--v-bg-subtle);
+        border: 1px solid var(--v-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--v-text-secondary);
+        flex-shrink: 0;
+    }
+    .lp-process-text {
+        font-size: var(--v-text-sm);
+        font-weight: 600;
+        color: var(--v-text-secondary);
+        letter-spacing: -0.01em;
+    }
+    .lp-process-arrow {
+        color: var(--v-text-faint);
+        font-size: var(--v-text-sm);
     }
 
     /* ── Section shared ── */
     .lp-section {
         padding: 96px 24px;
-        max-width: 1040px;
+        max-width: 960px;
         margin: 0 auto;
     }
     .lp-section-alt {
         background: var(--v-bg-elevated);
-        border-top: 1px solid var(--v-border-light);
-        border-bottom: 1px solid var(--v-border-light);
+        border-top: 1px solid var(--v-border);
+        border-bottom: 1px solid var(--v-border);
     }
     .lp-section-title {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: var(--v-text);
-        letter-spacing: -0.6px;
+        letter-spacing: -0.8px;
         text-align: center;
-        margin: 0 0 10px;
+        margin: 0 0 8px;
     }
     .lp-section-sub {
-        font-size: var(--v-text-lg);
+        font-size: var(--v-text-md);
         color: var(--v-text-muted);
         text-align: center;
         margin: 0 0 56px;
-        max-width: 520px;
+        max-width: 460px;
         margin-left: auto;
         margin-right: auto;
-        line-height: 1.6;
+        line-height: 1.5;
     }
 
-    /* ── How It Works ── */
-    .lp-steps {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 40px;
-    }
-    .lp-step {
-        text-align: center;
-        padding: 0;
-    }
-    .lp-step-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: var(--v-radius-lg);
-        background: var(--v-brand-light);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        margin: 0 auto 20px;
-    }
-    .lp-step-num {
-        display: inline-block;
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--v-brand);
-        background: var(--v-brand-light);
-        padding: 3px 10px;
-        border-radius: var(--v-radius-full);
-        margin-bottom: 12px;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
-    }
-    .lp-step h3 {
-        font-size: var(--v-text-lg);
-        font-weight: 700;
-        color: var(--v-text);
-        margin: 0 0 8px;
-    }
-    .lp-step p {
-        font-size: var(--v-text-base);
-        color: var(--v-text-muted);
-        line-height: 1.6;
-        margin: 0;
-    }
-
-    /* ── Verdict Examples ── */
+    /* ── Verdict Decision Panels ── */
     .lp-verdicts {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
+        gap: 16px;
     }
     .lp-verdict-card {
         background: var(--v-bg-elevated);
-        border: 1px solid var(--v-border-light);
+        border: 1px solid var(--v-border);
         border-radius: var(--v-radius-lg);
-        padding: 28px 24px;
+        overflow: hidden;
         box-shadow: var(--v-shadow-xs);
-        transition: box-shadow 0.2s var(--v-ease), transform 0.2s var(--v-ease);
+        transition: box-shadow 0.2s var(--v-ease);
     }
     .lp-verdict-card:hover {
         box-shadow: var(--v-shadow-md);
-        transform: translateY(-2px);
     }
-    .lp-verdict-badge {
-        display: inline-block;
-        font-size: 10px;
+    /* Verdict header strip */
+    .lp-verdict-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--v-border);
+    }
+    .lp-verdict-header.build    { background: var(--v-success-light); border-bottom-color: var(--v-success-border); }
+    .lp-verdict-header.bwc      { background: var(--v-warning-light); border-bottom-color: var(--v-warning-border); }
+    .lp-verdict-header.dont     { background: var(--v-danger-light);  border-bottom-color: var(--v-danger-border);  }
+    .lp-verdict-status {
+        font-size: var(--v-text-xs);
         font-weight: 700;
-        letter-spacing: 0.06em;
         text-transform: uppercase;
-        padding: 4px 10px;
-        border-radius: var(--v-radius-sm);
-        margin-bottom: 16px;
+        letter-spacing: 0.06em;
     }
-    .lp-verdict-badge.build {
-        background: var(--v-success-light);
-        color: var(--v-success);
+    .lp-verdict-status.build    { color: var(--v-success); }
+    .lp-verdict-status.bwc      { color: var(--v-warning); }
+    .lp-verdict-status.dont     { color: var(--v-danger); }
+    .lp-verdict-score {
+        font-size: var(--v-text-xs);
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: var(--v-radius-full);
+        background: #fff;
     }
-    .lp-verdict-badge.bwc {
-        background: var(--v-warning-light);
-        color: var(--v-warning);
+    .lp-verdict-score.build     { color: var(--v-success); border: 1px solid var(--v-success-border); }
+    .lp-verdict-score.bwc       { color: var(--v-warning); border: 1px solid var(--v-warning-border); }
+    .lp-verdict-score.dont      { color: var(--v-danger);  border: 1px solid var(--v-danger-border);  }
+    .lp-verdict-body {
+        padding: 16px;
     }
-    .lp-verdict-badge.dont {
-        background: var(--v-danger-light);
-        color: var(--v-danger);
-    }
-    .lp-verdict-card h4 {
-        font-size: var(--v-text-lg);
+    .lp-verdict-body h4 {
+        font-size: var(--v-text-md);
         font-weight: 700;
         color: var(--v-text);
-        margin: 0 0 10px;
+        margin: 0 0 8px;
+        letter-spacing: -0.2px;
     }
-    .lp-verdict-card .verdict-reason {
-        font-size: var(--v-text-base);
-        color: var(--v-text-muted);
-        line-height: 1.65;
-        margin: 0 0 16px;
-    }
-    .lp-verdict-conf {
+    .lp-verdict-body .verdict-reason {
         font-size: var(--v-text-sm);
+        color: var(--v-text-muted);
+        line-height: 1.55;
+        margin: 0 0 12px;
+    }
+    /* Structured data row at bottom of verdict card */
+    .lp-verdict-data {
+        display: flex;
+        gap: 0;
+        border-top: 1px solid var(--v-border);
+    }
+    .lp-verdict-data-item {
+        flex: 1;
+        padding: 10px 12px;
+        text-align: center;
+        border-right: 1px solid var(--v-border);
+    }
+    .lp-verdict-data-item:last-child {
+        border-right: none;
+    }
+    .lp-verdict-data-label {
+        font-size: 9px;
         font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
         color: var(--v-text-faint);
+        margin-bottom: 2px;
     }
-    .lp-verdict-conf span {
+    .lp-verdict-data-value {
+        font-size: var(--v-text-sm);
         font-weight: 700;
+        color: var(--v-text);
+        letter-spacing: -0.01em;
     }
-    .lp-verdict-conf span.green { color: var(--v-success); }
-    .lp-verdict-conf span.amber { color: var(--v-warning); }
-    .lp-verdict-conf span.red   { color: var(--v-danger); }
 
     /* ── Why Different ── */
     .lp-compare {
@@ -232,37 +377,39 @@
         gap: 0;
         border-radius: var(--v-radius-lg);
         overflow: hidden;
-        border: 1px solid var(--v-border-light);
-        max-width: 760px;
+        border: 1px solid var(--v-border);
+        max-width: 680px;
         margin: 0 auto;
     }
     .lp-compare-col {
         padding: 0;
     }
     .lp-compare-header {
-        padding: 18px 24px;
-        font-size: var(--v-text-sm);
+        padding: 14px 24px;
+        font-size: var(--v-text-xs);
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
     }
     .lp-compare-col:first-child .lp-compare-header {
-        background: var(--v-bg);
+        background: var(--v-bg-subtle);
         color: var(--v-text-faint);
+        border-right: 1px solid var(--v-border);
     }
     .lp-compare-col:last-child .lp-compare-header {
         background: var(--v-brand);
         color: #fff;
     }
     .lp-compare-item {
-        padding: 14px 24px;
-        font-size: var(--v-text-base);
-        line-height: 1.5;
-        border-top: 1px solid var(--v-border-light);
+        padding: 12px 24px;
+        font-size: var(--v-text-sm);
+        line-height: 1.4;
+        border-top: 1px solid var(--v-border);
     }
     .lp-compare-col:first-child .lp-compare-item {
         color: var(--v-text-faint);
         background: var(--v-bg);
+        border-right: 1px solid var(--v-border);
     }
     .lp-compare-col:last-child .lp-compare-item {
         color: var(--v-text);
@@ -270,7 +417,7 @@
         background: var(--v-bg-elevated);
     }
     .lp-compare-item .compare-icon {
-        margin-right: 8px;
+        margin-right: 6px;
     }
 
     /* ── Landing Pricing ── */
@@ -282,46 +429,60 @@
     .lp-final-cta {
         text-align: center;
         padding: 96px 24px;
-        max-width: 560px;
+        max-width: 520px;
         margin: 0 auto;
     }
     .lp-final-cta h2 {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: var(--v-text);
-        letter-spacing: -0.5px;
-        margin: 0 0 12px;
+        letter-spacing: -0.8px;
+        margin: 0 0 10px;
     }
     .lp-final-cta p {
-        font-size: var(--v-text-lg);
+        font-size: var(--v-text-md);
         color: var(--v-text-muted);
-        margin: 0 0 36px;
-        line-height: 1.6;
+        margin: 0 0 40px;
+        line-height: 1.5;
     }
 
     /* ── Footer ── */
     .lp-footer {
         text-align: center;
-        padding: 36px 24px;
-        font-size: var(--v-text-sm);
+        padding: 32px 24px;
+        font-size: var(--v-text-xs);
         color: var(--v-text-faint);
-        border-top: 1px solid var(--v-border-light);
+        border-top: 1px solid var(--v-border);
     }
 
     /* ── Responsive ── */
+    @media (max-width: 900px) {
+        .lp-hero {
+            grid-template-columns: 1fr;
+            gap: 40px;
+            padding: 80px 20px 48px;
+            max-width: 600px;
+        }
+        .lp-hero-text { text-align: center; }
+        .lp-hero-text h1 { font-size: 2.5rem; letter-spacing: -1.5px; }
+        .lp-hero-text .hero-sub { max-width: 100%; margin-left: auto; margin-right: auto; }
+        .lp-hero-ctas { justify-content: center; }
+    }
     @media (max-width: 768px) {
-        .lp-hero { padding: 72px 20px 56px; }
-        .lp-hero h1 { font-size: 2.25rem; }
-        .lp-hero .hero-sub { font-size: var(--v-text-lg); }
-        .lp-steps { grid-template-columns: 1fr; gap: 24px; }
-        .lp-verdicts { grid-template-columns: 1fr; gap: 16px; }
+        .lp-hero-text h1 { font-size: 2.25rem; }
+        .lp-hero-text .hero-sub { font-size: var(--v-text-base); }
+        .lp-process-strip { flex-direction: column; gap: 16px; align-items: center; padding: 28px 20px; }
+        .lp-process-arrow { display: none; }
+        .lp-verdicts { grid-template-columns: 1fr; gap: 12px; }
         .lp-compare { grid-template-columns: 1fr; }
-        .lp-compare-col:first-child { border-bottom: 2px solid var(--v-border); }
-        .lp-section-title { font-size: 1.625rem; }
+        .lp-compare-col:first-child { border-bottom: 1px solid var(--v-border); }
+        .lp-compare-col:first-child .lp-compare-item { border-right: none; }
+        .lp-compare-col:first-child .lp-compare-header { border-right: none; }
+        .lp-section-title { font-size: 1.5rem; }
         .lp-section { padding: 56px 20px; }
         .lp-pricing-wrap { padding: 56px 20px; }
         .lp-final-cta { padding: 56px 20px; }
-        .lp-final-cta h2 { font-size: 1.625rem; }
+        .lp-final-cta h2 { font-size: 1.5rem; }
         .top-bar { padding: 0 16px; gap: 8px; }
     }
     </style>
@@ -338,69 +499,142 @@
         </div>
     </div>
 
-    <!-- ── Hero ── -->
+    <!-- ── Hero: Split layout with product preview ── -->
     <section class="lp-hero">
-        <h1>Should You <span class="hero-accent">Build It?</span></h1>
-        <p class="hero-sub">Get a ruthless, data-backed <strong>BUILD</strong> or <strong>DON'T BUILD</strong> verdict on any product idea&nbsp;&mdash;&nbsp;in&nbsp;seconds.</p>
-        <div class="lp-hero-ctas">
-            <a class="lp-btn-primary cta-signup" href="/signup">Start Free &rarr;</a>
-            <a class="lp-btn-secondary" href="#howItWorks">See How It Works &darr;</a>
+        <div class="lp-hero-text">
+            <h1>Should You <span class="hero-accent">Build It?</span></h1>
+            <p class="hero-sub">Enter any product idea. Get a ruthless, data-backed BUILD or DON'T BUILD verdict — with confidence scoring and structured reasoning.</p>
+            <div class="lp-hero-ctas">
+                <a class="lp-btn-primary cta-signup" href="/signup">Start Free &rarr;</a>
+                <a class="lp-btn-secondary" href="#verdictExamples">See Verdicts</a>
+            </div>
+        </div>
+        <div class="lp-preview">
+            <div class="lp-preview-bar">
+                <span class="lp-preview-dot"></span>
+                <span class="lp-preview-dot"></span>
+                <span class="lp-preview-dot"></span>
+                <span class="lp-preview-url">veltrix.ai/app</span>
+            </div>
+            <div class="lp-preview-body">
+                <div class="lp-preview-input">
+                    <div class="lp-preview-input-field">Reusable water bottle brand</div>
+                    <div class="lp-preview-input-btn">Get Verdict</div>
+                </div>
+                <div class="lp-preview-result">
+                    <div class="lp-preview-verdict-row">
+                        <span class="lp-preview-verdict-label">✓ BUILD</span>
+                        <span class="lp-preview-conf">87% confidence</span>
+                    </div>
+                    <div class="lp-preview-product">Reusable Water Bottle Brand</div>
+                    <p class="lp-preview-reasoning">Strong market tailwinds in sustainability. Growing consumer shift from single-use plastic. Healthy margins in DTC model with repeat purchase potential.</p>
+                    <div class="lp-preview-meta">
+                        <div class="lp-preview-meta-item">Market <span>Growing</span></div>
+                        <div class="lp-preview-meta-item">Competition <span>Moderate</span></div>
+                        <div class="lp-preview-meta-item">Margins <span>Healthy</span></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- ── How It Works ── -->
-    <div class="lp-section-alt">
-        <section class="lp-section" id="howItWorks">
-            <h2 class="lp-section-title">How It Works</h2>
-            <p class="lp-section-sub">Three steps. One clear answer.</p>
-            <div class="lp-steps">
-                <div class="lp-step">
-                    <div class="lp-step-icon">💡</div>
-                    <span class="lp-step-num">Step 1</span>
-                    <h3>Enter Your Idea</h3>
-                    <p>Type a product name, concept, or niche. Anything from a SaaS idea to a physical product.</p>
-                </div>
-                <div class="lp-step">
-                    <div class="lp-step-icon">🔍</div>
-                    <span class="lp-step-num">Step 2</span>
-                    <h3>AI Analyzes Viability</h3>
-                    <p>Our decision engine evaluates market demand, competition, timing, and profitability signals.</p>
-                </div>
-                <div class="lp-step">
-                    <div class="lp-step-icon">⚡</div>
-                    <span class="lp-step-num">Step 3</span>
-                    <h3>Get a Clear Verdict</h3>
-                    <p>Receive a BUILD, BUILD WITH CONDITIONS, or DON'T BUILD verdict with confidence scoring.</p>
-                </div>
-            </div>
-        </section>
+    <!-- ── Process Strip (replaces full How It Works section) ── -->
+    <div class="lp-process-strip">
+        <div class="lp-process-item">
+            <span class="lp-process-num">1</span>
+            <span class="lp-process-text">Enter your idea</span>
+        </div>
+        <span class="lp-process-arrow">→</span>
+        <div class="lp-process-item">
+            <span class="lp-process-num">2</span>
+            <span class="lp-process-text">AI analyzes viability</span>
+        </div>
+        <span class="lp-process-arrow">→</span>
+        <div class="lp-process-item">
+            <span class="lp-process-num">3</span>
+            <span class="lp-process-text">Get a clear verdict</span>
+        </div>
     </div>
 
-    <!-- ── Example Verdicts ── -->
-    <section class="lp-section">
-        <h2 class="lp-section-title">See It In Action</h2>
-        <p class="lp-section-sub">Real verdict examples from the Veltrix Decision Engine.</p>
+    <!-- ── Example Verdicts (Decision Panels) ── -->
+    <section class="lp-section" id="verdictExamples">
+        <h2 class="lp-section-title">Real Verdicts from the Engine</h2>
+        <p class="lp-section-sub">Every verdict includes structured reasoning, confidence scoring, and actionable data.</p>
         <div class="lp-verdicts">
             <!-- BUILD -->
             <div class="lp-verdict-card">
-                <span class="lp-verdict-badge build">✓ Build</span>
-                <h4>Reusable Water Bottle Brand</h4>
-                <p class="verdict-reason">Strong market tailwinds in sustainability. Growing consumer shift from single-use plastic. Healthy margins in DTC model with repeat purchase potential.</p>
-                <div class="lp-verdict-conf">Confidence: <span class="green">87%</span></div>
+                <div class="lp-verdict-header build">
+                    <span class="lp-verdict-status build">✓ Build</span>
+                    <span class="lp-verdict-score build">87%</span>
+                </div>
+                <div class="lp-verdict-body">
+                    <h4>Reusable Water Bottle Brand</h4>
+                    <p class="verdict-reason">Strong market tailwinds in sustainability. Growing consumer shift from single-use plastic. Healthy margins in DTC model.</p>
+                </div>
+                <div class="lp-verdict-data">
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Market</div>
+                        <div class="lp-verdict-data-value">Growing</div>
+                    </div>
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Competition</div>
+                        <div class="lp-verdict-data-value">Moderate</div>
+                    </div>
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Margins</div>
+                        <div class="lp-verdict-data-value">Healthy</div>
+                    </div>
+                </div>
             </div>
             <!-- BUILD WITH CONDITIONS -->
             <div class="lp-verdict-card">
-                <span class="lp-verdict-badge bwc">⚠ Build with Conditions</span>
-                <h4>AI Resume Builder SaaS</h4>
-                <p class="verdict-reason">Viable if differentiated from 50+ existing tools. Requires a clear niche (e.g. federal resumes, executive pivots) and strong distribution channel.</p>
-                <div class="lp-verdict-conf">Confidence: <span class="amber">64%</span></div>
+                <div class="lp-verdict-header bwc">
+                    <span class="lp-verdict-status bwc">⚠ Conditional</span>
+                    <span class="lp-verdict-score bwc">64%</span>
+                </div>
+                <div class="lp-verdict-body">
+                    <h4>AI Resume Builder SaaS</h4>
+                    <p class="verdict-reason">Viable if differentiated from 50+ existing tools. Requires a clear niche and strong distribution channel.</p>
+                </div>
+                <div class="lp-verdict-data">
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Market</div>
+                        <div class="lp-verdict-data-value">Saturated</div>
+                    </div>
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Competition</div>
+                        <div class="lp-verdict-data-value">High</div>
+                    </div>
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Margins</div>
+                        <div class="lp-verdict-data-value">Moderate</div>
+                    </div>
+                </div>
             </div>
             <!-- DON'T BUILD -->
             <div class="lp-verdict-card">
-                <span class="lp-verdict-badge dont">✗ Don't Build</span>
-                <h4>Generic Dropship Phone Cases</h4>
-                <p class="verdict-reason">Saturated commodity market with razor-thin margins. No defensible moat. High ad costs with declining organic reach. Race to the bottom on price.</p>
-                <div class="lp-verdict-conf">Confidence: <span class="red">91%</span></div>
+                <div class="lp-verdict-header dont">
+                    <span class="lp-verdict-status dont">✗ Don't Build</span>
+                    <span class="lp-verdict-score dont">91%</span>
+                </div>
+                <div class="lp-verdict-body">
+                    <h4>Generic Dropship Phone Cases</h4>
+                    <p class="verdict-reason">Saturated commodity market with razor-thin margins. No defensible moat. Race to the bottom on price.</p>
+                </div>
+                <div class="lp-verdict-data">
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Market</div>
+                        <div class="lp-verdict-data-value">Declining</div>
+                    </div>
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Competition</div>
+                        <div class="lp-verdict-data-value">Extreme</div>
+                    </div>
+                    <div class="lp-verdict-data-item">
+                        <div class="lp-verdict-data-label">Margins</div>
+                        <div class="lp-verdict-data-value">Razor-thin</div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
@@ -408,22 +642,22 @@
     <!-- ── Why Different ── -->
     <div class="lp-section-alt">
         <section class="lp-section">
-            <h2 class="lp-section-title">This is not ChatGPT</h2>
+            <h2 class="lp-section-title">This is not ChatGPT.</h2>
             <p class="lp-section-sub">Generic AI tells you what you want to hear. Veltrix tells you what you need to hear.</p>
             <div class="lp-compare">
                 <div class="lp-compare-col">
-                    <div class="lp-compare-header">Generic AI Chat</div>
-                    <div class="lp-compare-item"><span class="compare-icon">😊</span> Vague encouragement</div>
-                    <div class="lp-compare-item"><span class="compare-icon">🤷</span> No framework</div>
-                    <div class="lp-compare-item"><span class="compare-icon">❌</span> No accountability</div>
-                    <div class="lp-compare-item"><span class="compare-icon">💬</span> Says "it depends"</div>
+                    <div class="lp-compare-header">Generic AI</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> Vague encouragement</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> No decision framework</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> No accountability</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> Says "it depends"</div>
                 </div>
                 <div class="lp-compare-col">
-                    <div class="lp-compare-header">Veltrix Decision Engine</div>
-                    <div class="lp-compare-item"><span class="compare-icon">🎯</span> Ruthless honesty</div>
-                    <div class="lp-compare-item"><span class="compare-icon">📊</span> Structured verdict</div>
-                    <div class="lp-compare-item"><span class="compare-icon">📈</span> Data-backed reasoning</div>
-                    <div class="lp-compare-item"><span class="compare-icon">✅</span> Gives a clear answer</div>
+                    <div class="lp-compare-header">Veltrix Engine</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Ruthless honesty</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Structured verdicts</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Data-backed reasoning</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Clear answers</div>
                 </div>
             </div>
         </section>
@@ -431,7 +665,7 @@
 
     <!-- ── Pricing Section ── -->
     <div class="lp-pricing-wrap" id="pricingSection">
-        <h2 class="lp-section-title" style="max-width:1040px;margin:0 auto 10px;">Make Better Product Decisions</h2>
+        <h2 class="lp-section-title" style="max-width:960px;margin:0 auto 8px;">Simple, transparent pricing</h2>
         <p class="lp-section-sub">Upgrade to Pro for unlimited verdicts with deeper market intelligence. Cancel anytime.</p>
 
         <!-- State-aware message banner -->
@@ -446,7 +680,7 @@
 
         <!-- Pricing grid -->
         <div id="pricingGrid">
-            <div class="pricing-grid" style="max-width:880px;margin:0 auto;">
+            <div class="pricing-grid" style="max-width:840px;margin:0 auto;">
                 <!-- Free Plan -->
                 <div class="pricing-card">
                     <div class="pricing-plan-icon">📦</div>
@@ -466,7 +700,7 @@
 
                 <!-- Pro Plan -->
                 <div class="pricing-card pricing-pro">
-                    <div class="pricing-popular">⭐ Chosen by Most Users</div>
+                    <div class="pricing-popular">Most Popular</div>
                     <div class="pricing-plan-icon">⚡</div>
                     <div class="pricing-plan-name">Pro</div>
                     <div class="pricing-price">$9.99 <span>/ month</span></div>
@@ -485,12 +719,11 @@
                 </div>
             </div>
 
-            <div class="pricing-trust" style="max-width:880px;margin:32px auto 0;">
+            <div class="pricing-trust" style="max-width:840px;margin:32px auto 0;">
                 <p class="pricing-social-proof">Trusted by builders and product teams worldwide</p>
-                <p>🔒 <strong>Secure payment via PayPal</strong> — no card details stored on our servers.</p>
-                <p>⚡ <strong>Instant activation</strong> — Pro features unlock immediately.</p>
-                <p>🚫 <strong>No hidden fees</strong> — $9.99/month, cancel anytime.</p>
-                <p>✅ <strong>Cancel anytime</strong> — manage from PayPal or your <strong>Dashboard</strong>.</p>
+                <p>Secure payment via PayPal — no card details stored on our servers.</p>
+                <p>Instant activation — Pro features unlock immediately.</p>
+                <p>$9.99/month · No hidden fees · Cancel anytime.</p>
             </div>
         </div>
     </div>
@@ -498,8 +731,8 @@
     <!-- ── Final CTA ── -->
     <div class="lp-section-alt">
         <section class="lp-final-cta">
-            <h2>Ready to make smarter product decisions?</h2>
-            <p>Stop guessing. Start deciding. Join founders who validate ideas before investing time and money.</p>
+            <h2>Ready to make smarter decisions?</h2>
+            <p>Stop guessing. Start deciding. Join founders who validate before they invest.</p>
             <a class="lp-btn-primary cta-signup" href="/signup">Get Started Free</a>
         </section>
     </div>
