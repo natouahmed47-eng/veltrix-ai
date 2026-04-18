@@ -158,6 +158,14 @@ SUPPORTED_CATEGORIES = ["fragrance", "electronics", "fashion", "beauty", "home",
 # Minimum character length for a reason/action to be considered specific (not generic).
 MIN_SPECIFIC_REASON_LENGTH = 25
 
+# Fallback required_conditions used when post-processing overrides BUILD → BWC
+# but the model did not provide specific conditions.
+_FALLBACK_BWC_CONDITIONS = [
+    "Validate demand with 30+ target customer interviews before committing resources",
+    "Identify and test a specific niche wedge that incumbents are not serving",
+    "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
+]
+
 # Pre-compiled regex for detecting *hard* negative signals in verdict reasoning/top_reasons.
 # Used by post-processing to override BUILD → DON'T BUILD when reasoning contradicts verdict.
 # NOTE: "saturated", "high competition", and similar competitive-landscape terms are
@@ -480,7 +488,14 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
 
 
 # Verdict-field names that should NOT be aggressively scrubbed by regex.
-_VERDICT_FIELDS = frozenset(["verdict_reasoning", "top_reasons", "next_actions", "opportunity_summary", "biggest_risk", "required_conditions"])
+_VERDICT_FIELDS = frozenset([
+    "verdict_reasoning",
+    "top_reasons",
+    "next_actions",
+    "opportunity_summary",
+    "biggest_risk",
+    "required_conditions",
+])
 
 
 # ---------------------------------------------------------------------------
@@ -2258,11 +2273,7 @@ long_description HTML structure:
                         output["verdict"] = "BUILD WITH CONDITIONS"
                         # Generate conditions from the negative signals if none exist
                         if not output.get("required_conditions"):
-                            output["required_conditions"] = [
-                                "Validate demand with 30+ target customer interviews before committing resources",
-                                "Identify and test a specific niche wedge that incumbents are not serving",
-                                "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
-                            ]
+                            output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
                         app.logger.info("VERDICT GUARD: BUILD overridden to BWC — negative signals + real opportunity")
                     else:
                         output["verdict"] = "DON'T BUILD"
@@ -2359,11 +2370,7 @@ long_description HTML structure:
                     if opp.strip() and has_real_signal(opp):
                         output["verdict"] = "BUILD WITH CONDITIONS"
                         if not output.get("required_conditions"):
-                            output["required_conditions"] = [
-                                "Validate demand with 30+ target customer interviews before committing resources",
-                                "Identify and test a specific niche wedge that incumbents are not serving",
-                                "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
-                            ]
+                            output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
                         app.logger.info("VERDICT GUARD (final): BUILD overridden to BWC — negative signals + real opportunity")
                     else:
                         output["verdict"] = "DON'T BUILD"
