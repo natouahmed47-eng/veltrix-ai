@@ -197,8 +197,8 @@ _EXECUTION_RISK_RE = re.compile(
     r"|scaling challeng|scaling difficult"
     r"|implementation challeng|implementation complex"
     r"|development cost|development time"
-    r"|requires? (?:significant |heavy |substantial )?(?:investment|capital|resources)"
-    r"|long (?:development|build|implementation) (?:time|cycle)"
+    r"|requires?\s+(?:(?:significant|heavy|substantial)\s+)?(?:investment|capital|resources)"
+    r"|long\s+(?:development|build|implementation)\s+(?:time|cycle)"
     r"|steep learning curve"
     r")\b",
     re.IGNORECASE,
@@ -235,6 +235,10 @@ def _has_only_execution_risks(text: str) -> bool:
         return False  # No negative signals at all
     if _STRUCTURAL_RISK_RE.search(text):
         return False  # At least one structural risk present
+    # Verify that execution risks are actually present — otherwise the
+    # negative signal is unclassified and should not be silently ignored.
+    if not _EXECUTION_RISK_RE.search(text):
+        return False  # Negative signal not covered by either classification
     # Negative signals exist but none are structural → execution only
     return True
 
@@ -254,14 +258,14 @@ def _has_strong_fundamentals(output: dict) -> bool:
     has_niche = bool(re.search(
         r"(?:clear niche|specific niche|defined niche|niche (?:market|segment|audience)"
         r"|underserved (?:segment|niche|market)|target(?:ed)? (?:segment|niche))",
-        combined,
+        combined, re.IGNORECASE,
     ))
     has_demand = bool(re.search(
         r"(?:proven demand|validated demand|high demand|strong demand"
         r"|demonstrated demand|existing demand|real demand"
         r"|search volume|growing (?:demand|interest|trend)"
         r"|customer (?:interest|base|waiting list))",
-        combined,
+        combined, re.IGNORECASE,
     ))
     has_monetization = bool(re.search(
         r"(?:viable monetization|clear monetization|proven monetization"
@@ -269,7 +273,7 @@ def _has_strong_fundamentals(output: dict) -> bool:
         r"|profitable|revenue model|monetization (?:path|strategy|model)"
         r"|unit economics (?:work|viable|positive|strong)"
         r"|(?:50|60|70|80)\+?\s*%\s*(?:gross )?margin)",
-        combined,
+        combined, re.IGNORECASE,
     ))
 
     return has_niche and has_demand and has_monetization
