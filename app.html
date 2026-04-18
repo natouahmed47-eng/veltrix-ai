@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veltrix AI — Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+        /* ── App-specific overrides ── */
+        .app-container {
+            max-width: 840px;
+            margin: 0 auto;
+            padding: 40px 24px 120px;
+        }
+        .app-search-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 36px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
+            margin-bottom: 32px;
+            text-align: center;
+            border: 1px solid #f1f5f9;
+        }
+        .app-search-card h1 {
+            margin: 0 0 6px;
+            font-size: 26px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: -0.5px;
+        }
+        .app-search-card .muted {
+            color: #64748b;
+            margin-bottom: 28px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        /* ── Upgrade bar (subtle) ── */
+        .upgrade-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 90;
+            background: #fff;
+            border-top: 1px solid #f1f5f9;
+            padding: 10px 24px;
+            text-align: center;
+            font-size: 13px;
+            color: #475569;
+            font-weight: 500;
+        }
+        .upgrade-bar a {
+            color: #4f46e5;
+            font-weight: 600;
+            text-decoration: none;
+            margin-left: 6px;
+        }
+        .upgrade-bar a:hover {
+            color: #4338ca;
+            text-decoration: underline;
+        }
+        .upgrade-bar.at-limit {
+            background: #fffbeb;
+            border-top-color: #fde68a;
+            color: #92400e;
+        }
+        .upgrade-bar.at-limit a {
+            color: #b45309;
+        }
+
+        /* ── Paywall overlay (simplified) ── */
+        .paywall-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.45);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .paywall-box {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 36px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 24px 48px rgba(0,0,0,0.12);
+        }
+        .paywall-close {
+            position: absolute;
+            top: 14px; right: 18px;
+            border: none;
+            background: none;
+            font-size: 22px;
+            cursor: pointer;
+            color: #94a3b8;
+            transition: color 0.15s;
+        }
+        .paywall-close:hover { color: #475569; }
+        .paywall-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+        .paywall-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0f172a;
+            margin: 0 0 8px;
+        }
+        .paywall-text {
+            font-size: 14px;
+            color: #64748b;
+            margin: 0 0 24px;
+            line-height: 1.6;
+        }
+        .paywall-cta {
+            display: inline-block;
+            padding: 13px 32px;
+            border-radius: 12px;
+            background: #4f46e5;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .paywall-cta:hover {
+            background: #4338ca;
+            box-shadow: 0 4px 14px rgba(79,70,229,0.3);
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 640px) {
+            .top-bar { padding: 0 16px; gap: 8px; }
+            .top-bar .tagline { display: none; }
+            .app-container { padding: 24px 16px 120px; }
+            .app-search-card { padding: 28px 20px; }
+            .app-search-card h1 { font-size: 22px; }
+            .search-row { flex-direction: column; }
+            .search-row button { width: 100%; }
+            .user-area { gap: 8px; }
+            .user-area .usage-info,
+            .user-area .dashboard-link { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Top Bar ── -->
+    <div class="top-bar">
+        <a href="/" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
+            <div class="logo">Veltrix<span>AI</span></div>
+        </a>
+        <div class="tagline">Product Decision Engine</div>
+
+        <div class="user-area" id="userArea" style="display:flex;">
+            <span class="usage-info" id="usageInfo"></span>
+            <a class="dashboard-link" href="/dashboard">Dashboard</a>
+            <span class="username-display" id="usernameDisplay"></span>
+            <button class="btn-logout" id="logoutBtn">Log Out</button>
+        </div>
+    </div>
+
+    <!-- ── Workspace ── -->
+    <div class="app-container">
+        <div class="app-search-card search-card">
+            <h1>What should we evaluate?</h1>
+            <div class="muted">Enter a product name or idea to get a verdict.</div>
+            <div class="search-row">
+                <input type="text" id="productIdea" placeholder="e.g. iPhone 15, Nike Air Max, a new SaaS idea..." />
+                <button id="analyzeBtn">Get Verdict</button>
+            </div>
+            <div id="message"></div>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <!-- ── Upgrade bar (free users only) ── -->
+    <div class="upgrade-bar" id="upgradeBar"></div>
+
+    <!-- ── Paywall overlay (simplified) ── -->
+    <div class="paywall-overlay" id="paywallOverlay">
+        <div class="paywall-box">
+            <button class="paywall-close" id="paywallClose">&times;</button>
+            <div class="paywall-icon">&#128274;</div>
+            <h2 class="paywall-title">You&rsquo;ve used all your free verdicts</h2>
+            <p class="paywall-text">Upgrade to Pro to unlock unlimited product decisions.</p>
+            <a href="/#pricingSection" class="paywall-cta" id="paywallCtaBtn">Upgrade to Pro</a>
+        </div>
+    </div>
+
+    <!-- ── Session tracking ── -->
+    <script>
+    (function() {
+        var key = "veltrix_session_id";
+        var tsKey = "veltrix_session_ts";
+        var MAX_AGE_MS = 24 * 60 * 60 * 1000;
+        var existing = localStorage.getItem(key);
+        var ts = parseInt(localStorage.getItem(tsKey) || "0", 10);
+        if (!existing || (Date.now() - ts) > MAX_AGE_MS) {
+            var sid = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem(key, sid);
+            localStorage.setItem(tsKey, String(Date.now()));
+        }
+    })();
+
+    window.trackEvent = function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString(), session_id: localStorage.getItem("veltrix_session_id") || "" },
+            data || {}
+        );
+        try {
+            var headers = { "Content-Type": "application/json" };
+            var token = localStorage.getItem("veltrix_token");
+            if (token) headers["Authorization"] = "Bearer " + token;
+            fetch("/api/track-event", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        } catch(e) {}
+    };
+    </script>
+
+    <!-- ── Auth guard (immediate) ── -->
+    <script>
+    if (!localStorage.getItem("veltrix_token")) {
+        window.location.replace("/login");
+    }
+    </script>
+
+    <script src="/upsell.js"></script>
+    <script src="/app.js"></script>
+</body>
+</html>

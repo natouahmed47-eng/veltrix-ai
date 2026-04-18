@@ -2905,7 +2905,7 @@ def optimize_product_router(product, lang="en"):
 
 @app.route("/")
 def home():
-    return send_file("index.html")
+    return send_file("landing.html")
 
 
 @app.route("/script.js")
@@ -2916,6 +2916,11 @@ def serve_script():
 @app.route("/upsell.js")
 def serve_upsell():
     return send_file("upsell.js")
+
+
+@app.route("/app.js")
+def serve_app_js():
+    return send_file("app.js")
 
 
 @app.route("/style.css")
@@ -2936,6 +2941,21 @@ def payment_success():
 @app.route("/cancel")
 def payment_cancel():
     return send_file("cancel.html")
+
+
+@app.route("/login")
+def login_page():
+    return send_file("login.html")
+
+
+@app.route("/signup")
+def signup_page():
+    return send_file("signup.html")
+
+
+@app.route("/app")
+def app_page():
+    return send_file("app.html")
 
 
 @app.route("/admin")

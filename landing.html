@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Veltrix AI — Should You Build It?</title>
+    <meta name="description" content="Get a ruthless, data-backed BUILD or DON'T BUILD verdict on any product idea — in seconds." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+    <style>
+    /* ══════════════════════════════════════════════════════════════
+       Landing Page Styles
+       ══════════════════════════════════════════════════════════════ */
+
+    /* ── Hero ── */
+    .lp-hero {
+        text-align: center;
+        padding: 100px 24px 80px;
+        max-width: 720px;
+        margin: 0 auto;
+    }
+    .lp-hero h1 {
+        font-size: 56px;
+        font-weight: 800;
+        letter-spacing: -1.5px;
+        color: #0f172a;
+        line-height: 1.1;
+        margin: 0 0 20px;
+    }
+    .lp-hero h1 .hero-accent {
+        color: #4f46e5;
+    }
+    .lp-hero .hero-sub {
+        font-size: 20px;
+        color: #475569;
+        line-height: 1.6;
+        margin: 0 0 40px;
+        max-width: 560px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .lp-hero-ctas {
+        display: flex;
+        gap: 14px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    .lp-btn-primary {
+        display: inline-block;
+        padding: 14px 32px;
+        border-radius: 12px;
+        background: #4f46e5;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+        text-decoration: none;
+        font-family: inherit;
+        border: none;
+        cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+    .lp-btn-primary:hover {
+        background: #4338ca;
+        box-shadow: 0 4px 16px rgba(79, 70, 229, 0.3);
+        transform: translateY(-1px);
+    }
+    .lp-btn-secondary {
+        display: inline-block;
+        padding: 14px 32px;
+        border-radius: 12px;
+        background: transparent;
+        color: #475569;
+        font-size: 16px;
+        font-weight: 500;
+        text-decoration: none;
+        font-family: inherit;
+        border: 1.5px solid #e2e8f0;
+        cursor: pointer;
+        transition: border-color 0.15s, color 0.15s;
+    }
+    .lp-btn-secondary:hover {
+        border-color: #4f46e5;
+        color: #4f46e5;
+    }
+
+    /* ── Section shared ── */
+    .lp-section {
+        padding: 80px 24px;
+        max-width: 1080px;
+        margin: 0 auto;
+    }
+    .lp-section-alt {
+        background: #fff;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .lp-section-title {
+        font-size: 36px;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.8px;
+        text-align: center;
+        margin: 0 0 12px;
+    }
+    .lp-section-sub {
+        font-size: 17px;
+        color: #475569;
+        text-align: center;
+        margin: 0 0 48px;
+        max-width: 560px;
+        margin-left: auto;
+        margin-right: auto;
+        line-height: 1.6;
+    }
+
+    /* ── How It Works ── */
+    .lp-steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 32px;
+    }
+    .lp-step {
+        text-align: center;
+        padding: 32px 24px;
+    }
+    .lp-step-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: #eef2ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin: 0 auto 20px;
+    }
+    .lp-step-num {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #4f46e5;
+        background: #eef2ff;
+        padding: 4px 10px;
+        border-radius: 20px;
+        margin-bottom: 12px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+    .lp-step h3 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 8px;
+    }
+    .lp-step p {
+        font-size: 14px;
+        color: #64748b;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    /* ── Verdict Examples ── */
+    .lp-verdicts {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+    }
+    .lp-verdict-card {
+        background: #fff;
+        border: 1px solid #f1f5f9;
+        border-radius: 16px;
+        padding: 28px 24px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .lp-verdict-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        transform: translateY(-2px);
+    }
+    .lp-verdict-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 5px 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+    .lp-verdict-badge.build {
+        background: #ecfdf5;
+        color: #059669;
+    }
+    .lp-verdict-badge.bwc {
+        background: #fffbeb;
+        color: #d97706;
+    }
+    .lp-verdict-badge.dont {
+        background: #fef2f2;
+        color: #dc2626;
+    }
+    .lp-verdict-card h4 {
+        font-size: 17px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0 0 10px;
+    }
+    .lp-verdict-card .verdict-reason {
+        font-size: 14px;
+        color: #64748b;
+        line-height: 1.6;
+        margin: 0 0 16px;
+    }
+    .lp-verdict-conf {
+        font-size: 13px;
+        font-weight: 600;
+        color: #94a3b8;
+    }
+    .lp-verdict-conf span {
+        font-weight: 700;
+    }
+    .lp-verdict-conf span.green { color: #059669; }
+    .lp-verdict-conf span.amber { color: #d97706; }
+    .lp-verdict-conf span.red   { color: #dc2626; }
+
+    /* ── Why Different ── */
+    .lp-compare {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid #f1f5f9;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .lp-compare-col {
+        padding: 0;
+    }
+    .lp-compare-header {
+        padding: 20px 24px;
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+    .lp-compare-col:first-child .lp-compare-header {
+        background: #f8fafc;
+        color: #94a3b8;
+    }
+    .lp-compare-col:last-child .lp-compare-header {
+        background: #4f46e5;
+        color: #fff;
+    }
+    .lp-compare-item {
+        padding: 16px 24px;
+        font-size: 14px;
+        line-height: 1.5;
+        border-top: 1px solid #f1f5f9;
+    }
+    .lp-compare-col:first-child .lp-compare-item {
+        color: #94a3b8;
+        background: #fafbfd;
+    }
+    .lp-compare-col:last-child .lp-compare-item {
+        color: #0f172a;
+        font-weight: 500;
+        background: #fff;
+    }
+    .lp-compare-item .compare-icon {
+        margin-right: 8px;
+    }
+
+    /* ── Landing Pricing ── */
+    .lp-pricing-wrap {
+        padding: 80px 24px;
+    }
+
+    /* ── Final CTA ── */
+    .lp-final-cta {
+        text-align: center;
+        padding: 80px 24px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .lp-final-cta h2 {
+        font-size: 32px;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.6px;
+        margin: 0 0 12px;
+    }
+    .lp-final-cta p {
+        font-size: 16px;
+        color: #475569;
+        margin: 0 0 32px;
+        line-height: 1.6;
+    }
+
+    /* ── Footer ── */
+    .lp-footer {
+        text-align: center;
+        padding: 32px 24px;
+        font-size: 13px;
+        color: #94a3b8;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+        .lp-hero { padding: 64px 20px 48px; }
+        .lp-hero h1 { font-size: 36px; }
+        .lp-hero .hero-sub { font-size: 17px; }
+        .lp-steps { grid-template-columns: 1fr; gap: 16px; }
+        .lp-verdicts { grid-template-columns: 1fr; gap: 16px; }
+        .lp-compare { grid-template-columns: 1fr; }
+        .lp-compare-col:first-child { border-bottom: 2px solid #e2e8f0; }
+        .lp-section-title { font-size: 28px; }
+        .lp-section { padding: 48px 20px; }
+        .lp-pricing-wrap { padding: 48px 20px; }
+        .lp-final-cta { padding: 48px 20px; }
+        .lp-final-cta h2 { font-size: 26px; }
+        .top-bar { padding: 0 16px; gap: 8px; }
+    }
+    </style>
+</head>
+<body>
+
+    <!-- ── Top Bar ── -->
+    <div class="top-bar">
+        <div class="logo">Veltrix<span>AI</span></div>
+        <div class="tagline">Product Decision Engine</div>
+        <div class="auth-area" id="authArea">
+            <a class="btn-login" href="/login" id="navLoginBtn">Log In</a>
+            <a class="btn-signup" href="/signup" id="navSignupBtn">Sign Up</a>
+        </div>
+    </div>
+
+    <!-- ── Hero ── -->
+    <section class="lp-hero">
+        <h1>Should You <span class="hero-accent">Build It?</span></h1>
+        <p class="hero-sub">Get a ruthless, data-backed <strong>BUILD</strong> or <strong>DON'T BUILD</strong> verdict on any product idea&nbsp;&mdash;&nbsp;in&nbsp;seconds.</p>
+        <div class="lp-hero-ctas">
+            <a class="lp-btn-primary cta-signup" href="/signup">Start Free &rarr;</a>
+            <a class="lp-btn-secondary" href="#howItWorks">See How It Works &darr;</a>
+        </div>
+    </section>
+
+    <!-- ── How It Works ── -->
+    <div class="lp-section-alt">
+        <section class="lp-section" id="howItWorks">
+            <h2 class="lp-section-title">How It Works</h2>
+            <p class="lp-section-sub">Three steps. One clear answer.</p>
+            <div class="lp-steps">
+                <div class="lp-step">
+                    <div class="lp-step-icon">💡</div>
+                    <span class="lp-step-num">Step 1</span>
+                    <h3>Enter Your Idea</h3>
+                    <p>Type a product name, concept, or niche. Anything from a SaaS idea to a physical product.</p>
+                </div>
+                <div class="lp-step">
+                    <div class="lp-step-icon">🔍</div>
+                    <span class="lp-step-num">Step 2</span>
+                    <h3>AI Analyzes Viability</h3>
+                    <p>Our decision engine evaluates market demand, competition, timing, and profitability signals.</p>
+                </div>
+                <div class="lp-step">
+                    <div class="lp-step-icon">⚡</div>
+                    <span class="lp-step-num">Step 3</span>
+                    <h3>Get a Clear Verdict</h3>
+                    <p>Receive a BUILD, BUILD WITH CONDITIONS, or DON'T BUILD verdict with confidence scoring.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ── Example Verdicts ── -->
+    <section class="lp-section">
+        <h2 class="lp-section-title">See It In Action</h2>
+        <p class="lp-section-sub">Real verdict examples from the Veltrix Decision Engine.</p>
+        <div class="lp-verdicts">
+            <!-- BUILD -->
+            <div class="lp-verdict-card">
+                <span class="lp-verdict-badge build">✓ Build</span>
+                <h4>Reusable Water Bottle Brand</h4>
+                <p class="verdict-reason">Strong market tailwinds in sustainability. Growing consumer shift from single-use plastic. Healthy margins in DTC model with repeat purchase potential.</p>
+                <div class="lp-verdict-conf">Confidence: <span class="green">87%</span></div>
+            </div>
+            <!-- BUILD WITH CONDITIONS -->
+            <div class="lp-verdict-card">
+                <span class="lp-verdict-badge bwc">⚠ Build with Conditions</span>
+                <h4>AI Resume Builder SaaS</h4>
+                <p class="verdict-reason">Viable if differentiated from 50+ existing tools. Requires a clear niche (e.g. federal resumes, executive pivots) and strong distribution channel.</p>
+                <div class="lp-verdict-conf">Confidence: <span class="amber">64%</span></div>
+            </div>
+            <!-- DON'T BUILD -->
+            <div class="lp-verdict-card">
+                <span class="lp-verdict-badge dont">✗ Don't Build</span>
+                <h4>Generic Dropship Phone Cases</h4>
+                <p class="verdict-reason">Saturated commodity market with razor-thin margins. No defensible moat. High ad costs with declining organic reach. Race to the bottom on price.</p>
+                <div class="lp-verdict-conf">Confidence: <span class="red">91%</span></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Why Different ── -->
+    <div class="lp-section-alt">
+        <section class="lp-section">
+            <h2 class="lp-section-title">This is not ChatGPT</h2>
+            <p class="lp-section-sub">Generic AI tells you what you want to hear. Veltrix tells you what you need to hear.</p>
+            <div class="lp-compare">
+                <div class="lp-compare-col">
+                    <div class="lp-compare-header">Generic AI Chat</div>
+                    <div class="lp-compare-item"><span class="compare-icon">😊</span> Vague encouragement</div>
+                    <div class="lp-compare-item"><span class="compare-icon">🤷</span> No framework</div>
+                    <div class="lp-compare-item"><span class="compare-icon">❌</span> No accountability</div>
+                    <div class="lp-compare-item"><span class="compare-icon">💬</span> Says "it depends"</div>
+                </div>
+                <div class="lp-compare-col">
+                    <div class="lp-compare-header">Veltrix Decision Engine</div>
+                    <div class="lp-compare-item"><span class="compare-icon">🎯</span> Ruthless honesty</div>
+                    <div class="lp-compare-item"><span class="compare-icon">📊</span> Structured verdict</div>
+                    <div class="lp-compare-item"><span class="compare-icon">📈</span> Data-backed reasoning</div>
+                    <div class="lp-compare-item"><span class="compare-icon">✅</span> Gives a clear answer</div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ── Pricing Section ── -->
+    <div class="lp-pricing-wrap" id="pricingSection">
+        <h2 class="lp-section-title" style="max-width:1080px;margin:0 auto 12px;">Make Better Product Decisions</h2>
+        <p class="lp-section-sub">Upgrade to Pro — get unlimited verdicts with deeper market data and category-specific breakdowns. Cancel anytime.</p>
+
+        <!-- State-aware message banner -->
+        <div class="pricing-state-msg" id="pricingStateMsg" style="display:none;"></div>
+
+        <!-- Pro active message -->
+        <div class="pricing-pro-active-msg" id="pricingProActive" style="display:none;">
+            <div class="pam-icon">✅</div>
+            <div class="pam-title">You're on the Pro plan</div>
+            <p class="pam-text">You have full access to all Pro features. Manage your subscription from your <a href="/dashboard" style="color:#166534;font-weight:600;">Dashboard</a>.</p>
+        </div>
+
+        <!-- Pricing grid -->
+        <div id="pricingGrid">
+            <div class="pricing-grid" style="max-width:880px;margin:0 auto;">
+                <!-- Free Plan -->
+                <div class="pricing-card">
+                    <div class="pricing-plan-icon">📦</div>
+                    <div class="pricing-plan-name">Free</div>
+                    <div class="pricing-price">$0 <span>/ forever</span></div>
+                    <div class="pricing-price-note">No credit card required</div>
+                    <ul class="pricing-features">
+                        <li><span class="pf-icon check">✓</span> Up to 5 product verdicts</li>
+                        <li><span class="pf-icon check">✓</span> BUILD / DON'T BUILD decisions</li>
+                        <li><span class="pf-icon check">✓</span> Standard decision model</li>
+                        <li><span class="pf-icon x">—</span> No deep category breakdowns</li>
+                        <li><span class="pf-icon x">—</span> No saved decision history</li>
+                        <li><span class="pf-icon x">—</span> No priority support</li>
+                    </ul>
+                    <div class="pricing-cta pricing-cta-free" id="pricingFreeCta">Your Current Plan</div>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="pricing-card pricing-pro">
+                    <div class="pricing-popular">⭐ Chosen by Most Users</div>
+                    <div class="pricing-plan-icon">⚡</div>
+                    <div class="pricing-plan-name">Pro</div>
+                    <div class="pricing-price">$9.99 <span>/ month</span></div>
+                    <div class="pricing-price-note">Billed monthly · Cancel anytime</div>
+                    <ul class="pricing-features">
+                        <li><span class="pf-icon check">✓</span> <strong>Unlimited</strong> product verdicts — no caps, no limits</li>
+                        <li><span class="pf-icon check">✓</span> Deeper, data-backed decision reports</li>
+                        <li><span class="pf-icon check">✓</span> Tailored verdicts for each product category</li>
+                        <li><span class="pf-icon check">✓</span> Save and revisit past decisions anytime</li>
+                        <li><span class="pf-icon check">✓</span> Get faster help when you need it</li>
+                        <li><span class="pf-icon check">✓</span> Export full reports in one click</li>
+                    </ul>
+                    <div class="pricing-paypal-wrap">
+                        <div id="paypal-button-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pricing-trust" style="max-width:880px;margin:32px auto 0;">
+                <p class="pricing-social-proof">🚀 Trusted by a growing number of ecommerce sellers and builders</p>
+                <p>🔒 <strong>Secure payment via PayPal</strong> — no card details stored on our servers.</p>
+                <p>⚡ <strong>Instant activation</strong> — Pro features unlock the moment you upgrade.</p>
+                <p>🚫 <strong>No hidden fees</strong> — $9.99/month, cancel anytime.</p>
+                <p>✅ <strong>Cancel anytime</strong> — manage from PayPal or your <strong>Dashboard</strong>. Your data is always yours.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Final CTA ── -->
+    <div class="lp-section-alt">
+        <section class="lp-final-cta">
+            <h2>Ready to make smarter product decisions?</h2>
+            <p>Stop guessing. Start deciding. Join thousands of builders who use Veltrix to validate ideas before investing time and money.</p>
+            <a class="lp-btn-primary cta-signup" href="/signup">Get Started Free</a>
+        </section>
+    </div>
+
+    <!-- ── Footer ── -->
+    <footer class="lp-footer">
+        &copy; 2026 Veltrix AI &middot; Product Decision Engine
+    </footer>
+
+    <!-- ── Session ID Tracking ── -->
+    <script>
+    (function() {
+        var key = "veltrix_session_id";
+        var tsKey = "veltrix_session_ts";
+        var MAX_AGE_MS = 24 * 60 * 60 * 1000;
+        var existing = localStorage.getItem(key);
+        var ts = parseInt(localStorage.getItem(tsKey) || "0", 10);
+        if (!existing || (Date.now() - ts) > MAX_AGE_MS) {
+            var sid = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
+            localStorage.setItem(key, sid);
+            localStorage.setItem(tsKey, String(Date.now()));
+        }
+    })();
+
+    window.trackEvent = function(name, data) {
+        var payload = Object.assign(
+            { event: name, timestamp: new Date().toISOString(), session_id: localStorage.getItem("veltrix_session_id") || "" },
+            data || {}
+        );
+        try {
+            var headers = { "Content-Type": "application/json" };
+            var token = localStorage.getItem("veltrix_token");
+            if (token) headers["Authorization"] = "Bearer " + token;
+            fetch("/api/track-event", {
+                method: "POST",
+                headers: headers,
+                body: JSON.stringify(payload)
+            }).catch(function() {});
+        } catch(e) {}
+    };
+
+    /* Track pricing_view when #pricingSection scrolls into view */
+    (function() {
+        var tracked = false;
+        var section = document.getElementById("pricingSection");
+        if (!section || !window.IntersectionObserver) return;
+        var obs = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e) {
+                if (e.isIntersecting && !tracked) {
+                    tracked = true;
+                    var token = localStorage.getItem("veltrix_token") || "";
+                    window.trackEvent("pricing_view", {
+                        plan: "pro",
+                        source: "landing",
+                        user_state: token ? "logged_in" : "logged_out"
+                    });
+                    obs.disconnect();
+                }
+            });
+        }, { threshold: 0.3 });
+        obs.observe(section);
+    })();
+    </script>
+
+    <!-- PayPal SDK — loaded dynamically from /api/config -->
+    <script>
+    (function() {
+        fetch("/api/config")
+            .then(function(r) { return r.json(); })
+            .then(function(cfg) {
+                if (!cfg.paypal_client_id) return;
+                var s = document.createElement("script");
+                s.src = "https://www.paypal.com/sdk/js?client-id=" +
+                    encodeURIComponent(cfg.paypal_client_id) +
+                    "&currency=USD&vault=true&intent=subscription";
+                s.onload = function() {
+                    document.dispatchEvent(new Event("paypal-sdk-ready"));
+                };
+                document.head.appendChild(s);
+            })
+            .catch(function() {});
+    })();
+    </script>
+    <script src="/upsell.js"></script>
+
+    <!-- ── Auth-aware UI + Pricing State ── -->
+    <script>
+    (function() {
+        var token = localStorage.getItem("veltrix_token");
+        var isLoggedIn = !!token;
+
+        /* Update nav for logged-in users */
+        if (isLoggedIn) {
+            var loginBtn = document.getElementById("navLoginBtn");
+            if (loginBtn) loginBtn.style.display = "none";
+            var signupBtn = document.getElementById("navSignupBtn");
+            if (signupBtn) {
+                signupBtn.textContent = "Go to App";
+                signupBtn.href = "/app";
+            }
+        }
+
+        /* Update CTA links */
+        if (isLoggedIn) {
+            var ctaBtns = document.querySelectorAll(".cta-signup");
+            for (var i = 0; i < ctaBtns.length; i++) {
+                ctaBtns[i].href = "/app";
+            }
+        }
+
+        /* Pricing state via getUserStateContext */
+        function updatePricingState(user) {
+            if (typeof window.getUserStateContext !== "function") return;
+            var ctx = window.getUserStateContext(user);
+
+            var stateMsg = document.getElementById("pricingStateMsg");
+            var proActive = document.getElementById("pricingProActive");
+            var grid = document.getElementById("pricingGrid");
+            var freeCta = document.getElementById("pricingFreeCta");
+
+            if (ctx.state === "pro_active") {
+                if (proActive) proActive.style.display = "";
+                if (grid) grid.style.display = "none";
+            } else {
+                if (proActive) proActive.style.display = "none";
+                if (grid) grid.style.display = "";
+            }
+
+            if (ctx.message && ctx.state !== "logged_out" && ctx.state !== "pro_active") {
+                if (stateMsg) {
+                    stateMsg.textContent = ctx.message;
+                    stateMsg.style.display = "";
+                }
+            }
+
+            if (freeCta && ctx.state === "free") {
+                freeCta.textContent = "Your Current Plan";
+            } else if (freeCta && ctx.state === "logged_out") {
+                freeCta.textContent = "Get Started Free";
+            }
+        }
+
+        /* Always show pricing section on landing page */
+        var pricingSection = document.getElementById("pricingSection");
+        if (pricingSection) pricingSection.style.display = "";
+
+        if (isLoggedIn) {
+            fetch("/api/me", {
+                headers: { "Authorization": "Bearer " + token }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(user) {
+                updatePricingState(user);
+            })
+            .catch(function() {
+                updatePricingState(null);
+            });
+        } else {
+            updatePricingState(null);
+        }
+    })();
+    </script>
+
+    <!-- ── PayPal Subscription Button ── -->
+    <script>
+    (function() {
+        var token = localStorage.getItem("veltrix_token") || "";
+
+        function _initPayPalButton() {
+            fetch("/api/config")
+                .then(function(res) { return res.json(); })
+                .then(function(cfg) {
+                    var planId = cfg.paypal_plan_id;
+                    if (!planId) return;
+                    var container = document.getElementById("paypal-button-container");
+                    if (!container) return;
+                    container.addEventListener("click", function() {
+                        if (window.trackEvent) {
+                            window.trackEvent("upgrade_click", {
+                                plan: "pro",
+                                source: "landing_pricing",
+                                user_state: (localStorage.getItem("veltrix_token") ? "logged_in" : "logged_out")
+                            });
+                        }
+                    }, { once: true });
+
+                    paypal.Buttons({
+                        style: { label: "pay" },
+                        createSubscription: function(data, actions) {
+                            return actions.subscription.create({ plan_id: planId });
+                        },
+                        onApprove: function(data) {
+                            if (window.trackEvent) {
+                                window.trackEvent("paypal_subscription_approved", {
+                                    plan: "pro",
+                                    source: "landing_pricing",
+                                    subscription_id: data.subscriptionID
+                                });
+                            }
+                            var t = localStorage.getItem("veltrix_token") || "";
+                            return fetch("/api/paypal/activate-subscription", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "Authorization": "Bearer " + t
+                                },
+                                body: JSON.stringify({ subscriptionID: data.subscriptionID })
+                            }).then(function(res) { return res.json(); })
+                              .then(function(details) {
+                                  if (details.error) { alert("Subscription failed: " + details.error); return; }
+                                  window.location.href = "/success";
+                              });
+                        },
+                        onCancel: function() {
+                            window.location.href = "/cancel";
+                        }
+                    }).render('#paypal-button-container').then(function() {
+                        if (window.trackEvent) {
+                            window.trackEvent("paypal_button_rendered", {
+                                plan: "pro",
+                                source: "landing_pricing"
+                            });
+                        }
+                    });
+                })
+                .catch(function(err) { if (typeof console !== "undefined") console.warn("PayPal init skipped:", err); });
+        }
+
+        function renderPayPal() {
+            if (typeof paypal !== "undefined") {
+                _initPayPalButton();
+            } else {
+                document.addEventListener("paypal-sdk-ready", _initPayPalButton);
+            }
+        }
+
+        /* Skip if user is already Pro */
+        if (token) {
+            fetch("/api/me", { headers: { "Authorization": "Bearer " + token } })
+                .then(function(r) { return r.json(); })
+                .then(function(d) {
+                    if (!d.is_pro) { renderPayPal(); }
+                })
+                .catch(function() { renderPayPal(); });
+        } else {
+            renderPayPal();
+        }
+    })();
+    </script>
+</body>
+</html>
