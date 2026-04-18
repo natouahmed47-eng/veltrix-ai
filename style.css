@@ -1088,14 +1088,14 @@ body {
     line-height: 1.6;
 }
 
-/* ── CTA Pulse / Glow Animation ── */
+/* ── CTA Pulse / Glow Animation — subtle for premium ── */
 @keyframes ctaPulse {
     0% { box-shadow: 0 0 0 0 var(--v-brand-glow); }
-    70% { box-shadow: 0 0 0 10px rgba(67, 56, 202, 0); }
+    70% { box-shadow: 0 0 0 6px rgba(67, 56, 202, 0); }
     100% { box-shadow: 0 0 0 0 rgba(67, 56, 202, 0); }
 }
 .cta-pulse {
-    animation: ctaPulse 2s ease-in-out infinite;
+    animation: ctaPulse 2.5s ease-in-out infinite;
 }
 
 /* ── Paywall Modal ── */
@@ -1143,12 +1143,11 @@ body {
     font-size: var(--v-text-md); font-weight: 600;
     background: var(--v-brand);
     color: #fff; cursor: pointer; text-decoration: none;
-    font-family: inherit; transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease), transform 0.1s var(--v-ease);
+    font-family: inherit; transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease);
 }
 .paywall-cta:hover {
     background: var(--v-brand-hover);
     box-shadow: var(--v-shadow-brand);
-    transform: translateY(-1px);
 }
 .paywall-micro {
     font-size: var(--v-text-sm); color: var(--v-text-faint); margin: var(--v-sp-3) 0 0;
@@ -1157,7 +1156,7 @@ body {
 /* ── Sticky Mobile CTA ── */
 .sticky-cta {
     display: none; position: fixed; bottom: 0; left: 0; right: 0;
-    background: var(--v-bg-elevated); border-top: 1px solid var(--v-border-light);
+    background: var(--v-bg-elevated); border-top: 1px solid var(--v-border);
     padding: var(--v-sp-3) var(--v-sp-4); z-index: 900;
     box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.04);
     justify-content: center;
@@ -1493,12 +1492,11 @@ body {
     color: #fff;
     cursor: pointer;
     font-family: inherit;
-    transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease), transform 0.1s var(--v-ease);
+    transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease);
 }
 .btn-save:hover {
     background: #047857;
-    box-shadow: 0 4px 14px rgba(5,150,105,0.18);
-    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(5,150,105,0.12);
 }
 .btn-save:disabled {
     background: #cbd5e1;

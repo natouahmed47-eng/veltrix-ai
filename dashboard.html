@@ -23,9 +23,9 @@
         }
         .top-bar {
             background: var(--v-bg-elevated);
-            border-bottom: 1px solid var(--v-border-light);
-            padding: 0 var(--v-sp-10);
-            height: 60px;
+            border-bottom: 1px solid var(--v-border);
+            padding: 0 var(--v-sp-8);
+            height: 56px;
             display: flex;
             align-items: center;
             gap: var(--v-sp-3);
@@ -33,11 +33,11 @@
             top: 0;
             z-index: 100;
         }
-        .top-bar .logo { font-size: var(--v-text-2xl); font-weight: 700; color: var(--v-text); letter-spacing: -0.5px; text-decoration: none; }
-        .top-bar .logo span { color: var(--v-brand); font-weight: 600; }
-        .top-bar .tagline { font-size: 11px; color: var(--v-text-faint); margin-left: 2px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase; }
+        .top-bar .logo { font-size: var(--v-text-xl); font-weight: 700; color: var(--v-text); letter-spacing: -0.5px; text-decoration: none; }
+        .top-bar .logo span { color: var(--v-brand); font-weight: 700; }
+        .top-bar .tagline { font-size: 10px; color: var(--v-text-faint); margin-left: 2px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
         .nav-links { margin-left: auto; display: flex; align-items: center; gap: var(--v-sp-3); }
-        .nav-links a { color: var(--v-text-faint); font-size: var(--v-text-base); font-weight: 500; text-decoration: none; transition: color 150ms; }
+        .nav-links a { color: var(--v-text-faint); font-size: var(--v-text-sm); font-weight: 500; text-decoration: none; transition: color 150ms; }
         .nav-links a:hover { color: var(--v-text); }
         .nav-links a.active { color: var(--v-brand); font-weight: 600; }
         .nav-username { color: var(--v-text-secondary); font-size: var(--v-text-sm); font-weight: 600; }
@@ -47,32 +47,32 @@
             cursor: pointer; font-family: inherit; transition: border-color 150ms, color 150ms;
         }
         .nav-links button:hover { border-color: var(--v-border); color: var(--v-text-secondary); }
-        .container { max-width: 840px; margin: 0 auto; padding: var(--v-sp-12) var(--v-sp-6) var(--v-sp-16); }
+        .container { max-width: 760px; margin: 0 auto; padding: var(--v-sp-10) var(--v-sp-6) var(--v-sp-16); }
         .page-header {
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: var(--v-sp-6);
         }
-        .page-header h1 { margin: 0; font-size: var(--v-text-3xl); font-weight: 700; color: var(--v-text); letter-spacing: -0.5px; }
+        .page-header h1 { margin: 0; font-size: var(--v-text-2xl); font-weight: 700; color: var(--v-text); letter-spacing: -0.5px; }
         .usage-badge {
-            padding: 5px 14px; border-radius: var(--v-radius-full); font-size: var(--v-text-sm); font-weight: 500;
-            background: var(--v-bg); color: var(--v-text-muted); border: 1px solid var(--v-border-light);
+            padding: 4px 12px; border-radius: var(--v-radius-full); font-size: var(--v-text-xs); font-weight: 500;
+            background: var(--v-bg); color: var(--v-text-muted); border: 1px solid var(--v-border);
         }
         /* ── Billing Card ── */
         .billing-card {
             background: var(--v-bg-elevated); border-radius: var(--v-radius-xl); padding: 0;
-            margin-bottom: var(--v-sp-6); border: 1px solid var(--v-border-light);
-            box-shadow: var(--v-shadow);
+            margin-bottom: var(--v-sp-6); border: 1px solid var(--v-border);
+            box-shadow: var(--v-shadow-xs);
             overflow: hidden;
         }
         .billing-header {
-            padding: 28px 32px 24px;
-            display: flex; align-items: center; gap: 16px;
-            border-bottom: 1px solid var(--v-border-light);
+            padding: 24px 28px 20px;
+            display: flex; align-items: center; gap: 14px;
+            border-bottom: 1px solid var(--v-border);
         }
-        .billing-icon { font-size: 28px; flex-shrink: 0; }
+        .billing-icon { font-size: 24px; flex-shrink: 0; }
         .billing-title-wrap { flex: 1; }
-        .billing-plan-name { font-size: var(--v-text-xl); font-weight: 700; color: var(--v-text); display: flex; align-items: center; gap: 10px; }
-        .billing-subtitle { font-size: var(--v-text-sm); color: var(--v-text-faint); margin-top: 3px; }
+        .billing-plan-name { font-size: var(--v-text-lg); font-weight: 700; color: var(--v-text); display: flex; align-items: center; gap: 10px; }
+        .billing-subtitle { font-size: var(--v-text-xs); color: var(--v-text-faint); margin-top: 3px; }
 
         .plan-badge {
             display: inline-flex; align-items: center; gap: 4px;
@@ -99,34 +99,34 @@
         .billing-status-icon { font-size: 18px; flex-shrink: 0; }
 
         /* Feature comparison */
-        .billing-body { padding: 24px 32px 28px; }
+        .billing-body { padding: 20px 28px 24px; }
         .feature-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
             margin-bottom: 24px;
         }
         .feature-col h4 {
-            font-size: 11px; font-weight: 600; text-transform: uppercase;
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
             letter-spacing: 0.08em; color: var(--v-text-faint); margin: 0 0 14px;
         }
         .feature-col.col-pro h4 { color: var(--v-brand); }
         .feature-item {
             display: flex; align-items: center; gap: 8px;
-            font-size: var(--v-text-base); color: var(--v-text-muted); margin-bottom: 10px;
+            font-size: var(--v-text-sm); color: var(--v-text-muted); margin-bottom: 10px;
         }
         .feature-check { color: #10b981; font-weight: 700; font-size: var(--v-text-md); flex-shrink: 0; }
         .feature-x { color: var(--v-border); font-weight: 700; font-size: var(--v-text-md); flex-shrink: 0; }
 
         /* CTA button */
-        .billing-actions { padding: 0 32px 28px; }
+        .billing-actions { padding: 0 28px 24px; }
         .btn-billing {
             display: inline-flex; align-items: center; gap: 8px;
-            padding: 11px 26px; border-radius: var(--v-radius-md); border: none;
-            font-size: var(--v-text-base); font-weight: 600; cursor: pointer;
+            padding: 10px 22px; border-radius: var(--v-radius-md); border: none;
+            font-size: var(--v-text-sm); font-weight: 600; cursor: pointer;
             font-family: inherit; text-decoration: none;
-            transition: background 150ms, box-shadow 150ms, transform 0.1s;
+            transition: background 150ms, box-shadow 150ms;
         }
-        .btn-billing:hover { transform: translateY(-1px); }
-        .btn-billing:active { transform: translateY(0); }
+        .btn-billing:hover { }
+        .btn-billing:active { }
         .btn-billing-primary {
             background: var(--v-brand); color: #fff;
         }
@@ -159,12 +159,12 @@
         .empty-state p { margin: 0; font-size: var(--v-text-md); line-height: 1.6; }
         .empty-state a { color: var(--v-brand); font-weight: 600; text-decoration: none; }
         .analysis-card {
-            background: var(--v-bg-elevated); border-radius: var(--v-radius-lg); padding: 22px 28px;
-            margin-bottom: 12px; border: 1px solid var(--v-border-light);
-            box-shadow: var(--v-shadow-sm);
-            cursor: pointer; transition: box-shadow 0.2s, transform 0.15s;
+            background: var(--v-bg-elevated); border-radius: var(--v-radius-lg); padding: 18px 24px;
+            margin-bottom: 10px; border: 1px solid var(--v-border);
+            box-shadow: var(--v-shadow-xs);
+            cursor: pointer; transition: box-shadow 0.2s;
         }
-        .analysis-card:hover { box-shadow: var(--v-shadow-md); transform: translateY(-1px); }
+        .analysis-card:hover { box-shadow: var(--v-shadow-md); }
         .analysis-card .ac-top { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .analysis-card .ac-title { font-size: var(--v-text-lg); font-weight: 700; color: var(--v-text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .analysis-card .ac-date { font-size: var(--v-text-xs); color: var(--v-text-faint); flex-shrink: 0; }
