@@ -11,35 +11,36 @@
     <link rel="stylesheet" href="/style.css" />
     <style>
     /* ══════════════════════════════════════════════════════════════
-       Landing Page — Premium SaaS Styles
+       Landing Page — Premium AI Product Styles
        ══════════════════════════════════════════════════════════════ */
 
     /* ── Hero ── */
     .lp-hero {
         text-align: center;
-        padding: 120px 24px 96px;
-        max-width: 720px;
+        padding: 140px 24px 112px;
+        max-width: 680px;
         margin: 0 auto;
     }
     .lp-hero h1 {
-        font-size: 3.5rem;
+        font-size: 3.75rem;
         font-weight: 700;
-        letter-spacing: -1.5px;
+        letter-spacing: -2px;
         color: var(--v-text);
-        line-height: 1.08;
+        line-height: 1.04;
         margin: 0 0 20px;
     }
     .lp-hero h1 .hero-accent {
         color: var(--v-brand);
     }
     .lp-hero .hero-sub {
-        font-size: 1.125rem;
+        font-size: 1.0625rem;
         color: var(--v-text-muted);
-        line-height: 1.7;
-        margin: 0 0 44px;
-        max-width: 520px;
+        line-height: 1.6;
+        margin: 0 0 48px;
+        max-width: 460px;
         margin-left: auto;
         margin-right: auto;
+        letter-spacing: -0.01em;
     }
     .lp-hero-ctas {
         display: flex;
@@ -49,7 +50,7 @@
     }
     .lp-btn-primary {
         display: inline-block;
-        padding: 13px 30px;
+        padding: 12px 28px;
         border-radius: var(--v-radius-md);
         background: var(--v-brand);
         color: #fff;
@@ -59,16 +60,16 @@
         font-family: inherit;
         border: none;
         cursor: pointer;
-        transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease), transform 0.1s var(--v-ease);
+        letter-spacing: -0.01em;
+        transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease);
     }
     .lp-btn-primary:hover {
         background: var(--v-brand-hover);
         box-shadow: var(--v-shadow-brand);
-        transform: translateY(-1px);
     }
     .lp-btn-secondary {
         display: inline-block;
-        padding: 13px 30px;
+        padding: 12px 28px;
         border-radius: var(--v-radius-md);
         background: transparent;
         color: var(--v-text-muted);
@@ -78,86 +79,88 @@
         font-family: inherit;
         border: 1px solid var(--v-border);
         cursor: pointer;
+        letter-spacing: -0.01em;
         transition: border-color var(--v-duration) var(--v-ease), color var(--v-duration) var(--v-ease);
     }
     .lp-btn-secondary:hover {
-        border-color: var(--v-brand);
-        color: var(--v-brand);
+        border-color: var(--v-text-faint);
+        color: var(--v-text-secondary);
     }
 
     /* ── Section shared ── */
     .lp-section {
         padding: 96px 24px;
-        max-width: 1040px;
+        max-width: 960px;
         margin: 0 auto;
     }
     .lp-section-alt {
         background: var(--v-bg-elevated);
-        border-top: 1px solid var(--v-border-light);
-        border-bottom: 1px solid var(--v-border-light);
+        border-top: 1px solid var(--v-border);
+        border-bottom: 1px solid var(--v-border);
     }
     .lp-section-title {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: var(--v-text);
-        letter-spacing: -0.6px;
+        letter-spacing: -0.8px;
         text-align: center;
-        margin: 0 0 10px;
+        margin: 0 0 8px;
     }
     .lp-section-sub {
-        font-size: var(--v-text-lg);
+        font-size: var(--v-text-md);
         color: var(--v-text-muted);
         text-align: center;
         margin: 0 0 56px;
-        max-width: 520px;
+        max-width: 460px;
         margin-left: auto;
         margin-right: auto;
-        line-height: 1.6;
+        line-height: 1.5;
     }
 
     /* ── How It Works ── */
     .lp-steps {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 40px;
+        gap: 48px;
     }
     .lp-step {
         text-align: center;
         padding: 0;
     }
     .lp-step-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: var(--v-radius-lg);
+        width: 48px;
+        height: 48px;
+        border-radius: var(--v-radius-md);
         background: var(--v-brand-light);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
-        margin: 0 auto 20px;
+        font-size: 20px;
+        margin: 0 auto 16px;
     }
     .lp-step-num {
         display: inline-block;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 600;
         color: var(--v-brand);
         background: var(--v-brand-light);
-        padding: 3px 10px;
+        padding: 2px 8px;
         border-radius: var(--v-radius-full);
-        margin-bottom: 12px;
-        letter-spacing: 0.05em;
+        margin-bottom: 10px;
+        letter-spacing: 0.06em;
         text-transform: uppercase;
     }
     .lp-step h3 {
-        font-size: var(--v-text-lg);
+        font-size: var(--v-text-md);
         font-weight: 700;
         color: var(--v-text);
-        margin: 0 0 8px;
+        margin: 0 0 6px;
+        letter-spacing: -0.2px;
     }
     .lp-step p {
         font-size: var(--v-text-base);
         color: var(--v-text-muted);
-        line-height: 1.6;
+        line-height: 1.55;
         margin: 0;
     }
 
@@ -165,29 +168,28 @@
     .lp-verdicts {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
+        gap: 16px;
     }
     .lp-verdict-card {
         background: var(--v-bg-elevated);
-        border: 1px solid var(--v-border-light);
+        border: 1px solid var(--v-border);
         border-radius: var(--v-radius-lg);
-        padding: 28px 24px;
+        padding: 24px 20px;
         box-shadow: var(--v-shadow-xs);
-        transition: box-shadow 0.2s var(--v-ease), transform 0.2s var(--v-ease);
+        transition: box-shadow 0.2s var(--v-ease);
     }
     .lp-verdict-card:hover {
         box-shadow: var(--v-shadow-md);
-        transform: translateY(-2px);
     }
     .lp-verdict-badge {
         display: inline-block;
         font-size: 10px;
-        font-weight: 700;
+        font-weight: 600;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        padding: 4px 10px;
+        padding: 3px 8px;
         border-radius: var(--v-radius-sm);
-        margin-bottom: 16px;
+        margin-bottom: 14px;
     }
     .lp-verdict-badge.build {
         background: var(--v-success-light);
@@ -202,21 +204,23 @@
         color: var(--v-danger);
     }
     .lp-verdict-card h4 {
-        font-size: var(--v-text-lg);
+        font-size: var(--v-text-md);
         font-weight: 700;
         color: var(--v-text);
-        margin: 0 0 10px;
+        margin: 0 0 8px;
+        letter-spacing: -0.2px;
     }
     .lp-verdict-card .verdict-reason {
-        font-size: var(--v-text-base);
+        font-size: var(--v-text-sm);
         color: var(--v-text-muted);
-        line-height: 1.65;
-        margin: 0 0 16px;
+        line-height: 1.55;
+        margin: 0 0 14px;
     }
     .lp-verdict-conf {
-        font-size: var(--v-text-sm);
+        font-size: var(--v-text-xs);
         font-weight: 600;
         color: var(--v-text-faint);
+        letter-spacing: 0.02em;
     }
     .lp-verdict-conf span {
         font-weight: 700;
@@ -232,37 +236,39 @@
         gap: 0;
         border-radius: var(--v-radius-lg);
         overflow: hidden;
-        border: 1px solid var(--v-border-light);
-        max-width: 760px;
+        border: 1px solid var(--v-border);
+        max-width: 680px;
         margin: 0 auto;
     }
     .lp-compare-col {
         padding: 0;
     }
     .lp-compare-header {
-        padding: 18px 24px;
-        font-size: var(--v-text-sm);
+        padding: 14px 24px;
+        font-size: var(--v-text-xs);
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
     }
     .lp-compare-col:first-child .lp-compare-header {
-        background: var(--v-bg);
+        background: var(--v-bg-subtle);
         color: var(--v-text-faint);
+        border-right: 1px solid var(--v-border);
     }
     .lp-compare-col:last-child .lp-compare-header {
         background: var(--v-brand);
         color: #fff;
     }
     .lp-compare-item {
-        padding: 14px 24px;
-        font-size: var(--v-text-base);
-        line-height: 1.5;
-        border-top: 1px solid var(--v-border-light);
+        padding: 12px 24px;
+        font-size: var(--v-text-sm);
+        line-height: 1.4;
+        border-top: 1px solid var(--v-border);
     }
     .lp-compare-col:first-child .lp-compare-item {
         color: var(--v-text-faint);
         background: var(--v-bg);
+        border-right: 1px solid var(--v-border);
     }
     .lp-compare-col:last-child .lp-compare-item {
         color: var(--v-text);
@@ -270,7 +276,7 @@
         background: var(--v-bg-elevated);
     }
     .lp-compare-item .compare-icon {
-        margin-right: 8px;
+        margin-right: 6px;
     }
 
     /* ── Landing Pricing ── */
@@ -282,46 +288,48 @@
     .lp-final-cta {
         text-align: center;
         padding: 96px 24px;
-        max-width: 560px;
+        max-width: 520px;
         margin: 0 auto;
     }
     .lp-final-cta h2 {
-        font-size: 2rem;
+        font-size: 1.75rem;
         font-weight: 700;
         color: var(--v-text);
-        letter-spacing: -0.5px;
-        margin: 0 0 12px;
+        letter-spacing: -0.8px;
+        margin: 0 0 10px;
     }
     .lp-final-cta p {
-        font-size: var(--v-text-lg);
+        font-size: var(--v-text-md);
         color: var(--v-text-muted);
-        margin: 0 0 36px;
-        line-height: 1.6;
+        margin: 0 0 40px;
+        line-height: 1.5;
     }
 
     /* ── Footer ── */
     .lp-footer {
         text-align: center;
-        padding: 36px 24px;
-        font-size: var(--v-text-sm);
+        padding: 32px 24px;
+        font-size: var(--v-text-xs);
         color: var(--v-text-faint);
-        border-top: 1px solid var(--v-border-light);
+        border-top: 1px solid var(--v-border);
     }
 
     /* ── Responsive ── */
     @media (max-width: 768px) {
-        .lp-hero { padding: 72px 20px 56px; }
-        .lp-hero h1 { font-size: 2.25rem; }
-        .lp-hero .hero-sub { font-size: var(--v-text-lg); }
+        .lp-hero { padding: 80px 20px 60px; }
+        .lp-hero h1 { font-size: 2.5rem; letter-spacing: -1.5px; }
+        .lp-hero .hero-sub { font-size: var(--v-text-md); }
         .lp-steps { grid-template-columns: 1fr; gap: 24px; }
-        .lp-verdicts { grid-template-columns: 1fr; gap: 16px; }
+        .lp-verdicts { grid-template-columns: 1fr; gap: 12px; }
         .lp-compare { grid-template-columns: 1fr; }
-        .lp-compare-col:first-child { border-bottom: 2px solid var(--v-border); }
-        .lp-section-title { font-size: 1.625rem; }
+        .lp-compare-col:first-child { border-bottom: 1px solid var(--v-border); }
+        .lp-compare-col:first-child .lp-compare-item { border-right: none; }
+        .lp-compare-col:first-child .lp-compare-header { border-right: none; }
+        .lp-section-title { font-size: 1.5rem; }
         .lp-section { padding: 56px 20px; }
         .lp-pricing-wrap { padding: 56px 20px; }
         .lp-final-cta { padding: 56px 20px; }
-        .lp-final-cta h2 { font-size: 1.625rem; }
+        .lp-final-cta h2 { font-size: 1.5rem; }
         .top-bar { padding: 0 16px; gap: 8px; }
     }
     </style>
@@ -341,10 +349,10 @@
     <!-- ── Hero ── -->
     <section class="lp-hero">
         <h1>Should You <span class="hero-accent">Build It?</span></h1>
-        <p class="hero-sub">Get a ruthless, data-backed <strong>BUILD</strong> or <strong>DON'T BUILD</strong> verdict on any product idea&nbsp;&mdash;&nbsp;in&nbsp;seconds.</p>
+        <p class="hero-sub">Get a ruthless, data-backed verdict on any product idea. BUILD, DON'T BUILD, or BUILD WITH CONDITIONS&nbsp;&mdash;&nbsp;in seconds.</p>
         <div class="lp-hero-ctas">
             <a class="lp-btn-primary cta-signup" href="/signup">Start Free &rarr;</a>
-            <a class="lp-btn-secondary" href="#howItWorks">See How It Works &darr;</a>
+            <a class="lp-btn-secondary" href="#howItWorks">How It Works</a>
         </div>
     </section>
 
@@ -408,22 +416,22 @@
     <!-- ── Why Different ── -->
     <div class="lp-section-alt">
         <section class="lp-section">
-            <h2 class="lp-section-title">This is not ChatGPT</h2>
+            <h2 class="lp-section-title">This is not ChatGPT.</h2>
             <p class="lp-section-sub">Generic AI tells you what you want to hear. Veltrix tells you what you need to hear.</p>
             <div class="lp-compare">
                 <div class="lp-compare-col">
-                    <div class="lp-compare-header">Generic AI Chat</div>
-                    <div class="lp-compare-item"><span class="compare-icon">😊</span> Vague encouragement</div>
-                    <div class="lp-compare-item"><span class="compare-icon">🤷</span> No framework</div>
-                    <div class="lp-compare-item"><span class="compare-icon">❌</span> No accountability</div>
-                    <div class="lp-compare-item"><span class="compare-icon">💬</span> Says "it depends"</div>
+                    <div class="lp-compare-header">Generic AI</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> Vague encouragement</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> No decision framework</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> No accountability</div>
+                    <div class="lp-compare-item"><span class="compare-icon">—</span> Says "it depends"</div>
                 </div>
                 <div class="lp-compare-col">
-                    <div class="lp-compare-header">Veltrix Decision Engine</div>
-                    <div class="lp-compare-item"><span class="compare-icon">🎯</span> Ruthless honesty</div>
-                    <div class="lp-compare-item"><span class="compare-icon">📊</span> Structured verdict</div>
-                    <div class="lp-compare-item"><span class="compare-icon">📈</span> Data-backed reasoning</div>
-                    <div class="lp-compare-item"><span class="compare-icon">✅</span> Gives a clear answer</div>
+                    <div class="lp-compare-header">Veltrix Engine</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Ruthless honesty</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Structured verdicts</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Data-backed reasoning</div>
+                    <div class="lp-compare-item"><span class="compare-icon">→</span> Clear answers</div>
                 </div>
             </div>
         </section>
@@ -431,7 +439,7 @@
 
     <!-- ── Pricing Section ── -->
     <div class="lp-pricing-wrap" id="pricingSection">
-        <h2 class="lp-section-title" style="max-width:1040px;margin:0 auto 10px;">Make Better Product Decisions</h2>
+        <h2 class="lp-section-title" style="max-width:960px;margin:0 auto 8px;">Simple, transparent pricing</h2>
         <p class="lp-section-sub">Upgrade to Pro for unlimited verdicts with deeper market intelligence. Cancel anytime.</p>
 
         <!-- State-aware message banner -->
@@ -446,7 +454,7 @@
 
         <!-- Pricing grid -->
         <div id="pricingGrid">
-            <div class="pricing-grid" style="max-width:880px;margin:0 auto;">
+            <div class="pricing-grid" style="max-width:840px;margin:0 auto;">
                 <!-- Free Plan -->
                 <div class="pricing-card">
                     <div class="pricing-plan-icon">📦</div>
@@ -466,7 +474,7 @@
 
                 <!-- Pro Plan -->
                 <div class="pricing-card pricing-pro">
-                    <div class="pricing-popular">⭐ Chosen by Most Users</div>
+                    <div class="pricing-popular">Most Popular</div>
                     <div class="pricing-plan-icon">⚡</div>
                     <div class="pricing-plan-name">Pro</div>
                     <div class="pricing-price">$9.99 <span>/ month</span></div>
@@ -485,12 +493,11 @@
                 </div>
             </div>
 
-            <div class="pricing-trust" style="max-width:880px;margin:32px auto 0;">
+            <div class="pricing-trust" style="max-width:840px;margin:32px auto 0;">
                 <p class="pricing-social-proof">Trusted by builders and product teams worldwide</p>
-                <p>🔒 <strong>Secure payment via PayPal</strong> — no card details stored on our servers.</p>
-                <p>⚡ <strong>Instant activation</strong> — Pro features unlock immediately.</p>
-                <p>🚫 <strong>No hidden fees</strong> — $9.99/month, cancel anytime.</p>
-                <p>✅ <strong>Cancel anytime</strong> — manage from PayPal or your <strong>Dashboard</strong>.</p>
+                <p>Secure payment via PayPal — no card details stored on our servers.</p>
+                <p>Instant activation — Pro features unlock immediately.</p>
+                <p>$9.99/month · No hidden fees · Cancel anytime.</p>
             </div>
         </div>
     </div>
@@ -498,8 +505,8 @@
     <!-- ── Final CTA ── -->
     <div class="lp-section-alt">
         <section class="lp-final-cta">
-            <h2>Ready to make smarter product decisions?</h2>
-            <p>Stop guessing. Start deciding. Join founders who validate ideas before investing time and money.</p>
+            <h2>Ready to make smarter decisions?</h2>
+            <p>Stop guessing. Start deciding. Join founders who validate before they invest.</p>
             <a class="lp-btn-primary cta-signup" href="/signup">Get Started Free</a>
         </section>
     </div>
