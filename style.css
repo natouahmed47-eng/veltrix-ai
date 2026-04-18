@@ -124,6 +124,12 @@ body {
     color: var(--v-brand);
     font-weight: 600;
 }
+.top-bar-logo-link {
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
 .top-bar .tagline {
     font-size: 11px;
     color: var(--v-text-faint);
@@ -207,7 +213,7 @@ body {
     transition: border-color var(--v-duration) var(--v-ease), color var(--v-duration) var(--v-ease);
 }
 .user-area .btn-logout:hover {
-    border-color: #cbd5e1;
+    border-color: var(--v-border);
     color: var(--v-text-secondary);
 }
 
@@ -746,7 +752,7 @@ body {
 .pricing-section-sub {
     text-align: center;
     font-size: var(--v-text-lg);
-    color: var(--v-text-faint);
+    color: var(--v-text-muted);
     margin: 0 0 var(--v-sp-10);
     line-height: 1.6;
     max-width: 480px;
@@ -1075,7 +1081,7 @@ body {
 }
 .status-reassurance {
     font-size: var(--v-text-sm);
-    color: #cbd5e1;
+    color: var(--v-text-faint);
     margin: 0;
     line-height: 1.6;
 }
@@ -1109,7 +1115,7 @@ body {
 .paywall-close {
     position: absolute; top: var(--v-sp-4); right: var(--v-sp-5);
     border: none; background: none; font-size: 22px;
-    cursor: pointer; color: #cbd5e1;
+    cursor: pointer; color: var(--v-text-faint);
     transition: color var(--v-duration) var(--v-ease);
 }
 .paywall-close:hover { color: var(--v-text-muted); }
@@ -1143,7 +1149,7 @@ body {
     transform: translateY(-1px);
 }
 .paywall-micro {
-    font-size: var(--v-text-sm); color: #cbd5e1; margin: var(--v-sp-3) 0 0;
+    font-size: var(--v-text-sm); color: var(--v-text-faint); margin: var(--v-sp-3) 0 0;
 }
 
 /* ── Sticky Mobile CTA ── */

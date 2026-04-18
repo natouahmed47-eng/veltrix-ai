@@ -102,7 +102,7 @@
             background: none;
             font-size: 20px;
             cursor: pointer;
-            color: #cbd5e1;
+            color: var(--v-text-faint);
             transition: color var(--v-duration) var(--v-ease);
         }
         .paywall-close:hover { color: var(--v-text-muted); }
@@ -158,7 +158,7 @@
 
     <!-- ── Top Bar ── -->
     <div class="top-bar">
-        <a href="/" style="text-decoration:none;display:flex;align-items:center;gap:6px;">
+        <a href="/" class="top-bar-logo-link">
             <div class="logo">Veltrix<span>AI</span></div>
         </a>
         <div class="tagline">Product Decision Engine</div>

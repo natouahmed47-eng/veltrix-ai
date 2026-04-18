@@ -46,7 +46,7 @@
             background: var(--v-bg-elevated); color: var(--v-text-muted); font-size: var(--v-text-xs); font-weight: 500;
             cursor: pointer; font-family: inherit; transition: border-color 150ms, color 150ms;
         }
-        .nav-links button:hover { border-color: #cbd5e1; color: var(--v-text-secondary); }
+        .nav-links button:hover { border-color: var(--v-border); color: var(--v-text-secondary); }
         .container { max-width: 840px; margin: 0 auto; padding: var(--v-sp-12) var(--v-sp-6) var(--v-sp-16); }
         .page-header {
             display: flex; align-items: center; justify-content: space-between;
@@ -201,7 +201,7 @@
         }
         .detail-close {
             position: absolute; top: 16px; right: 20px; border: none; background: none;
-            font-size: 22px; cursor: pointer; color: #cbd5e1; transition: color 150ms;
+            font-size: 22px; cursor: pointer; color: var(--v-text-faint); transition: color 150ms;
         }
         .detail-close:hover { color: var(--v-text-muted); }
         .detail-title {
