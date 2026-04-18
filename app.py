@@ -28,6 +28,12 @@ else:
     # Same-origin only: no cross-origin requests allowed when env var is unset.
     CORS(app, origins=[])
 
+# ── Log level — ensure INFO-level logs are visible in production ──
+import logging as _logging
+_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+_logging.basicConfig(level=getattr(_logging, _log_level, _logging.INFO))
+app.logger.setLevel(getattr(_logging, _log_level, _logging.INFO))
+
 # ── Rate limiting ──
 limiter = Limiter(
     get_remote_address,
@@ -72,6 +78,9 @@ PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
+
+# ── Deploy verification marker — change this string on every deploy ──
+_CODE_VERSION = "version-2026-04-fix-check"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -1880,6 +1889,7 @@ long_description HTML structure:
             data = json.loads(cleaned)
         except Exception as e:
             app.logger.warning("JSON parse error: %s", e)
+            app.logger.info("TOP_REASONS PIPELINE — BRANCH: JSON parse error → static fallback assigned")
             app.logger.debug("Raw AI output: %s", content)
 
             # fallback structure — defaults to DON'T BUILD (ruthless by default)
@@ -2053,8 +2063,9 @@ long_description HTML structure:
             output["verdict"] = "DON'T BUILD" if "DON" in raw_verdict else "BUILD"
 
             # ---- Stage A: Log raw incoming fields ----
-            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — raw top_reasons: %s", output.get("top_reasons"))
-            app.logger.debug("TOP_REASONS PIPELINE [Stage A] — verdict_reasoning (first 200): %.200s", output.get("verdict_reasoning", ""))
+            app.logger.info("TOP_REASONS DEBUG MARKER: %s", _CODE_VERSION)
+            app.logger.info("TOP_REASONS PIPELINE [Stage A] — raw top_reasons: %s", output.get("top_reasons"))
+            app.logger.info("TOP_REASONS PIPELINE [Stage A] — verdict_reasoning (first 200): %.200s", output.get("verdict_reasoning", ""))
             app.logger.debug("TOP_REASONS PIPELINE [Stage A] — technical_analysis (first 200): %.200s", output.get("technical_analysis", ""))
             app.logger.debug("TOP_REASONS PIPELINE [Stage A] — target_audience: %s", output.get("target_audience", ""))
             app.logger.debug("TOP_REASONS PIPELINE [Stage A] — long_description (first 200): %.200s", output.get("long_description", ""))
@@ -2081,7 +2092,7 @@ long_description HTML structure:
                     r, bool(fallback_match), signal, generic,
                 )
             all_generic = not str_reasons or all(g for _, g in generic_flags)
-            app.logger.debug("TOP_REASONS PIPELINE [Stage B] — all_generic: %s", all_generic)
+            app.logger.info("TOP_REASONS PIPELINE [Stage B] — all_generic: %s | reason_count: %d", all_generic, len(str_reasons))
             _reasons_from_derivation = False
             if all_generic:
                 # Attempt to derive reasons from the actual analysis text
@@ -2100,11 +2111,11 @@ long_description HTML structure:
 
                 # ---- Stage D: Derivation result ----
                 derived = derive_top_reasons_from_text(full_analysis_text)
-                app.logger.debug("TOP_REASONS PIPELINE [Stage D] — derive_top_reasons_from_text returned %d reasons: %s", len(derived), derived)
+                app.logger.info("TOP_REASONS PIPELINE [Stage D] — derivation returned %d reasons: %s", len(derived), derived)
                 if derived and len(derived) >= 1:
                     output["top_reasons"] = derived
                     _reasons_from_derivation = True
-                    app.logger.debug("TOP_REASONS PIPELINE [Stage D] — assigned derived reasons to output")
+                    app.logger.info("TOP_REASONS PIPELINE [Stage D] — BRANCH: assigned derived reasons")
                 else:
                     # Only use fallback when derivation truly failed
                     output["top_reasons"] = [
@@ -2112,8 +2123,8 @@ long_description HTML structure:
                         "Competitive landscape unclear — risk of entering a saturated space",
                         "Unit economics and margin potential cannot be assessed",
                     ]
-                    app.logger.debug("TOP_REASONS PIPELINE [Stage D] — derivation empty, using static fallback")
-                app.logger.debug("TOP_REASONS PIPELINE — after first pass: %s", output["top_reasons"])
+                    app.logger.info("TOP_REASONS PIPELINE [Stage D] — BRANCH: derivation empty → static fallback assigned")
+                app.logger.info("TOP_REASONS PIPELINE — after first pass: %s", output["top_reasons"])
             str_actions = [a for a in output.get("next_actions", []) if isinstance(a, str) and a.strip()]
             if not str_actions or all(is_action_generic(a) for a in str_actions):
                 output["next_actions"] = [
@@ -2140,9 +2151,9 @@ long_description HTML structure:
             # For generic reasons, attempt to derive from analysis before falling back.
             # SKIP re-validation if reasons were already derived from analysis text.
             # ---- Stage E: Post-derivation overwrite ----
-            app.logger.debug("TOP_REASONS PIPELINE [Stage E] — _reasons_from_derivation: %s", _reasons_from_derivation)
+            app.logger.info("TOP_REASONS PIPELINE [Stage E] — _reasons_from_derivation: %s", _reasons_from_derivation)
             if _reasons_from_derivation:
-                app.logger.debug("TOP_REASONS PIPELINE [Stage E] — skipping second-pass validation (reasons from derivation): %s", output["top_reasons"])
+                app.logger.info("TOP_REASONS PIPELINE [Stage E] — BRANCH: skipping second-pass (reasons from derivation)")
             else:
                 _fallback_reasons = [
                     "No verifiable demand signals or market data available",
@@ -2159,11 +2170,11 @@ long_description HTML structure:
                     output.get("short_summary", ""),
                 ]))
                 _derived_reasons_pool = derive_top_reasons_from_text(_analysis_pool) if _analysis_pool.strip() else []
-                app.logger.debug("TOP_REASONS PIPELINE — second-pass derived pool: %s", _derived_reasons_pool)
+                app.logger.info("TOP_REASONS PIPELINE [Stage E] — second-pass derived pool (%d): %s", len(_derived_reasons_pool), _derived_reasons_pool)
 
                 # Validate each top_reason individually — keep strong, derive or replace weak
                 raw_reasons = output.get("top_reasons", [])
-                app.logger.debug("TOP_REASONS PIPELINE — second-pass raw_reasons before validation: %s", raw_reasons)
+                app.logger.info("TOP_REASONS PIPELINE [Stage E] — raw_reasons before validation: %s", raw_reasons)
                 validated_reasons = []
                 derived_idx = 0
                 fallback_idx = 0
@@ -2171,7 +2182,7 @@ long_description HTML structure:
                     if isinstance(r, str) and not is_reason_generic(r):
                         validated_reasons.append(r)
                     else:
-                        app.logger.debug("TOP_REASONS PIPELINE — reason marked generic, replacing: %s", r)
+                        app.logger.info("TOP_REASONS PIPELINE [Stage E] — reason marked generic, replacing: '%.100s'", r)
                         # Try to use a derived reason from analysis first
                         if derived_idx < len(_derived_reasons_pool):
                             validated_reasons.append(_derived_reasons_pool[derived_idx])
@@ -2190,7 +2201,7 @@ long_description HTML structure:
                     else:
                         break
                 output["top_reasons"] = validated_reasons[:3]
-            app.logger.debug("TOP_REASONS PIPELINE [Stage E] — FINAL output[top_reasons]: %s", output["top_reasons"])
+            app.logger.info("TOP_REASONS PIPELINE [FINAL] — output[top_reasons]: %s", output["top_reasons"])
 
             # Validate each next_action individually — keep strong, replace weak
             _fallback_actions = [
@@ -2298,6 +2309,7 @@ long_description HTML structure:
             app.logger.warning("analyze_product_with_ai: post-processing error: %s", exc)
             continue
 
+    app.logger.warning("TOP_REASONS PIPELINE — BRANCH: all %d retries exhausted → function-level static fallback", MAX_AI_GENERATION_RETRIES)
     fallback = {
         "title": idea,
         "category": detected_category if detected_category in SUPPORTED_CATEGORIES else "general",
@@ -2723,6 +2735,16 @@ def api_config():
     return jsonify({
         "paypal_client_id": PAYPAL_CLIENT_ID,
         "paypal_plan_id": PAYPAL_PLAN_ID,
+    })
+
+
+@app.route("/api/debug/version", methods=["GET"])
+def debug_version():
+    """Return code version marker to verify deployed code is up to date."""
+    return jsonify({
+        "code_version": _CODE_VERSION,
+        "log_level": _logging.getLevelName(app.logger.getEffectiveLevel()),
+        "model": OPENAI_MODEL,
     })
 
 
@@ -4791,6 +4813,7 @@ with app.app_context():
 
 
 if __name__ == "__main__":
+    app.logger.info("=== VELTRIX STARTUP — code_version: %s ===", _CODE_VERSION)
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
             
