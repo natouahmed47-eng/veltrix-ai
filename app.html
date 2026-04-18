@@ -232,101 +232,14 @@
     };
     </script>
 
-    <!-- ── Auth guard & UI wiring ── -->
+    <!-- ── Auth guard (immediate) ── -->
     <script>
-    (function() {
-        // Auth guard: redirect to login if not authenticated
-        if (!localStorage.getItem("veltrix_token")) {
-            window.location.replace("/login");
-            return;
-        }
-
-        var usernameDisplay = document.getElementById("usernameDisplay");
-        var usageInfo = document.getElementById("usageInfo");
-        var logoutBtn = document.getElementById("logoutBtn");
-        var upgradeBar = document.getElementById("upgradeBar");
-        var paywallOverlay = document.getElementById("paywallOverlay");
-        var paywallClose = document.getElementById("paywallClose");
-
-        // Show stored username immediately
-        var storedUsername = localStorage.getItem("veltrix_username") || "";
-        if (usernameDisplay) usernameDisplay.textContent = storedUsername;
-
-        // Logout
-        logoutBtn.addEventListener("click", function() {
-            localStorage.removeItem("veltrix_token");
-            localStorage.removeItem("veltrix_username");
-            window.trackEvent("logout", { source: "app_page" });
-            window.location.replace("/login");
-        });
-
-        // Close paywall
-        paywallClose.addEventListener("click", function() {
-            paywallOverlay.style.display = "none";
-        });
-
-        // Fetch user state and update UI
-        var token = localStorage.getItem("veltrix_token");
-        fetch("/api/me", {
-            headers: { "Authorization": "Bearer " + token }
-        })
-        .then(function(r) {
-            if (r.status === 401) {
-                localStorage.removeItem("veltrix_token");
-                localStorage.removeItem("veltrix_username");
-                window.location.replace("/login");
-                return null;
-            }
-            return r.json();
-        })
-        .then(function(user) {
-            if (!user) return;
-
-            if (usernameDisplay) usernameDisplay.textContent = user.username;
-
-            // Usage info in navbar
-            if (user.is_pro) {
-                usageInfo.textContent = "Pro \u00b7 Unlimited";
-            } else {
-                var count = user.analysis_count || 0;
-                var limit = (typeof user.analysis_limit === "number") ? user.analysis_limit : 0;
-                usageInfo.textContent = count + "/" + limit + " verdicts";
-            }
-
-            // Upgrade bar for free users
-            if (!user.is_pro && typeof window.getUserStateContext === "function") {
-                var ctx = window.getUserStateContext(user);
-                window._veltrixCtx = ctx;
-
-                if (ctx.atLimit) {
-                    upgradeBar.innerHTML = "You\u2019ve used all free verdicts \u00b7 <a href=\"/#pricingSection\">Upgrade to Pro</a>";
-                    upgradeBar.className = "upgrade-bar at-limit";
-                    upgradeBar.style.display = "block";
-                } else if (ctx.analysisLimit > 0) {
-                    upgradeBar.innerHTML = ctx.analysisCount + " of " + ctx.analysisLimit + " verdicts used \u00b7 <a href=\"/#pricingSection\">Upgrade to Pro</a>";
-                    upgradeBar.style.display = "block";
-                }
-            } else if (user.is_pro) {
-                upgradeBar.style.display = "none";
-            } else {
-                // Fallback without upsell.js context
-                var count = user.analysis_count || 0;
-                var limit = (typeof user.analysis_limit === "number") ? user.analysis_limit : 0;
-                if (limit > 0 && count >= limit) {
-                    upgradeBar.innerHTML = "You\u2019ve used all free verdicts \u00b7 <a href=\"/#pricingSection\">Upgrade to Pro</a>";
-                    upgradeBar.className = "upgrade-bar at-limit";
-                    upgradeBar.style.display = "block";
-                } else if (limit > 0) {
-                    upgradeBar.innerHTML = count + " of " + limit + " verdicts used \u00b7 <a href=\"/#pricingSection\">Upgrade to Pro</a>";
-                    upgradeBar.style.display = "block";
-                }
-            }
-        })
-        .catch(function() {});
-    })();
+    if (!localStorage.getItem("veltrix_token")) {
+        window.location.replace("/login");
+    }
     </script>
 
     <script src="/upsell.js"></script>
-    <script src="/script.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>

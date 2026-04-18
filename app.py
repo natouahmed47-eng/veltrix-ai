@@ -2905,7 +2905,7 @@ def optimize_product_router(product, lang="en"):
 
 @app.route("/")
 def home():
-    return send_file("index.html")
+    return send_file("landing.html")
 
 
 @app.route("/script.js")
@@ -2916,6 +2916,11 @@ def serve_script():
 @app.route("/upsell.js")
 def serve_upsell():
     return send_file("upsell.js")
+
+
+@app.route("/app.js")
+def serve_app_js():
+    return send_file("app.js")
 
 
 @app.route("/style.css")
