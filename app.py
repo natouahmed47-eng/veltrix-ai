@@ -4544,6 +4544,7 @@ def optimize_product():
 @app.route("/api/analyze-product", methods=["POST"])
 @limiter.limit("30 per minute")
 def analyze_product():
+    app.logger.info("ANALYZE ROUTE HIT: version-2026-04-fix-check")
     try:
         data = request.get_json(force=True, silent=True)
         if data is None:

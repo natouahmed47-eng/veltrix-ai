@@ -358,6 +358,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         try {
+            console.log("FRONTEND ANALYZE REQUEST:", "/api/analyze-product", { idea: idea });
             var response = await fetch("/api/analyze-product", {
                 method: "POST",
                 headers: headers,
@@ -613,9 +614,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         /* Top 3 Reasons */
         var topReasons = Array.isArray(item.top_reasons) && item.top_reasons.length ? item.top_reasons.slice(0, 3) : [
-            "No verifiable demand signals or market data available",
-            "Competitive landscape unclear — risk of entering a saturated space",
-            "Unit economics and margin potential cannot be assessed"
+            "FRONTEND FALLBACK 1",
+            "FRONTEND FALLBACK 2",
+            "FRONTEND FALLBACK 3"
         ];
         var topReasonsHtml =
             '<div style="text-align:left;max-width:560px;margin:16px auto 0;">' +
