@@ -80,7 +80,7 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
 # ── Deploy verification marker — change this string on every deploy ──
-_CODE_VERSION = "version-2026-04-balanced-verdicts"
+_CODE_VERSION = "version-2026-04-calibrated-verdicts"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -1698,20 +1698,24 @@ STRICT RULES:
    - Identify demand signals: is there proven demand or just an assumption?
    - Be honest about weaknesses but also identify opportunities.
 10) VERDICT LOGIC — CRITICAL:
-   Return "DON'T BUILD" ONLY when at least one of these is true:
+   Return "DON'T BUILD" when at least one of these is true:
    (a) Demand is weak or unproven AND no realistic path to validation exists
    (b) Unit economics are structurally poor (not fixable by pricing/positioning)
    (c) No viable differentiation path exists (not even a narrow wedge or niche)
    (d) Legal / operational barriers make execution unrealistic
 
-   Return "BUILD WITH CONDITIONS" when:
-   - The opportunity exists but specific strategic conditions must be met first
-   - Examples: crowded market but a clear niche wedge exists; demand exists but CAC
-     is too high unless a channel strategy changes; good problem but weak moat
-     unless proprietary data or positioning is added.
-
    Return "BUILD" when:
    - Demand is validated, margins are viable, and a defensible position or wedge exists.
+
+   Return "BUILD WITH CONDITIONS" ONLY when ALL THREE of these are true simultaneously:
+   (i) A real, identifiable opportunity exists (you can name the specific market gap, underserved segment, or demand signal)
+   (ii) A plausible path to differentiation or winning a segment exists (you can describe the specific wedge, angle, or advantage)
+   (iii) The required conditions are concrete, achievable, and directly tied to the specific risks you identified
+
+   ANTI-DEFAULT RULE: "BUILD WITH CONDITIONS" must NOT become a catch-all middle ground.
+   If you cannot name a specific opportunity AND a specific differentiation path, return DON'T BUILD.
+   If demand, margins, and positioning are already viable without conditions, return BUILD.
+   BUILD WITH CONDITIONS is reserved for ideas where real opportunity meets real-but-resolvable risk.
 
 11) VERDICT-REASONING ALIGNMENT — CRITICAL:
    - If your reasoning is overwhelmingly negative with no opportunity path, your verdict MUST be DON'T BUILD.
@@ -1809,6 +1813,16 @@ STRICT RULES:
    ❌ "Test the market" → ✅ "Run a $100 Instagram ad campaign targeting 18-34 streetwear enthusiasts in 3 metro areas — measure click-through rate against 2% benchmark"
    ❌ "Explore partnerships" → ✅ "Contact 5 independent sneaker boutiques in your metro area and propose a consignment pilot — 30-day trial, 15% commission"
 
+16) REQUIRED CONDITIONS QUALITY — CRITICAL (only when verdict = BUILD WITH CONDITIONS):
+   Each required_condition MUST directly address a specific risk identified in top_reasons, biggest_risk, or verdict_reasoning.
+   - If top_reasons mentions "CAC too high", a condition must specify the exact channel strategy and target CAC.
+   - If biggest_risk mentions "no moat", a condition must specify the exact proprietary advantage to build.
+   - If verdict_reasoning mentions "unproven demand in [segment]", a condition must specify the exact validation step for that segment.
+   FORBIDDEN in required_conditions:
+   - "Talk to customers" / "Gather feedback" / "Do more research" / "Validate demand" (without specifics)
+   - Any condition that does not directly map to a risk identified elsewhere in the analysis
+   - Generic boilerplate conditions that could apply to any product
+
 ---
 VERDICT (required):
 - verdict: exactly "BUILD", "BUILD WITH CONDITIONS", or "DON'T BUILD" — your clear recommendation.
@@ -1876,8 +1890,9 @@ long_description HTML structure:
                             "verdict_reasoning, confidence score, opportunity_summary, biggest_risk, required_conditions, top_reasons, and next_actions. "
                             "VERDICT RULES: Return DON'T BUILD only when: (a) demand is weak/unproven with no path to validation, "
                             "(b) unit economics are structurally poor, (c) no viable differentiation path exists, or (d) legal/operational barriers make execution unrealistic. "
-                            "Return BUILD WITH CONDITIONS when opportunity exists but specific strategic conditions must be met. "
-                            "Return BUILD when demand, margins, and defensible position are viable. "
+                            "Return BUILD WITH CONDITIONS ONLY when a real identifiable opportunity exists, a plausible differentiation path exists, AND the conditions are concrete and achievable. "
+                            "ANTI-DEFAULT: BUILD WITH CONDITIONS must NOT become a catch-all. If no specific opportunity or wedge can be named, return DON'T BUILD. If the idea is already viable, return BUILD. "
+                            "Each required_condition MUST directly address a specific risk from top_reasons, biggest_risk, or verdict_reasoning — no generic boilerplate. "
                             "For every analysis, identify BOTH the strongest opportunity AND the strongest risk. "
                             "If verdict is DON'T BUILD, explain why the opportunity is still not enough. "
                             "If verdict is BUILD WITH CONDITIONS, state the exact conditions required (array of 3). "
@@ -2124,8 +2139,30 @@ long_description HTML structure:
                 if not isinstance(rc, list) or len(rc) < 1:
                     # Model returned BUILD WITH CONDITIONS but no conditions — downgrade to DON'T BUILD
                     output["verdict"] = "DON'T BUILD"
+                    app.logger.info("VERDICT GUARD: BWC downgraded to DON'T BUILD — no conditions provided")
                 else:
                     output["required_conditions"] = [str(c) for c in rc[:3]]
+
+                    # --- BWC quality gate: opportunity must contain real signal ---
+                    opp = output.get("opportunity_summary", "")
+                    if not opp.strip() or not has_real_signal(opp):
+                        # No identifiable opportunity → cannot justify BWC
+                        output["verdict"] = "DON'T BUILD"
+                        output["required_conditions"] = []
+                        app.logger.info("VERDICT GUARD: BWC downgraded to DON'T BUILD — opportunity_summary has no real signal")
+
+                    # --- BWC quality gate: conditions must be non-generic ---
+                    if output["verdict"] == "BUILD WITH CONDITIONS":
+                        generic_conditions = 0
+                        for cond in output["required_conditions"]:
+                            if is_action_generic(cond):
+                                generic_conditions += 1
+                        if generic_conditions >= 2:
+                            # Most conditions are generic boilerplate → downgrade
+                            output["verdict"] = "DON'T BUILD"
+                            output["required_conditions"] = []
+                            app.logger.info("VERDICT GUARD: BWC downgraded to DON'T BUILD — %d/%d conditions are generic",
+                                            generic_conditions, len(output.get("required_conditions", [])))
             else:
                 output["required_conditions"] = []
 
@@ -2208,22 +2245,29 @@ long_description HTML structure:
 
             # --- Post-processing: enforce verdict consistency ---
             # If reasoning or top_reasons contain hard negative signals but verdict
-            # is BUILD (not BUILD WITH CONDITIONS), override to DON'T BUILD.
-            # BUILD WITH CONDITIONS is allowed to contain moderate negative signals
-            # because the conditions are meant to address them.
+            # is BUILD, check whether a real opportunity exists before deciding.
+            # If opportunity has real signal → BUILD WITH CONDITIONS
+            # If no real opportunity signal → DON'T BUILD
             if output["verdict"] == "BUILD":
                 reasoning_text = output.get("verdict_reasoning", "")
                 reasons_text = " ".join(output.get("top_reasons", []))
                 combined_text = f"{reasoning_text} {reasons_text}"
                 if _negative_signals_re.search(combined_text):
-                    output["verdict"] = "BUILD WITH CONDITIONS"
-                    # Generate conditions from the negative signals if none exist
-                    if not output.get("required_conditions"):
-                        output["required_conditions"] = [
-                            "Validate demand with 30+ target customer interviews before committing resources",
-                            "Identify and test a specific niche wedge that incumbents are not serving",
-                            "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
-                        ]
+                    opp = output.get("opportunity_summary", "")
+                    if opp.strip() and has_real_signal(opp):
+                        output["verdict"] = "BUILD WITH CONDITIONS"
+                        # Generate conditions from the negative signals if none exist
+                        if not output.get("required_conditions"):
+                            output["required_conditions"] = [
+                                "Validate demand with 30+ target customer interviews before committing resources",
+                                "Identify and test a specific niche wedge that incumbents are not serving",
+                                "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
+                            ]
+                        app.logger.info("VERDICT GUARD: BUILD overridden to BWC — negative signals + real opportunity")
+                    else:
+                        output["verdict"] = "DON'T BUILD"
+                        output["required_conditions"] = []
+                        app.logger.info("VERDICT GUARD: BUILD overridden to DON'T BUILD — negative signals + no real opportunity")
 
             # --- Post-processing: selective validation of top_reasons
             # and next_actions using smart validators ---
@@ -2311,13 +2355,20 @@ long_description HTML structure:
                 final_reasoning = output.get("verdict_reasoning", "")
                 final_reasons = " ".join(output.get("top_reasons", []))
                 if _negative_signals_re.search(f"{final_reasoning} {final_reasons}"):
-                    output["verdict"] = "BUILD WITH CONDITIONS"
-                    if not output.get("required_conditions"):
-                        output["required_conditions"] = [
-                            "Validate demand with 30+ target customer interviews before committing resources",
-                            "Identify and test a specific niche wedge that incumbents are not serving",
-                            "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
-                        ]
+                    opp = output.get("opportunity_summary", "")
+                    if opp.strip() and has_real_signal(opp):
+                        output["verdict"] = "BUILD WITH CONDITIONS"
+                        if not output.get("required_conditions"):
+                            output["required_conditions"] = [
+                                "Validate demand with 30+ target customer interviews before committing resources",
+                                "Identify and test a specific niche wedge that incumbents are not serving",
+                                "Confirm unit economics with real supplier quotes and target 50%+ gross margins",
+                            ]
+                        app.logger.info("VERDICT GUARD (final): BUILD overridden to BWC — negative signals + real opportunity")
+                    else:
+                        output["verdict"] = "DON'T BUILD"
+                        output["required_conditions"] = []
+                        app.logger.info("VERDICT GUARD (final): BUILD overridden to DON'T BUILD — negative signals + no real opportunity")
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
