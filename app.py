@@ -28,6 +28,12 @@ else:
     # Same-origin only: no cross-origin requests allowed when env var is unset.
     CORS(app, origins=[])
 
+# ── Log level — ensure INFO-level logs are visible in production ──
+import logging as _logging
+_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+_logging.basicConfig(level=getattr(_logging, _log_level, _logging.INFO))
+app.logger.setLevel(getattr(_logging, _log_level, _logging.INFO))
+
 # ── Rate limiting ──
 limiter = Limiter(
     get_remote_address,
@@ -75,12 +81,6 @@ OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
 # ── Deploy verification marker — change this string on every deploy ──
 _CODE_VERSION = "version-2026-04-fix-check"
-
-# ── Log level — ensure INFO-level logs are visible in production ──
-import logging as _logging
-_log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
-_logging.basicConfig(level=getattr(_logging, _log_level, _logging.INFO))
-app.logger.setLevel(getattr(_logging, _log_level, _logging.INFO))
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -1889,7 +1889,7 @@ long_description HTML structure:
             data = json.loads(cleaned)
         except Exception as e:
             app.logger.warning("JSON parse error: %s", e)
-            app.logger.info("TOP_REASONS PIPELINE — BRANCH: JSON parse error fallback triggered (static fallback assigned)")
+            app.logger.info("TOP_REASONS PIPELINE — BRANCH: JSON parse error → static fallback assigned")
             app.logger.debug("Raw AI output: %s", content)
 
             # fallback structure — defaults to DON'T BUILD (ruthless by default)
@@ -2743,7 +2743,7 @@ def debug_version():
     """Return code version marker to verify deployed code is up to date."""
     return jsonify({
         "code_version": _CODE_VERSION,
-        "log_level": app.logger.getEffectiveLevel(),
+        "log_level": _logging.getLevelName(app.logger.getEffectiveLevel()),
         "model": OPENAI_MODEL,
     })
 
