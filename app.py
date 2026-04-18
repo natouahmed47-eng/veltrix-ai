@@ -4569,6 +4569,19 @@ def analyze_product():
             response_data = {
                 "title": idea,
                 "category": "fragrance",
+                "verdict": "DON'T BUILD",
+                "verdict_reasoning": "OpenAI is not configured — unable to perform real analysis.",
+                "confidence": 60,
+                "top_reasons": [
+                    "No verifiable demand signals or market data available",
+                    "Competitive landscape unclear — risk of entering a saturated space",
+                    "Unit economics and margin potential cannot be assessed",
+                ],
+                "next_actions": [
+                    "Define the exact target customer and validate demand with 30+ survey responses",
+                    "Identify the top 3 direct competitors and document how this product is concretely different",
+                    "Calculate landed cost per unit and target retail price to confirm 50%+ margins",
+                ],
                 "short_summary": f"AI analysis for \"{idea}\" is not available because OpenAI is not configured. This is a demo response.",
                 "technical_analysis": "",
                 "target_audience": "Fragrance enthusiasts",
@@ -4621,6 +4634,11 @@ def analyze_product():
             "interpreted_input": interpreted,
             "title": result.get("title", idea),
             "category": result.get("category", "general"),
+            "verdict": result.get("verdict", "DON'T BUILD"),
+            "verdict_reasoning": result.get("verdict_reasoning", ""),
+            "confidence": result.get("confidence", 80),
+            "top_reasons": result.get("top_reasons", []),
+            "next_actions": result.get("next_actions", []),
             "short_summary": result.get("short_summary", ""),
             "technical_analysis": result.get("technical_analysis", ""),
             "target_audience": result.get("target_audience", ""),
@@ -4641,6 +4659,11 @@ def analyze_product():
         for field in CATEGORY_SPECIFIC_FIELDS:
             if field in result and field not in response_data:
                 response_data[field] = result[field]
+
+        app.logger.info("FINAL TOP_REASONS SENT TO FRONTEND: %s", response_data.get("top_reasons"))
+        app.logger.info("FINAL VERDICT SENT TO FRONTEND: %s", response_data.get("verdict"))
+        app.logger.info("FINAL RESPONSE KEYS: %s", list(response_data.keys()))
+        app.logger.info("FINAL TOP_REASONS TYPE: %s", type(response_data.get("top_reasons")).__name__)
 
         return jsonify(response_data)
     except Exception as e:
