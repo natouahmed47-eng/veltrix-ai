@@ -80,7 +80,7 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
 # ── Deploy verification marker — change this string on every deploy ──
-_CODE_VERSION = "version-2026-04-calibrated-verdicts"
+_CODE_VERSION = "version-2026-04-risk-classification"
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
@@ -182,6 +182,97 @@ _negative_signals_re = re.compile(
     r"|no realistic|no sustainable|negative margin|no margin)\b",
     re.IGNORECASE,
 )
+
+# ---------------------------------------------------------------------------
+# Risk classification — execution vs structural
+# ---------------------------------------------------------------------------
+# Execution risks are solvable with effort/resources.  They should NEVER
+# downgrade a BUILD verdict on their own.
+_EXECUTION_RISK_RE = re.compile(
+    r"\b("
+    r"high CAC|CAC.{0,15}high|customer acquisition cost.{0,15}high"
+    r"|technical(?:ly)? complex(?:ity)?|engineering complex(?:ity)?"
+    r"|integration challeng|integration difficult|integration complex"
+    r"|operational(?:ly)? difficult|operational challeng|operational complex"
+    r"|scaling challeng|scaling difficult"
+    r"|implementation challeng|implementation complex"
+    r"|development cost|development time"
+    r"|requires? (?:significant |heavy |substantial )?(?:investment|capital|resources)"
+    r"|long (?:development|build|implementation) (?:time|cycle)"
+    r"|steep learning curve"
+    r")\b",
+    re.IGNORECASE,
+)
+
+# Structural risks are fundamental market/business flaws.  Only these may
+# justify a downgrade from BUILD to BWC / DON'T BUILD.
+_STRUCTURAL_RISK_RE = re.compile(
+    r"\b("
+    r"no demand|no market|no niche|no target niche"
+    r"|no differentiation|no moat|no competitive (?:advantage|edge)"
+    r"|no viable (?:business model|monetization|revenue)"
+    r"|impossible economics|unsustainable economics|negative (?:unit )?economics"
+    r"|no evidence of demand|no verifiable demand"
+    r"|no proven demand|weak demand|low demand|no search volume"
+    r"|no social proof|no traction"
+    r"|not viable|not feasible|unfeasible|infeasible"
+    r"|no realistic|no sustainable|negative margin|no margin"
+    r"|does not justify|does not meet|not recommended"
+    r"|insufficient (?:demand|market|evidence)"
+    r"|no path to differentiation|commodity (?:market|product|space)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _has_only_execution_risks(text: str) -> bool:
+    """Return True if the text contains negative signals but ALL are execution risks.
+
+    Returns False if no negative signals are found at all, or if any
+    structural risk is detected alongside execution risks.
+    """
+    if not _negative_signals_re.search(text):
+        return False  # No negative signals at all
+    if _STRUCTURAL_RISK_RE.search(text):
+        return False  # At least one structural risk present
+    # Negative signals exist but none are structural → execution only
+    return True
+
+
+def _has_strong_fundamentals(output: dict) -> bool:
+    """Return True if the analysis shows clear niche + proven demand + viable monetization.
+
+    When all three fundamentals are present, the verdict MUST NOT be DON'T BUILD.
+    """
+    combined = " ".join(filter(None, [
+        output.get("opportunity_summary", ""),
+        output.get("verdict_reasoning", ""),
+        output.get("target_audience", ""),
+        " ".join(output.get("top_reasons", [])),
+    ])).lower()
+
+    has_niche = bool(re.search(
+        r"(?:clear niche|specific niche|defined niche|niche (?:market|segment|audience)"
+        r"|underserved (?:segment|niche|market)|target(?:ed)? (?:segment|niche))",
+        combined,
+    ))
+    has_demand = bool(re.search(
+        r"(?:proven demand|validated demand|high demand|strong demand"
+        r"|demonstrated demand|existing demand|real demand"
+        r"|search volume|growing (?:demand|interest|trend)"
+        r"|customer (?:interest|base|waiting list))",
+        combined,
+    ))
+    has_monetization = bool(re.search(
+        r"(?:viable monetization|clear monetization|proven monetization"
+        r"|strong margin|healthy margin|good margin|positive margin"
+        r"|profitable|revenue model|monetization (?:path|strategy|model)"
+        r"|unit economics (?:work|viable|positive|strong)"
+        r"|(?:50|60|70|80)\+?\s*%\s*(?:gross )?margin)",
+        combined,
+    ))
+
+    return has_niche and has_demand and has_monetization
 
 # ---------------------------------------------------------------------------
 # Jurion Protection — condition quality & anti-default enforcement
@@ -2429,31 +2520,40 @@ long_description HTML structure:
 
             # ── Jurion Gate 3: enforce verdict consistency on BUILD ──
             # If reasoning or top_reasons contain hard negative signals but verdict
-            # is BUILD, check whether a real opportunity exists before deciding.
-            # If opportunity has real signal → BUILD WITH CONDITIONS
-            # If no real opportunity signal → DON'T BUILD
+            # is BUILD, classify the risk type before deciding.
+            # - Execution risks only (CAC, complexity, integration, ops) → KEEP BUILD
+            # - Structural risks (no demand, no niche, no differentiation,
+            #   impossible economics) → apply BWC / DON'T BUILD logic
             if output["verdict"] == "BUILD":
                 reasoning_text = output.get("verdict_reasoning", "")
                 reasons_text = " ".join(output.get("top_reasons", []))
                 combined_text = f"{reasoning_text} {reasons_text}"
                 if _negative_signals_re.search(combined_text):
-                    opp = output.get("opportunity_summary", "")
-                    if opp.strip() and has_real_signal(opp):
-                        output["verdict"] = "BUILD WITH CONDITIONS"
-                        # Generate conditions from the negative signals if none exist
-                        if not output.get("required_conditions"):
-                            output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                    # Check if risks are ONLY execution risks → keep BUILD
+                    if _has_only_execution_risks(combined_text):
                         app.logger.info(
-                            "Jurion protection enabled: Gate 3 — BUILD overridden to BWC "
-                            "(negative signals detected but real opportunity exists)"
+                            "Jurion protection enabled: Gate 3 — BUILD preserved "
+                            "(only execution risks detected, no structural risks)"
                         )
                     else:
-                        output["verdict"] = "DON'T BUILD"
-                        output["required_conditions"] = []
-                        app.logger.info(
-                            "Jurion protection enabled: Gate 3 — BUILD overridden to DON'T BUILD "
-                            "(negative signals detected and no real opportunity)"
-                        )
+                        # Structural risks detected → apply existing logic
+                        opp = output.get("opportunity_summary", "")
+                        if opp.strip() and has_real_signal(opp):
+                            output["verdict"] = "BUILD WITH CONDITIONS"
+                            # Generate conditions from the negative signals if none exist
+                            if not output.get("required_conditions"):
+                                output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 3 — BUILD overridden to BWC "
+                                "(structural risks detected but real opportunity exists)"
+                            )
+                        else:
+                            output["verdict"] = "DON'T BUILD"
+                            output["required_conditions"] = []
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 3 — BUILD overridden to DON'T BUILD "
+                                "(structural risks detected and no real opportunity)"
+                            )
 
             # --- Post-processing: selective validation of top_reasons
             # and next_actions using smart validators ---
@@ -2537,26 +2637,46 @@ long_description HTML structure:
 
             # ── Jurion Gate 3 (final pass): enforce verdict consistency AFTER validation ──
             # Re-check verdict alignment now that reasons are finalized.
+            # Same execution-vs-structural risk classification as the first pass.
             if output["verdict"] == "BUILD":
                 final_reasoning = output.get("verdict_reasoning", "")
                 final_reasons = " ".join(output.get("top_reasons", []))
-                if _negative_signals_re.search(f"{final_reasoning} {final_reasons}"):
-                    opp = output.get("opportunity_summary", "")
-                    if opp.strip() and has_real_signal(opp):
-                        output["verdict"] = "BUILD WITH CONDITIONS"
-                        if not output.get("required_conditions"):
-                            output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                final_combined = f"{final_reasoning} {final_reasons}"
+                if _negative_signals_re.search(final_combined):
+                    if _has_only_execution_risks(final_combined):
                         app.logger.info(
-                            "Jurion protection enabled: Gate 3 (final) — BUILD overridden to BWC "
-                            "(negative signals + real opportunity)"
+                            "Jurion protection enabled: Gate 3 (final) — BUILD preserved "
+                            "(only execution risks, no structural risks)"
                         )
                     else:
-                        output["verdict"] = "DON'T BUILD"
-                        output["required_conditions"] = []
-                        app.logger.info(
-                            "Jurion protection enabled: Gate 3 (final) — BUILD overridden to DON'T BUILD "
-                            "(negative signals + no real opportunity)"
-                        )
+                        opp = output.get("opportunity_summary", "")
+                        if opp.strip() and has_real_signal(opp):
+                            output["verdict"] = "BUILD WITH CONDITIONS"
+                            if not output.get("required_conditions"):
+                                output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 3 (final) — BUILD overridden to BWC "
+                                "(structural risks + real opportunity)"
+                            )
+                        else:
+                            output["verdict"] = "DON'T BUILD"
+                            output["required_conditions"] = []
+                            app.logger.info(
+                                "Jurion protection enabled: Gate 3 (final) — BUILD overridden to DON'T BUILD "
+                                "(structural risks + no real opportunity)"
+                            )
+
+            # ── Strong Fundamentals Safety Net ──
+            # If clear niche + proven demand + viable monetization are all present,
+            # the verdict MUST NOT be DON'T BUILD.  Override to BWC instead.
+            if output["verdict"] == "DON'T BUILD" and _has_strong_fundamentals(output):
+                output["verdict"] = "BUILD WITH CONDITIONS"
+                if not output.get("required_conditions"):
+                    output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                app.logger.info(
+                    "Strong fundamentals safety net: DON'T BUILD overridden to BWC "
+                    "(clear niche + proven demand + viable monetization detected)"
+                )
 
             # Ensure performance and specifications are dicts
             if isinstance(output["performance"], str):
