@@ -867,8 +867,6 @@ body {
     letter-spacing: -0.01em;
     transition: background var(--v-duration) var(--v-ease), box-shadow var(--v-duration) var(--v-ease);
 }
-.pricing-cta:hover { }
-.pricing-cta:active { }
 .pricing-cta-free {
     background: var(--v-bg);
     color: var(--v-text-muted);
