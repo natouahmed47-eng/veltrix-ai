@@ -189,6 +189,7 @@ _negative_signals_re = re.compile(
 # Execution risks are solvable with effort/resources.  They should NEVER
 # downgrade a BUILD verdict on their own.
 _EXECUTION_RISK_RE = re.compile(
+    r"(?:"
     r"\b("
     r"high CAC|CAC.{0,15}high|customer acquisition cost.{0,15}high"
     r"|technical(?:ly)? complex(?:ity)?|engineering complex(?:ity)?"
@@ -200,27 +201,39 @@ _EXECUTION_RISK_RE = re.compile(
     r"|requires?\s+(?:(?:significant|heavy|substantial)\s+)?(?:investment|capital|resources)"
     r"|long\s+(?:development|build|implementation)\s+(?:time|cycle)"
     r"|steep learning curve"
-    r")\b",
+    r")\b"
+    # Arabic execution-risk terms (no \b — Arabic has no word boundaries)
+    r"|تكلفة اكتساب|ارتفاع تكلفة|تعقيد|تكامل|تشغيل|توسع|تنفيذ"
+    r")",
     re.IGNORECASE,
 )
 
 # Structural risks are fundamental market/business flaws.  Only these may
 # justify a downgrade from BUILD to BWC / DON'T BUILD.
+# NARROWED: only captures no-demand, no-niche, no-differentiation, and
+# unviable-economics signals (English + Arabic).  General words like
+# "difficulty", "challenge", or "cost" must NOT match here.
 _STRUCTURAL_RISK_RE = re.compile(
+    r"(?:"
     r"\b("
-    r"no demand|no market|no niche|no target niche"
-    r"|no differentiation|no moat|no competitive (?:advantage|edge)"
-    r"|no viable (?:business model|monetization|revenue)"
-    r"|impossible economics|unsustainable economics|negative (?:unit )?economics"
-    r"|no evidence of demand|no verifiable demand"
+    # --- no demand ---
+    r"no demand|no market demand|no evidence of demand|no verifiable demand"
     r"|no proven demand|weak demand|low demand|no search volume"
-    r"|no social proof|no traction"
-    r"|not viable|not feasible|unfeasible|infeasible"
-    r"|no realistic|no sustainable|negative margin|no margin"
-    r"|does not justify|does not meet|not recommended"
-    r"|insufficient (?:demand|market|evidence)"
+    r"|no social proof|no traction|insufficient demand"
+    # --- no niche ---
+    r"|no niche|no target niche"
+    # --- no differentiation ---
+    r"|no differentiation|no moat|no competitive (?:advantage|edge)"
     r"|no path to differentiation|commodity (?:market|product|space)"
-    r")\b",
+    # --- unviable economics ---
+    r"|impossible economics|unsustainable economics|negative (?:unit )?economics"
+    r"|no viable (?:business model|monetization|revenue)"
+    r"|negative margin|no margin"
+    r")\b"
+    # Arabic structural-risk equivalents
+    r"|لا يوجد طلب|لا يوجد تخصص|لا يوجد تمييز"
+    r"|اقتصاديات غير قابلة للاستمرار"
+    r")",
     re.IGNORECASE,
 )
 
@@ -257,14 +270,18 @@ def _has_strong_fundamentals(output: dict) -> bool:
 
     has_niche = bool(re.search(
         r"(?:clear niche|specific niche|defined niche|niche (?:market|segment|audience)"
-        r"|underserved (?:segment|niche|market)|target(?:ed)? (?:segment|niche))",
+        r"|underserved (?:segment|niche|market)|target(?:ed)? (?:segment|niche)"
+        r"|شريحة محددة|سوق متخصص|تخصص واضح|شريحة مستهدفة|قطاع محدد"
+        r"|صالات|نادي|أندية|إدارة صالات)",
         combined, re.IGNORECASE,
     ))
     has_demand = bool(re.search(
         r"(?:proven demand|validated demand|high demand|strong demand"
         r"|demonstrated demand|existing demand|real demand"
         r"|search volume|growing (?:demand|interest|trend)"
-        r"|customer (?:interest|base|waiting list))",
+        r"|customer (?:interest|base|waiting list)"
+        r"|طلب مثبت|طلب متزايد|طلب قوي|طلب حقيقي|نمو الطلب"
+        r"|سوق متنامي|انتشار|إقبال متزايد|طلب موجود)",
         combined, re.IGNORECASE,
     ))
     has_monetization = bool(re.search(
@@ -272,7 +289,8 @@ def _has_strong_fundamentals(output: dict) -> bool:
         r"|strong margin|healthy margin|good margin|positive margin"
         r"|profitable|revenue model|monetization (?:path|strategy|model)"
         r"|unit economics (?:work|viable|positive|strong)"
-        r"|(?:50|60|70|80)\+?\s*%\s*(?:gross )?margin)",
+        r"|(?:50|60|70|80)\+?\s*%\s*(?:gross )?margin"
+        r"|saas|اشتراك|نموذج ربحي|هامش ربح|إيرادات متكررة|دفع محلي)",
         combined, re.IGNORECASE,
     ))
 
@@ -2672,13 +2690,12 @@ long_description HTML structure:
 
             # ── Strong Fundamentals Safety Net ──
             # If clear niche + proven demand + viable monetization are all present,
-            # the verdict MUST NOT be DON'T BUILD.  Override to BWC instead.
+            # the verdict MUST NOT be DON'T BUILD.  Override directly to BUILD.
             if output["verdict"] == "DON'T BUILD" and _has_strong_fundamentals(output):
-                output["verdict"] = "BUILD WITH CONDITIONS"
-                if not output.get("required_conditions"):
-                    output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                output["verdict"] = "BUILD"
+                output["required_conditions"] = []
                 app.logger.info(
-                    "Strong fundamentals safety net: DON'T BUILD overridden to BWC "
+                    "Strong fundamentals safety net: DON'T BUILD overridden to BUILD "
                     "(clear niche + proven demand + viable monetization detected)"
                 )
 
