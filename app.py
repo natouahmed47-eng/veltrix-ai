@@ -1,3 +1,4 @@
+import hashlib as _hashlib
 import html
 import os
 import re
@@ -85,7 +86,6 @@ _CODE_VERSION = "version-2026-04-cache-fix"
 # ── Static asset cache-busting version ──
 # Used as ?v= query parameter on all CSS/JS references in HTML files.
 # Derived from _CODE_VERSION so it auto-changes with each deploy marker update.
-import hashlib as _hashlib
 _ASSET_VERSION = _hashlib.md5(_CODE_VERSION.encode()).hexdigest()[:10]
 
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
@@ -106,9 +106,13 @@ _STATIC_ASSET_RE = re.compile(
 def _serve_html_with_versioned_assets(filename):
     """Read an HTML file and inject ?v=<hash> on every static asset reference,
     then return a proper Response with text/html content type."""
-    filepath = os.path.join(os.path.dirname(__file__), filename)
-    with open(filepath, "r", encoding="utf-8") as f:
-        content = f.read()
+    filepath = os.path.join(os.path.dirname(__file__) or ".", filename)
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+    except (FileNotFoundError, IOError):
+        app.logger.error("Failed to read HTML file: %s", filepath)
+        return make_response("Page not found", 404)
     versioned = _STATIC_ASSET_RE.sub(
         rf'\1\2\3?v={_ASSET_VERSION}\4', content
     )
