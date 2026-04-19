@@ -127,12 +127,12 @@
         letter-spacing: 0.02em;
     }
     .lp-preview-body {
-        padding: 24px 20px;
+        padding: 20px 20px;
     }
     .lp-preview-input {
         display: flex;
         gap: 8px;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
     }
     .lp-preview-input-field {
         flex: 1;
@@ -159,58 +159,65 @@
         border: 1px solid var(--v-success-border);
         border-radius: var(--v-radius-lg);
         background: var(--v-success-light);
-        padding: 16px;
+        padding: 14px 16px;
     }
     .lp-preview-verdict-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
     }
     .lp-preview-verdict-label {
-        font-size: var(--v-text-lg);
-        font-weight: 700;
+        font-size: var(--v-text-xl);
+        font-weight: 800;
         color: var(--v-success);
-        letter-spacing: -0.3px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
     .lp-preview-conf {
-        font-size: var(--v-text-xs);
+        font-size: 10px;
         font-weight: 600;
-        color: var(--v-success);
+        color: var(--v-text-faint);
         background: #fff;
         padding: 2px 8px;
         border-radius: var(--v-radius-full);
-        border: 1px solid var(--v-success-border);
+        border: 1px solid var(--v-border);
+        letter-spacing: 0.01em;
     }
     .lp-preview-product {
-        font-size: var(--v-text-sm);
-        font-weight: 600;
+        font-size: var(--v-text-base);
+        font-weight: 700;
         color: var(--v-text);
-        margin-bottom: 8px;
+        margin-bottom: 6px;
+        letter-spacing: -0.01em;
     }
     .lp-preview-reasoning {
         font-size: var(--v-text-xs);
         color: var(--v-text-muted);
-        line-height: 1.5;
+        line-height: 1.7;
         margin: 0;
     }
     .lp-preview-meta {
         display: flex;
         gap: 12px;
-        margin-top: 14px;
-        padding-top: 12px;
+        margin-top: 12px;
+        padding-top: 10px;
         border-top: 1px solid var(--v-success-border);
     }
     .lp-preview-meta-item {
-        font-size: 10px;
-        font-weight: 600;
+        font-size: 9px;
+        font-weight: 500;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: var(--v-text-faint);
     }
     .lp-preview-meta-item span {
-        color: var(--v-text-secondary);
+        display: block;
+        font-size: var(--v-text-xs);
+        color: var(--v-text);
         font-weight: 700;
+        letter-spacing: -0.01em;
+        text-transform: none;
     }
 
     /* ── Process strip (replaces How It Works section) ── */
@@ -530,7 +537,7 @@
                         <span class="lp-preview-conf">87% confidence</span>
                     </div>
                     <div class="lp-preview-product">Reusable Water Bottle Brand</div>
-                    <p class="lp-preview-reasoning">Structural demand shift from single-use plastics. DTC margin profile supports scale. Repeat-purchase dynamics create compounding revenue.</p>
+                    <p class="lp-preview-reasoning">Structural demand shift from single-use plastics. DTC margin profile supports scale.<br>Repeat-purchase dynamics create compounding revenue.</p>
                     <div class="lp-preview-meta">
                         <div class="lp-preview-meta-item">Market <span>Growing</span></div>
                         <div class="lp-preview-meta-item">Competition <span>Moderate</span></div>
