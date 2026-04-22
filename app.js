@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── DOM References ── */
     var analyzeBtn = document.getElementById("analyzeBtn");
-    var productInput = document.getElementById("productIdea");
     var messageEl = document.getElementById("message");
     var resultsEl = document.getElementById("results");
     var usageInfo = document.getElementById("usageInfo");
@@ -18,6 +17,63 @@ document.addEventListener("DOMContentLoaded", function () {
     var upgradeBar = document.getElementById("upgradeBar");
     var paywallOverlay = document.getElementById("paywallOverlay");
     var paywallClose = document.getElementById("paywallClose");
+
+    /* ── 4-Step Form State ── */
+    var currentStep = 1;
+    var fieldIdea = document.getElementById("fieldIdea");
+    var fieldCustomer = document.getElementById("fieldCustomer");
+    var fieldProblem = document.getElementById("fieldProblem");
+    var fieldAlternatives = document.getElementById("fieldAlternatives");
+
+    function showStep(n) {
+        for (var i = 1; i <= 4; i++) {
+            var stepEl = document.getElementById("formStep" + i);
+            var dotEl = document.getElementById("dot" + i);
+            if (stepEl) stepEl.classList.toggle("active", i === n);
+            if (dotEl) {
+                dotEl.classList.toggle("active", i === n);
+                dotEl.classList.toggle("done", i < n);
+            }
+        }
+        var num = document.getElementById("currentStepNum");
+        if (num) num.textContent = n;
+        currentStep = n;
+    }
+
+    function nextStep() {
+        var fields = [null, fieldIdea, fieldCustomer, fieldProblem, fieldAlternatives];
+        var field = fields[currentStep];
+        if (field && !field.value.trim()) {
+            field.focus();
+            return;
+        }
+        if (currentStep < 4) showStep(currentStep + 1);
+    }
+
+    function prevStep() {
+        if (currentStep > 1) showStep(currentStep - 1);
+    }
+
+    /* Step navigation buttons */
+    var step1Next = document.getElementById("step1Next");
+    var step2Back = document.getElementById("step2Back");
+    var step2Next = document.getElementById("step2Next");
+    var step3Back = document.getElementById("step3Back");
+    var step3Next = document.getElementById("step3Next");
+    var step4Back = document.getElementById("step4Back");
+
+    if (step1Next) step1Next.addEventListener("click", nextStep);
+    if (step2Back) step2Back.addEventListener("click", prevStep);
+    if (step2Next) step2Next.addEventListener("click", nextStep);
+    if (step3Back) step3Back.addEventListener("click", prevStep);
+    if (step3Next) step3Next.addEventListener("click", nextStep);
+    if (step4Back) step4Back.addEventListener("click", prevStep);
+
+    /* Allow Enter key to advance steps */
+    [fieldIdea, fieldCustomer, fieldProblem].forEach(function (f) {
+        if (f) f.addEventListener("keydown", function (e) { if (e.key === "Enter") nextStep(); });
+    });
+    if (fieldAlternatives) fieldAlternatives.addEventListener("keydown", function (e) { if (e.key === "Enter") analyzeProduct(); });
 
     /* ── Auth State ── */
     var lastAnalysisIdea = "";
@@ -109,15 +165,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* ── Analyze Product Flow ── */
     analyzeBtn.addEventListener("click", analyzeProduct);
-    productInput.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") analyzeProduct();
-    });
 
     async function analyzeProduct() {
-        var idea = productInput.value.trim();
+        var idea = (fieldIdea ? fieldIdea.value.trim() : "");
+        var targetCustomer = (fieldCustomer ? fieldCustomer.value.trim() : "");
+        var problem = (fieldProblem ? fieldProblem.value.trim() : "");
+        var currentAlternatives = (fieldAlternatives ? fieldAlternatives.value.trim() : "");
 
         if (!idea) {
-            messageEl.innerHTML = '<div class="error">Please enter a product idea or name.</div>';
+            showStep(1);
+            messageEl.innerHTML = '<div class="error">Please describe your idea (Step 1).</div>';
+            return;
+        }
+        if (!targetCustomer) {
+            showStep(2);
+            messageEl.innerHTML = '<div class="error">Please describe your target customer (Step 2).</div>';
+            return;
+        }
+        if (!problem) {
+            showStep(3);
+            messageEl.innerHTML = '<div class="error">Please describe the problem being solved (Step 3).</div>';
+            return;
+        }
+        if (!currentAlternatives) {
+            messageEl.innerHTML = '<div class="error">Please describe current alternatives (Step 4).</div>';
             return;
         }
 
@@ -147,7 +218,12 @@ document.addEventListener("DOMContentLoaded", function () {
             var response = await fetch("/api/analyze-product", {
                 method: "POST",
                 headers: headers,
-                body: JSON.stringify({ idea: idea })
+                body: JSON.stringify({
+                    idea: idea,
+                    target_customer: targetCustomer,
+                    problem: problem,
+                    current_alternatives: currentAlternatives
+                })
             });
 
             var rawText = await response.text();
@@ -168,11 +244,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            lastAnalysisIdea = idea;
+            lastAnalysisIdea = idea + " — " + targetCustomer;
             lastAnalysisResult = data;
 
-            messageEl.innerHTML = '<div class="success">\u2705 Verdict ready.</div>';
-            resultsEl.innerHTML = buildResultCard(data) + buildSaveButton();
+            var verdict = (data.verdict || "").toUpperCase();
+            if (verdict === "INVALID INPUT" || verdict === "NEED VALIDATION") {
+                messageEl.innerHTML = "";
+                resultsEl.innerHTML = buildStateCard(data);
+            } else {
+                messageEl.innerHTML = '<div class="success">\u2705 Verdict ready.</div>';
+                resultsEl.innerHTML = buildResultCard(data) + buildSaveButton();
+            }
 
             if (window.trackEvent) {
                 window.trackEvent("analyze_complete", { idea: idea, verdict: data.verdict || "" });
@@ -291,6 +373,52 @@ document.addEventListener("DOMContentLoaded", function () {
         return '<div class="section-divider">' + label + '</div>';
     }
 
+    /* ── State Card for INVALID INPUT / NEED VALIDATION ── */
+
+    function buildStateCard(item) {
+        var verdict = (item.verdict || "").toUpperCase();
+        var isInvalid = verdict === "INVALID INPUT";
+
+        var verdictType = isInvalid ? "invalid" : "validation";
+        var verdictIcon = isInvalid ? "\u26A0\uFE0F" : "\uD83D\uDD0D";
+        var verdictLabel = isInvalid ? "INVALID INPUT" : "NEED VALIDATION";
+        var verdictColor = isInvalid ? "#92400e" : "#475569";
+
+        var message = item.message || (isInvalid
+            ? "The input is too vague or incomplete to evaluate. Clarify the fields below and try again."
+            : "The idea is understandable, but there is not enough evidence to produce a reliable verdict. Complete the steps below first.");
+
+        var nextActions = Array.isArray(item.next_actions) && item.next_actions.length ? item.next_actions : [];
+        var actionIcons = ["\u0031\uFE0F\u20E3", "\u0032\uFE0F\u20E3", "\u0033\uFE0F\u20E3"];
+
+        var actionsHtml = "";
+        if (nextActions.length) {
+            actionsHtml =
+                '<div class="verdict-actions">' +
+                    '<div class="verdict-actions-label" style="color:' + verdictColor + ';">' +
+                        (isInvalid ? "\uD83D\uDEE0\uFE0F What to Clarify" : "\uD83D\uDD0D What to Validate First") +
+                    '</div>' +
+                    nextActions.map(function (a, i) {
+                        return '<div class="verdict-action-item verdict-action-item--' + verdictType + '">' +
+                            '<span>' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
+                            '<span>' + esc(a) + '</span>' +
+                        '</div>';
+                    }).join("") +
+                '</div>';
+        }
+
+        return (
+            '<div class="verdict-banner verdict-banner--' + verdictType + '">' +
+                '<div class="verdict-icon">' + verdictIcon + '</div>' +
+                '<div class="verdict-label verdict-label--' + verdictType + '">VERDICT: ' + verdictLabel + '</div>' +
+                '<div class="verdict-why" style="margin-top:var(--v-sp-4);">' +
+                    '<p style="font-size:var(--v-text-base);color:var(--v-text-muted);line-height:1.7;margin:0;">' + esc(message) + '</p>' +
+                '</div>' +
+                actionsHtml +
+            '</div>'
+        );
+    }
+
     /* ── Main Result Card Builder ── */
 
     function buildResultCard(item) {
@@ -320,11 +448,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var verdict = (item.verdict || "DON'T BUILD").toUpperCase();
         var isBuild = verdict === "BUILD";
         var isConditional = verdict.indexOf("CONDITION") !== -1;
-        var isDontBuild = !isBuild && !isConditional;
-        var verdictType = isBuild ? "build" : (isConditional ? "conditional" : "dont");
-        var verdictColor = isBuild ? "#059669" : (isConditional ? "#d97706" : "#dc2626");
-        var verdictIcon = isBuild ? "\u2705" : (isConditional ? "\u26A0\uFE0F" : "\u274C");
-        var verdictLabel = isBuild ? "BUILD" : (isConditional ? "BUILD WITH CONDITIONS" : "DON\u2019T BUILD");
+        var isValidation = verdict === "NEED VALIDATION";
+        var isDontBuild = !isBuild && !isConditional && !isValidation;
+        var verdictType = isBuild ? "build" : (isConditional ? "conditional" : (isValidation ? "validation" : "dont"));
+        var verdictColor = isBuild ? "#059669" : (isConditional ? "#d97706" : (isValidation ? "#475569" : "#dc2626"));
+        var verdictIcon = isBuild ? "\u2705" : (isConditional ? "\u26A0\uFE0F" : (isValidation ? "\uD83D\uDD0D" : "\u274C"));
+        var verdictLabel = isBuild ? "BUILD" : (isConditional ? "BUILD WITH CONDITIONS" : (isValidation ? "NEED VALIDATION" : "DON\u2019T BUILD"));
         var verdictArrow = isBuild ? "\u25B2" : (isConditional ? "\u25C6" : "\u25BC");
 
         /* Opportunity Summary + Biggest Risk */
@@ -390,6 +519,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 '<p>' + esc(verdictReasoning) + '</p>' +
             '</div>';
 
+        /* Analysis Scores (demand, competition, differentiation, WTP) */
+        var scoresHtml = "";
+        var scoreFields = [
+            { key: "demand_signal_score", label: "Demand", type: "score" },
+            { key: "competition_level", label: "Competition", type: "level", invert: true },
+            { key: "differentiation_score", label: "Differentiation", type: "score" },
+            { key: "wtp_score", label: "Will to Pay", type: "score" },
+            { key: "execution_complexity", label: "Complexity", type: "level", invert: true }
+        ];
+        var scoreChips = scoreFields.filter(function (f) {
+            return item[f.key] !== undefined && item[f.key] !== null;
+        }).map(function (f) {
+            var raw = item[f.key];
+            var display, cls;
+            if (f.type === "score") {
+                var n = parseInt(raw, 10);
+                display = n + "/100";
+                cls = n >= 65 ? "high" : (n >= 40 ? "medium" : "low");
+            } else {
+                display = String(raw).charAt(0).toUpperCase() + String(raw).slice(1).toLowerCase();
+                var lvl = String(raw).toLowerCase();
+                if (f.invert) {
+                    cls = lvl === "low" ? "high" : (lvl === "medium" ? "medium" : "low");
+                } else {
+                    cls = lvl === "high" ? "high" : (lvl === "medium" ? "medium" : "low");
+                }
+            }
+            return '<div class="score-chip">' +
+                '<span class="score-chip-label">' + esc(f.label) + '</span>' +
+                '<span class="score-chip-value score-chip-value--' + cls + '">' + esc(display) + '</span>' +
+            '</div>';
+        });
+        if (scoreChips.length) {
+            scoresHtml = '<div class="verdict-scores">' + scoreChips.join("") + '</div>';
+        }
+
+        /* Next Actions — verdict-specific label */
+        var nextActionsLabel = isBuild
+            ? "\uD83D\uDE80 Launch Steps"
+            : (isConditional
+                ? "\uD83D\uDEA7 Required Before Building"
+                : (isValidation
+                    ? "\uD83D\uDD0D Validate First"
+                    : "\uD83D\uDE80 What Should I Do Next?"));
+
         /* Next Actions */
         var nextActions = Array.isArray(item.next_actions) && item.next_actions.length ? item.next_actions.slice(0, 3) : [
             "Define the exact target customer and validate demand with 30+ survey responses",
@@ -399,7 +573,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var actionIcons = ["\u0031\uFE0F\u20E3", "\u0032\uFE0F\u20E3", "\u0033\uFE0F\u20E3"];
         var nextActionsHtml =
             '<div class="verdict-actions">' +
-                '<div class="verdict-actions-label" style="color:' + verdictColor + ';">\uD83D\uDE80 What Should I Do Next?</div>' +
+                '<div class="verdict-actions-label" style="color:' + verdictColor + ';">' + nextActionsLabel + '</div>' +
                 nextActions.map(function (a, i) {
                     return '<div class="verdict-action-item verdict-action-item--' + verdictType + '">' +
                         '<span>' + (actionIcons[i] || "\u27A1\uFE0F") + '</span>' +
@@ -413,6 +587,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 '<div class="verdict-icon">' + verdictIcon + '</div>' +
                 '<div class="verdict-label verdict-label--' + verdictType + '">VERDICT: ' + verdictLabel + '</div>' +
                 '<div class="verdict-confidence">' + (item.confidence || 70) + '% Confidence</div>' +
+                scoresHtml +
                 opportunityRiskHtml +
                 conditionsHtml +
                 topReasonsHtml +

@@ -1439,6 +1439,58 @@ body {
 .verdict-action-item--build { background: rgba(5,150,105,0.05); }
 .verdict-action-item--conditional { background: rgba(217,119,6,0.05); }
 .verdict-action-item--dont { background: rgba(220,38,38,0.05); }
+.verdict-action-item--validation { background: rgba(100,116,139,0.06); }
+.verdict-action-item--invalid { background: rgba(217,119,6,0.06); }
+
+/* ── NEED VALIDATION verdict state ── */
+.verdict-banner--validation {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+}
+.verdict-label--validation { color: #475569; }
+
+/* ── INVALID INPUT verdict state ── */
+.verdict-banner--invalid {
+    background: var(--v-warning-light);
+    border: 1px solid var(--v-warning-border);
+}
+.verdict-label--invalid { color: #92400e; }
+
+/* ── Analysis score chips (demand / differentiation / WTP) ── */
+.verdict-scores {
+    display: flex;
+    gap: var(--v-sp-3);
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: var(--v-sp-4) auto 0;
+    max-width: 560px;
+}
+.score-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--v-sp-2) var(--v-sp-4);
+    border-radius: var(--v-radius-md);
+    background: var(--v-bg-subtle);
+    border: 1px solid var(--v-border-light);
+    min-width: 90px;
+}
+.score-chip-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--v-text-faint);
+    margin-bottom: 2px;
+}
+.score-chip-value {
+    font-size: var(--v-text-base);
+    font-weight: 600;
+    color: var(--v-text-secondary);
+}
+.score-chip-value--high { color: var(--v-success); }
+.score-chip-value--medium { color: var(--v-warning); }
+.score-chip-value--low { color: var(--v-danger); }
 
 /* ── Detailed Breakdown Divider ── */
 .detail-break {
