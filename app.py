@@ -77,6 +77,7 @@ PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.paypal.com")
 PAYPAL_PLAN_ID = os.environ.get("PAYPAL_PLAN_ID", "")
 PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
+TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN", "")
 
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
@@ -5365,6 +5366,208 @@ def track_event():
     db.session.commit()
 
     return jsonify({"ok": True}), 201
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# WhatsApp Startup Evaluator Bot
+# ══════════════════════════════════════════════════════════════════════════════
+
+# In-memory conversation state keyed by WhatsApp number.
+# Each entry: {"step": int, "idea": str, "target": str, "pay": str}
+_wa_sessions: dict = {}
+
+_WA_SYSTEM_PROMPT = """You are a startup idea evaluation engine. You do NOT give encouragement or vague advice.
+You analyze a startup idea and return ONLY valid JSON with no other text, in exactly this shape:
+{
+  "pain": "weak | moderate | strong",
+  "willing_to_pay": true | false,
+  "competition": "low | medium | high",
+  "differentiation": true | false,
+  "demand": "unclear | moderate | clear",
+  "reasoning": "1-2 sentence factual explanation"
+}
+
+Rules:
+- "pain" reflects how real and acute the problem is for the target user.
+- "willing_to_pay" is true only if users have demonstrated or stated payment intent.
+- "competition" is the density of existing direct alternatives.
+- "differentiation" is true only if there is a clear, specific competitive edge.
+- "demand" reflects evidence of active user demand.
+- "reasoning" must be factual, not motivational.
+Do not add any keys. Do not wrap in markdown. Output raw JSON only."""
+
+
+def _evaluate_idea(idea: str, target: str, pay: str) -> dict:
+    """Call OpenAI and return parsed evaluation JSON. Raises on failure."""
+    user_message = (
+        f"Startup idea: {idea}\n"
+        f"Target user: {target}\n"
+        f"User says they would pay: {pay}"
+    )
+    response = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {"role": "system", "content": _WA_SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        temperature=0.3,
+        max_tokens=300,
+    )
+    raw = response.choices[0].message.content.strip()
+    app.logger.info("[WA] OpenAI raw response: %s", raw)
+    return json.loads(raw)
+
+
+def _rule_engine(ev: dict) -> str:
+    """Apply deterministic rules to produce a verdict string."""
+    if not ev.get("willing_to_pay"):
+        return "DON'T BUILD"
+    if ev.get("competition") == "high" and not ev.get("differentiation"):
+        return "DON'T BUILD"
+    if ev.get("pain") == "strong" and ev.get("demand") == "clear":
+        return "BUILD"
+    return "BUILD WITH CONDITIONS"
+
+
+_NEXT_STEPS = {
+    "BUILD": [
+        "Run 10 customer interviews this week to validate pain depth.",
+        "Build the smallest possible version that solves the core problem.",
+        "Set a 60-day target: paying users or stop.",
+    ],
+    "DON'T BUILD": [
+        "Do not invest time or money into this idea as described.",
+        "Identify which signal failed (payment intent / competition / demand).",
+        "Reframe the problem or find a narrower niche before reconsidering.",
+    ],
+    "BUILD WITH CONDITIONS": [
+        "Validate willingness to pay with pre-sales or deposits before building.",
+        "Define your differentiation clearly — why you and not the existing options.",
+        "Run a 2-week landing-page test to measure real demand before committing.",
+    ],
+}
+
+_VERDICT_ICONS = {
+    "BUILD": "✅",
+    "DON'T BUILD": "🚫",
+    "BUILD WITH CONDITIONS": "⚠️",
+}
+
+
+def _format_whatsapp_reply(ev: dict, verdict: str) -> str:
+    icon = _VERDICT_ICONS.get(verdict, "📊")
+    diff_label = "Yes" if ev.get("differentiation") else "No"
+    pay_label = "Yes" if ev.get("willing_to_pay") else "No"
+    steps = "\n".join(f"{i+1}. {s}" for i, s in enumerate(_NEXT_STEPS[verdict]))
+    return (
+        f"📊 Verdict: {icon} {verdict}\n\n"
+        f"🧠 Reason:\n{ev.get('reasoning', 'N/A')}\n\n"
+        f"⚠️ Key Signals:\n"
+        f"- Pain: {ev.get('pain', 'N/A')}\n"
+        f"- Demand: {ev.get('demand', 'N/A')}\n"
+        f"- Competition: {ev.get('competition', 'N/A')}\n"
+        f"- Differentiation: {diff_label}\n"
+        f"- Willingness to pay: {pay_label}\n\n"
+        f"✅ Next Steps:\n{steps}"
+    )
+
+
+def _twiml_reply(message: str):
+    """Return a Twilio MessagingResponse XML reply."""
+    from twilio.twiml.messaging_response import MessagingResponse
+    resp = MessagingResponse()
+    resp.message(message)
+    return str(resp), 200, {"Content-Type": "text/xml"}
+
+
+@app.route("/whatsapp", methods=["POST"])
+def whatsapp_webhook():
+    """Multi-step WhatsApp startup evaluator powered by Twilio."""
+    from_number = request.form.get("From", "").strip()
+    body = request.form.get("Body", "").strip()
+
+    app.logger.info("[WA] Incoming from=%s body=%r", from_number, body)
+
+    if not from_number:
+        return _twiml_reply("Could not identify sender.")
+
+    state = _wa_sessions.get(from_number, {"step": 0})
+    step = state.get("step", 0)
+
+    # Step 0 → ask for startup idea
+    if step == 0:
+        _wa_sessions[from_number] = {"step": 1}
+        return _twiml_reply(
+            "👋 Welcome to *Veltrix Evaluator*.\n\n"
+            "I will assess your startup idea in 3 quick questions.\n\n"
+            "Step 1/3: What is your startup idea? (one sentence)"
+        )
+
+    # Step 1 → received idea, ask for target user
+    if step == 1:
+        state["idea"] = body
+        state["step"] = 2
+        _wa_sessions[from_number] = state
+        return _twiml_reply(
+            "Step 2/3: Who is your target user? (be specific — e.g. 'freelance designers in the US')"
+        )
+
+    # Step 2 → received target user, ask about payment intent
+    if step == 2:
+        state["target"] = body
+        state["step"] = 3
+        _wa_sessions[from_number] = state
+        return _twiml_reply(
+            "Step 3/3: Do you have evidence that users would pay for this? "
+            "Reply *yes* or *no*."
+        )
+
+    # Step 3 → received pay signal, run evaluation
+    if step == 3:
+        state["pay"] = body
+        # Clear session so the user can start a new evaluation
+        _wa_sessions.pop(from_number, None)
+
+        idea = state.get("idea", "")
+        target = state.get("target", "")
+        pay = state.get("pay", "")
+
+        app.logger.info(
+            "[WA] Evaluating idea=%r target=%r pay=%r", idea, target, pay
+        )
+
+        try:
+            if not client:
+                raise RuntimeError("OpenAI client not configured")
+            evaluation = _evaluate_idea(idea, target, pay)
+            app.logger.info("[WA] Parsed evaluation: %s", evaluation)
+            verdict = _rule_engine(evaluation)
+            reply = _format_whatsapp_reply(evaluation, verdict)
+        except (json.JSONDecodeError, KeyError) as exc:
+            app.logger.error("[WA] JSON parse error: %s", exc)
+            reply = (
+                "⚠️ The evaluation engine returned an unexpected response. "
+                "Please try again by sending any message."
+            )
+        except OpenAIError as exc:
+            app.logger.error("[WA] OpenAI error: %s", exc)
+            reply = (
+                "⚠️ Could not reach the AI service right now. "
+                "Please try again in a moment."
+            )
+        except Exception as exc:
+            app.logger.error("[WA] Unexpected error: %s", exc)
+            reply = (
+                "⚠️ Something went wrong. Send any message to start a new evaluation."
+            )
+
+        return _twiml_reply(reply)
+
+    # Unknown state — reset
+    _wa_sessions.pop(from_number, None)
+    return _twiml_reply(
+        "Session reset. Send any message to start a new evaluation."
+    )
 
 
 @app.errorhandler(500)
