@@ -775,7 +775,7 @@ _MIN_FIELD_LEN = 10
 # Vague single-token idea patterns that trigger INVALID INPUT immediately
 _VAGUE_IDEA_RE = re.compile(
     r"^\s*(idea|thing|app|product|stuff|something|test|hi|hello|yes|no|maybe"
-    r"|idk|don.t know|not sure|nothing|n/?a)\s*$",
+    r"|idk|don't know|not sure|nothing|n/?a)\s*$",
     re.IGNORECASE,
 )
 
@@ -888,12 +888,12 @@ _VERDICT_NEXT_STEPS: dict[str, list[str]] = {
         "pay $X for this?' and document their responses before proceeding",
     ],
     "INVALID INPUT": [
-        "Clarify which specific customer segment you are targeting — "
-        "describe their role, industry, and a pain point they face",
-        "Describe the exact problem being solved in one sentence — include "
-        "who experiences it, how often, and what it currently costs them",
-        "List 2–3 existing alternatives customers use today and explain "
-        "why they are inadequate",
+        "Make your target customer description more specific — include their "
+        "role, industry, daily workflow, and a pain point they face regularly",
+        "Rewrite the problem statement with concrete numbers: how often does "
+        "it occur, how much time or money does it cost, and who experiences it",
+        "Add real alternatives to your current alternatives field — name the "
+        "specific tools or methods people use today and why they fall short",
     ],
 }
 

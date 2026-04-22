@@ -73,7 +73,9 @@ document.addEventListener("DOMContentLoaded", function () {
     [fieldIdea, fieldCustomer, fieldProblem].forEach(function (f) {
         if (f) f.addEventListener("keydown", function (e) { if (e.key === "Enter") nextStep(); });
     });
-    if (fieldAlternatives) fieldAlternatives.addEventListener("keydown", function (e) { if (e.key === "Enter") analyzeProduct(); });
+    if (fieldAlternatives) fieldAlternatives.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" && fieldAlternatives.value.trim()) analyzeProduct();
+    });
 
     /* ── Auth State ── */
     var lastAnalysisIdea = "";
