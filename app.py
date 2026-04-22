@@ -5374,6 +5374,8 @@ def track_event():
 
 # In-memory conversation state keyed by WhatsApp number.
 # Each entry: {"step": int, "idea": str, "target": str, "pay": str}
+# NOTE: This is intentionally minimal. State is lost on restart and is not
+# safe for multi-worker deployments. For production scale, replace with Redis.
 _wa_sessions: dict = {}
 
 _WA_SYSTEM_PROMPT = """You are a startup idea evaluation engine. You do NOT give encouragement or vague advice.
@@ -5483,6 +5485,19 @@ def _twiml_reply(message: str):
 @app.route("/whatsapp", methods=["POST"])
 def whatsapp_webhook():
     """Multi-step WhatsApp startup evaluator powered by Twilio."""
+    # ── Verify Twilio signature to reject forged requests ──────────────────
+    if TWILIO_AUTH_TOKEN:
+        from twilio.request_validator import RequestValidator
+        validator = RequestValidator(TWILIO_AUTH_TOKEN)
+        url = request.url
+        post_vars = request.form.to_dict()
+        signature = request.headers.get("X-Twilio-Signature", "")
+        if not validator.validate(url, post_vars, signature):
+            app.logger.warning("[WA] Invalid Twilio signature from %s", request.remote_addr)
+            return ("Forbidden", 403)
+    else:
+        app.logger.warning("[WA] TWILIO_AUTH_TOKEN not set — skipping signature validation")
+
     from_number = request.form.get("From", "").strip()
     body = request.form.get("Body", "").strip()
 
