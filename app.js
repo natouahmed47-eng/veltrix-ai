@@ -521,33 +521,29 @@ document.addEventListener("DOMContentLoaded", function () {
                 '<p>' + esc(verdictReasoning) + '</p>' +
             '</div>';
 
-        /* Analysis Scores (demand, competition, differentiation, WTP) */
+        /* Analysis chips: demand / competition / differentiation / WTP / complexity */
         var scoresHtml = "";
         var scoreFields = [
-            { key: "demand_signal_score", label: "Demand", type: "score" },
-            { key: "competition_level", label: "Competition", type: "level", invert: true },
-            { key: "differentiation_score", label: "Differentiation", type: "score" },
-            { key: "wtp_score", label: "Will to Pay", type: "score" },
-            { key: "execution_complexity", label: "Complexity", type: "level", invert: true }
+            { key: "demand_signal",       label: "Demand",        invert: false },
+            { key: "competition_level",   label: "Competition",   invert: true  },
+            { key: "differentiation",     label: "Differentiation", invert: false },
+            { key: "wtp_signal",          label: "Will to Pay",   invert: false },
+            { key: "execution_complexity",label: "Complexity",    invert: true  }
         ];
+        /* Categorical value → display class */
+        var _chipClass = {
+            high: "high", medium: "medium", low: "low",
+            strong: "high", moderate: "medium", weak: "low"
+        };
         var scoreChips = scoreFields.filter(function (f) {
-            return item[f.key] !== undefined && item[f.key] !== null;
+            return item[f.key] !== undefined && item[f.key] !== null && item[f.key] !== "";
         }).map(function (f) {
-            var raw = item[f.key];
-            var display, cls;
-            if (f.type === "score") {
-                var n = parseInt(raw, 10);
-                display = n + "/100";
-                cls = n >= 65 ? "high" : (n >= 40 ? "medium" : "low");
-            } else {
-                display = String(raw).charAt(0).toUpperCase() + String(raw).slice(1).toLowerCase();
-                var lvl = String(raw).toLowerCase();
-                if (f.invert) {
-                    cls = lvl === "low" ? "high" : (lvl === "medium" ? "medium" : "low");
-                } else {
-                    cls = lvl === "high" ? "high" : (lvl === "medium" ? "medium" : "low");
-                }
-            }
+            var raw = String(item[f.key]).toLowerCase();
+            var display = raw.charAt(0).toUpperCase() + raw.slice(1);
+            var naturalCls = _chipClass[raw] || "medium";
+            var cls = f.invert
+                ? (naturalCls === "high" ? "low" : (naturalCls === "low" ? "high" : "medium"))
+                : naturalCls;
             return '<div class="score-chip">' +
                 '<span class="score-chip-label">' + esc(f.label) + '</span>' +
                 '<span class="score-chip-value score-chip-value--' + cls + '">' + esc(display) + '</span>' +

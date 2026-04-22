@@ -824,40 +824,85 @@ def _validate_structured_input(
     return "valid"
 
 
-def _apply_rule_engine(output: dict) -> str:
-    """Map AI analysis scores to a final verdict.
+def _normalise_categorical(value, allowed: tuple, default: str) -> str:
+    """Return value if it is in allowed, else default.
 
-    Reads demand_signal_score, differentiation_score, wtp_score, and
-    execution_complexity from the output dict.  Computes a weighted signal
-    and maps to one of: BUILD, BUILD WITH CONDITIONS, NEED VALIDATION.
-
-    Falls back to the AI's own verdict when scores are not returned.
+    Used for deterministic parsing of AI categorical fields.
     """
-    try:
-        demand = max(0, min(100, int(output.get("demand_signal_score") or 50)))
-    except (TypeError, ValueError):
-        demand = 50
-    try:
-        diff = max(0, min(100, int(output.get("differentiation_score") or 50)))
-    except (TypeError, ValueError):
-        diff = 50
-    try:
-        wtp = max(0, min(100, int(output.get("wtp_score") or 50)))
-    except (TypeError, ValueError):
-        wtp = 50
+    if not value:
+        return default
+    v = str(value).strip().lower()
+    return v if v in allowed else default
 
-    exec_c = str(output.get("execution_complexity") or "medium").strip().lower()
-    exec_penalty = {"low": 0, "medium": 5, "high": 15}.get(exec_c, 5)
 
-    # Weighted signal: demand 35%, differentiation 30%, WTP 35%
-    signal = round(demand * 0.35 + diff * 0.30 + wtp * 0.35 - exec_penalty)
+def _apply_verdict_rules(output: dict) -> str:
+    """Explicit if-then verdict rules based on AI-returned categorical signals.
 
-    if signal >= 62:
+    Reads demand_signal, differentiation, wtp_signal, competition_level, and
+    execution_complexity from the output dict.  Maps to one of:
+    BUILD, BUILD WITH CONDITIONS, NEED VALIDATION, DON'T BUILD.
+
+    No scores.  No formulas.  Each rule is a named, readable product decision.
+    """
+    demand = str(output.get("demand_signal") or "").strip().lower()
+    diff = str(output.get("differentiation") or "").strip().lower()
+    competition = str(output.get("competition_level") or "").strip().lower()
+    wtp = str(output.get("wtp_signal") or "").strip().lower()
+    complexity = str(output.get("execution_complexity") or "").strip().lower()
+
+    # ── Gate 1: Hard no-go → DON'T BUILD ─────────────────────────────────────
+    # These are structural failures no amount of work can fix.
+    if demand == "low" and diff == "weak":
+        # No market and no edge — nothing to build on.
+        return "DON'T BUILD"
+    if demand == "low" and competition == "high":
+        # No proven demand and the market is already crowded.
+        return "DON'T BUILD"
+    if wtp == "weak" and diff == "weak":
+        # Can't charge for it and can't differentiate — no business here.
+        return "DON'T BUILD"
+
+    # ── Gate 2: Clear go → BUILD ──────────────────────────────────────────────
+    # All critical signals are positive.
+    if demand == "high" and diff == "strong" and wtp == "strong":
         return "BUILD"
-    elif signal >= 38:
+    if demand == "high" and diff == "strong" and wtp == "moderate" and competition != "high":
+        return "BUILD"
+
+    # ── Gate 3: Opportunity with gaps → BUILD WITH CONDITIONS ─────────────────
+    # Real opportunity exists but one or more signals need to be de-risked.
+    if demand == "high" and diff in ("moderate", "weak") and wtp in ("strong", "moderate"):
+        # Strong demand + WTP but differentiation gap needs closing.
         return "BUILD WITH CONDITIONS"
-    else:
+    if demand == "medium" and diff == "strong" and wtp in ("strong", "moderate"):
+        # Strong product but market signal not yet proven.
+        return "BUILD WITH CONDITIONS"
+    if demand == "high" and diff == "strong" and wtp == "moderate" and competition == "high":
+        # Strong idea but pricing power limited by intense competition.
+        return "BUILD WITH CONDITIONS"
+    if demand == "high" and diff == "moderate" and wtp == "strong":
+        # Good demand and WTP — needs sharper differentiation angle.
+        return "BUILD WITH CONDITIONS"
+
+    # ── Gate 4: Insufficient evidence → NEED VALIDATION ──────────────────────
+    # Plausible idea but too many unknowns to commit — must validate first.
+    if demand == "medium" and diff in ("moderate", "weak"):
         return "NEED VALIDATION"
+    if demand == "low" and diff in ("strong", "moderate"):
+        # Good product concept, but no proven market yet.
+        return "NEED VALIDATION"
+    if wtp == "weak" and demand in ("high", "medium") and diff in ("strong", "moderate"):
+        # Demand exists, product has merit, but buyers won't pay.
+        return "NEED VALIDATION"
+
+    # ── Default ───────────────────────────────────────────────────────────────
+    # Any unclassified combination (e.g. all signals missing or ambiguous).
+    app.logger.info(
+        "_apply_verdict_rules: unclassified signal combination "
+        "(demand=%s, diff=%s, wtp=%s, competition=%s) → NEED VALIDATION",
+        demand, diff, wtp, competition,
+    )
+    return "NEED VALIDATION"
 
 
 # Verdict-specific next step templates
@@ -894,6 +939,14 @@ _VERDICT_NEXT_STEPS: dict[str, list[str]] = {
         "it occur, how much time or money does it cost, and who experiences it",
         "Add real alternatives to your current alternatives field — name the "
         "specific tools or methods people use today and why they fall short",
+    ],
+    "DON'T BUILD": [
+        "Document exactly why demand is weak or unproven — what searches you "
+        "ran, what alternatives exist, and what buyers said when asked",
+        "Identify whether a significantly narrower niche exists where this "
+        "could win — if you can't name one, the idea is not ready",
+        "Revisit the problem: is there a related adjacent problem where the "
+        "fundamentals (demand, differentiation, WTP) are all positive?",
     ],
 }
 
@@ -2283,51 +2336,75 @@ VERDICT (required):
 
 ---
 DECISION ANALYSIS FIELDS (required — used by the rule engine):
-Evaluate each dimension independently and return a numeric score or level.
-Do NOT guess. Derive from the input evidence.
-- demand_signal_score: integer 0-100. Score the strength of evidence that real demand exists.
-  0-30 = no evidence (no search volume, no existing buyers, unknown problem).
-  31-60 = some evidence (related market exists, adjacent demand, plausible problem).
-  61-100 = strong evidence (proven demand, validated buyers, existing market activity).
-- competition_level: exactly "low", "medium", or "high". How many direct competitors exist and how strong are they?
-  low = fewer than 3 direct competitors or market is nascent.
-  medium = 3-10 direct competitors, market is developing.
-  high = 10+ direct competitors, incumbents are well-funded.
-- differentiation_score: integer 0-100. How clear and defensible is the differentiation?
-  0-30 = no clear differentiation, commodity space.
-  31-60 = some differentiation, moderate moat.
-  61-100 = clear differentiation, strong moat or unique wedge.
-- wtp_score: integer 0-100. Willingness to pay signal strength.
-  0-30 = no evidence of price tolerance, price-sensitive market.
-  31-60 = some price tolerance, standard SaaS/product pricing possible.
-  61-100 = strong willingness to pay, premium pricing validated.
-- execution_complexity: exactly "low", "medium", or "high". How hard is it to build and operate?
-  low = simple execution, small team, low regulatory risk.
-  medium = moderate complexity, requires some specialized knowledge.
-  high = complex execution, large team, heavy regulation, or capital-intensive.
+Evaluate each dimension and return one of the exact allowed string values.
+Do NOT return numbers. Do NOT use any other value.
+These fields are parsed deterministically by code — wrong values are dropped.
+
+- demand_signal: EXACTLY one of "high", "medium", or "low"
+  high   = proven demand: existing buyers, validated search volume, or active market.
+  medium = plausible demand: adjacent market exists, related problem acknowledged.
+  low    = no evidence: no search volume, no known buyers, unknown or niche problem.
+
+- competition_level: EXACTLY one of "low", "medium", or "high"
+  low    = fewer than 3 direct competitors or nascent market.
+  medium = 3–10 direct competitors, market is developing.
+  high   = 10+ direct competitors, incumbents are well-funded.
+
+- differentiation: EXACTLY one of "strong", "moderate", or "weak"
+  strong   = clear moat, proprietary advantage, or unique niche no incumbent owns.
+  moderate = some differentiation, but incumbents could copy or enter.
+  weak     = no clear differentiation — commodity space or feature overlap with free tools.
+
+- wtp_signal: EXACTLY one of "strong", "moderate", or "weak"
+  strong   = premium pricing validated; buyers in this market already pay for solutions.
+  moderate = standard SaaS/product pricing possible; some willingness to pay evidence.
+  weak     = price-sensitive market; no evidence buyers will pay for this.
+
+- execution_complexity: EXACTLY one of "low", "medium", or "high"
+  low    = simple execution, small team, no regulatory or capital barriers.
+  medium = requires specialized knowledge, moderate capital, or some regulatory risk.
+  high   = large team, heavy regulation, high capital requirements, or complex integration.
 
 ---
-UNIVERSAL FIELDS (always required):
-- title: product name
-- category: "{detected_category}" (or override if input clearly indicates otherwise)
-- short_summary: 2-3 sentence factual summary (no marketing fluff)
-- technical_analysis: expert-level factual analysis (materials, construction, market position)
-- target_audience: specific demographic/psychographic description
-- key_benefits: array of 3-5 concrete, measurable benefits
-- selling_points: array of 3 data-backed conversion angles
-- use_cases: array of 3-5 specific use cases for this product
-- performance: object with relevant performance metrics (varies by category)
-- specifications: object with key product specifications (varies by category)
-- category_specific: object with category-specific fields (see below)
-- long_description: HTML with structure below
-- meta_description: under 155 characters, factual
-- keywords: comma-separated relevant search terms
+EXACT OUTPUT SCHEMA (return this JSON structure, all fields required):
+{{
+  "verdict": "<BUILD | BUILD WITH CONDITIONS | DON'T BUILD>",
+  "verdict_reasoning": "<2-3 sentences, specific>",
+  "confidence": <integer 60-97>,
+  "opportunity_summary": "<1-2 sentences>",
+  "biggest_risk": "<1-2 sentences>",
+  "required_conditions": ["<condition 1>", "<condition 2>", "<condition 3>"],
+  "top_reasons": ["<reason 1>", "<reason 2>", "<reason 3>"],
+  "next_actions": ["<action 1>", "<action 2>", "<action 3>"],
+  "demand_signal": "<high | medium | low>",
+  "competition_level": "<low | medium | high>",
+  "differentiation": "<strong | moderate | weak>",
+  "wtp_signal": "<strong | moderate | weak>",
+  "execution_complexity": "<low | medium | high>",
+  "title": "<product name>",
+  "category": "<fragrance | electronics | fashion | beauty | home | general>",
+  "short_summary": "<2-3 sentences>",
+  "technical_analysis": "<expert analysis>",
+  "target_audience": "<specific description>",
+  "key_benefits": ["<benefit 1>", "<benefit 2>", "<benefit 3>"],
+  "selling_points": ["<point 1>", "<point 2>", "<point 3>"],
+  "use_cases": ["<case 1>", "<case 2>", "<case 3>"],
+  "performance": {{}},
+  "specifications": {{}},
+  "category_specific": {{}},
+  "long_description": "<HTML>",
+  "meta_description": "<under 155 chars>",
+  "keywords": "<comma-separated>"
+}}
+
+The "category" field must be "{detected_category}" unless the input clearly belongs to a different category.
+The "required_conditions" array must contain exactly 3 items when verdict is "BUILD WITH CONDITIONS", and must be [] for BUILD or DON'T BUILD.
 
 {category_instructions}
 
 ---
 OUTPUT FORMAT:
-Return ONLY valid JSON. No markdown. No code fences. No explanatory text.
+Return ONLY valid JSON matching the schema above. No markdown. No code fences. No explanatory text before or after the JSON object.
 
 long_description HTML structure:
 <p>Factual opening paragraph about the product.</p>
@@ -2594,12 +2671,22 @@ long_description HTML structure:
                 "long_description": data.get("long_description", ""),
                 "meta_description": data.get("meta_description", ""),
                 "keywords": data.get("keywords", ""),
-                # ── Veltrix v2 decision analysis fields ──
-                "demand_signal_score": data.get("demand_signal_score"),
-                "competition_level": data.get("competition_level"),
-                "differentiation_score": data.get("differentiation_score"),
-                "wtp_score": data.get("wtp_score"),
-                "execution_complexity": data.get("execution_complexity"),
+                # ── Veltrix v2 decision analysis fields (categorical) ──
+                "demand_signal": _normalise_categorical(
+                    data.get("demand_signal"), ("high", "medium", "low"), "medium"
+                ),
+                "competition_level": _normalise_categorical(
+                    data.get("competition_level"), ("low", "medium", "high"), "medium"
+                ),
+                "differentiation": _normalise_categorical(
+                    data.get("differentiation"), ("strong", "moderate", "weak"), "moderate"
+                ),
+                "wtp_signal": _normalise_categorical(
+                    data.get("wtp_signal"), ("strong", "moderate", "weak"), "moderate"
+                ),
+                "execution_complexity": _normalise_categorical(
+                    data.get("execution_complexity"), ("low", "medium", "high"), "medium"
+                ),
             }
 
             # Normalize verdict to exactly "BUILD", "BUILD WITH CONDITIONS", or "DON'T BUILD"
@@ -2930,34 +3017,77 @@ long_description HTML structure:
                     "(clear niche + proven demand + viable monetization detected)"
                 )
 
-            # ── Veltrix v2 Rule Engine ──
-            # Apply the rule engine AFTER Jurion gates.  The rule engine uses
-            # AI-returned analysis scores to produce a rule-based verdict, then
-            # reconciles it with the Jurion-processed verdict.
-            rule_verdict = _apply_rule_engine(output)
+            # ── Veltrix v2 Explicit Rule Engine ──
+            # Run AFTER Jurion gates.  Use AI-returned categorical signals to
+            # compute a rule-based verdict, then reconcile with Jurion.
+            #
+            # Rule: only remap DON'T BUILD when the Jurion verdict was driven
+            # by weak/vague input (which pre-validation should catch before AI),
+            # NOT when the AI's own categorical signals indicate a genuinely bad
+            # idea.  If the rule engine also says DON'T BUILD, keep it.
+            rule_verdict = _apply_verdict_rules(output)
             jurion_verdict = output["verdict"]
 
             if jurion_verdict == "DON'T BUILD":
-                # v2 spec: DON'T BUILD → NEED VALIDATION (bad input handled pre-AI)
-                # Use rule engine to decide severity, but never return DON'T BUILD
-                output["verdict"] = "NEED VALIDATION" if rule_verdict == "NEED VALIDATION" else "BUILD WITH CONDITIONS"
-                if output["verdict"] == "BUILD WITH CONDITIONS" and not output.get("required_conditions"):
-                    output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
-                app.logger.info(
-                    "Veltrix v2 rule engine: DON'T BUILD → %s (rule_verdict=%s)",
-                    output["verdict"], rule_verdict,
-                )
-            elif jurion_verdict == "BUILD" and rule_verdict == "NEED VALIDATION":
-                # Scores are very weak but Jurion said BUILD — reconcile to BWC
+                if rule_verdict == "DON'T BUILD":
+                    # Both agree — idea is genuinely not viable.  Keep DON'T BUILD.
+                    app.logger.info(
+                        "Veltrix v2 rules: DON'T BUILD confirmed by rule engine "
+                        "(demand=%s, diff=%s, wtp=%s)",
+                        output.get("demand_signal"),
+                        output.get("differentiation"),
+                        output.get("wtp_signal"),
+                    )
+                elif rule_verdict == "NEED VALIDATION":
+                    # Jurion says no, rules say unclear.  Respect the analysis —
+                    # stay as DON'T BUILD unless strong fundamentals override.
+                    app.logger.info(
+                        "Veltrix v2 rules: DON'T BUILD kept over NEED VALIDATION "
+                        "(Jurion structural failure, rule signals weak)"
+                    )
+                else:
+                    # Rule engine sees a real opportunity (BUILD or BWC) but Jurion
+                    # fired on structural grounds.  Trust the explicit signal analysis
+                    # over Jurion's text-pattern heuristics when signals are positive.
+                    output["verdict"] = rule_verdict
+                    if rule_verdict == "BUILD WITH CONDITIONS" and not output.get("required_conditions"):
+                        output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                    app.logger.info(
+                        "Veltrix v2 rules: DON'T BUILD overridden to %s "
+                        "(rule engine signals positive — demand=%s, diff=%s, wtp=%s)",
+                        rule_verdict,
+                        output.get("demand_signal"),
+                        output.get("differentiation"),
+                        output.get("wtp_signal"),
+                    )
+            elif jurion_verdict == "BUILD" and rule_verdict in ("DON'T BUILD", "NEED VALIDATION"):
+                # Jurion said BUILD but explicit signals are weak.  Downgrade.
                 output["verdict"] = "BUILD WITH CONDITIONS"
                 if not output.get("required_conditions"):
                     output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
                 app.logger.info(
-                    "Veltrix v2 rule engine: BUILD downgraded to BWC (weak analysis scores)"
+                    "Veltrix v2 rules: BUILD downgraded to BWC "
+                    "(rule engine signals weak — demand=%s, diff=%s, wtp=%s)",
+                    output.get("demand_signal"),
+                    output.get("differentiation"),
+                    output.get("wtp_signal"),
+                )
+            elif jurion_verdict in ("BUILD", "BUILD WITH CONDITIONS") and rule_verdict == "DON'T BUILD":
+                # Rule engine strongly disagrees with a positive Jurion verdict.
+                output["verdict"] = "BUILD WITH CONDITIONS"
+                if not output.get("required_conditions"):
+                    output["required_conditions"] = list(_FALLBACK_BWC_CONDITIONS)
+                app.logger.info(
+                    "Veltrix v2 rules: %s downgraded to BWC "
+                    "(rule engine signals critical failure — demand=%s, diff=%s, wtp=%s)",
+                    jurion_verdict,
+                    output.get("demand_signal"),
+                    output.get("differentiation"),
+                    output.get("wtp_signal"),
                 )
             else:
                 app.logger.info(
-                    "Veltrix v2 rule engine: verdict kept as %s (rule_verdict=%s, jurion=%s)",
+                    "Veltrix v2 rules: verdict kept as %s (rule=%s, jurion=%s)",
                     output["verdict"], rule_verdict, jurion_verdict,
                 )
 
@@ -5433,7 +5563,7 @@ def analyze_product():
         long_desc = result.get("long_description", "")
 
         # ── Veltrix v2: apply verdict-specific next steps ──
-        final_verdict = result.get("verdict", "NEED VALIDATION")
+        final_verdict = result.get("verdict", "DON'T BUILD")
         result["next_actions"] = _verdict_next_steps(final_verdict, result.get("next_actions", []))
 
         # Build response with unified fields
@@ -5450,11 +5580,11 @@ def analyze_product():
             "required_conditions": result.get("required_conditions", []),
             "top_reasons": result.get("top_reasons", []),
             "next_actions": result.get("next_actions", []),
-            # ── v2 decision analysis fields ──
-            "demand_signal_score": result.get("demand_signal_score"),
+            # ── v2 decision analysis fields (categorical) ──
+            "demand_signal": result.get("demand_signal"),
             "competition_level": result.get("competition_level"),
-            "differentiation_score": result.get("differentiation_score"),
-            "wtp_score": result.get("wtp_score"),
+            "differentiation": result.get("differentiation"),
+            "wtp_signal": result.get("wtp_signal"),
             "execution_complexity": result.get("execution_complexity"),
             "short_summary": result.get("short_summary", ""),
             "technical_analysis": result.get("technical_analysis", ""),
