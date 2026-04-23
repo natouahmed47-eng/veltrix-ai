@@ -822,8 +822,9 @@ def derive_top_reasons_from_text(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 # Minimum lengths for structured input fields
-_MIN_IDEA_LEN = 15
-_MIN_FIELD_LEN = 10
+# Relaxed: only block truly empty or single-character inputs
+_MIN_IDEA_LEN = 5
+_MIN_FIELD_LEN = 3
 
 # Vague single-token idea patterns that trigger INVALID INPUT immediately
 _VAGUE_IDEA_RE = re.compile(
@@ -5463,10 +5464,21 @@ def analyze_product():
         if not idea:
             return jsonify({"error": "Field 'idea' is required"}), 400
 
+        # ── DEBUG: log incoming payload ──
+        print({
+            "idea": idea,
+            "target_customer": target_customer,
+            "problem": problem,
+            "current_alternatives": current_alternatives,
+        })
+
         # ── Veltrix v2: pre-evaluation input validation ──
         validation_state = _validate_structured_input(
             idea, target_customer, problem, current_alternatives
         )
+
+        # ── DEBUG: log validation result ──
+        print("VALIDATION RESULT:", validation_state)
 
         if validation_state == "invalid_input":
             app.logger.info("Pre-validation: INVALID INPUT for idea=%r", idea[:80])
@@ -5484,7 +5496,11 @@ def analyze_product():
             })
 
         if validation_state == "need_validation":
-            app.logger.info("Pre-validation: NEED VALIDATION for idea=%r", idea[:80])
+            app.logger.info(
+                "Pre-validation: NEED VALIDATION for idea=%r — "
+                "target_customer=%r problem=%r current_alternatives=%r",
+                idea[:80], target_customer[:60], problem[:60], current_alternatives[:60],
+            )
             return jsonify({
                 "verdict": "NEED VALIDATION",
                 "message": (
