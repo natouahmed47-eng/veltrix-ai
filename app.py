@@ -897,6 +897,19 @@ def _apply_verdict_rules(output: dict) -> str:
     BUILD, BUILD WITH CONDITIONS, NEED VALIDATION, DON'T BUILD.
 
     No scores.  No formulas.  Each rule is a named, readable product decision.
+
+    Design goals:
+    - Structured ideas must NOT default to NEED VALIDATION.
+    - Medium-quality ideas should resolve to BUILD WITH CONDITIONS.
+    - NEED VALIDATION is reserved for weak or incomplete signal profiles.
+    - DON'T BUILD only for genuinely poor signal combinations.
+
+    Additional guard: when all 4 structured inputs are present, NEED VALIDATION
+    is only returned if at least one of these is true:
+      - demand_signal == "low"
+      - wtp_signal == "weak"
+      - differentiation == "weak"
+      - execution_complexity == "high" with demand != "high"
     """
     demand = str(output.get("demand_signal") or "").strip().lower()
     diff = str(output.get("differentiation") or "").strip().lower()
@@ -905,56 +918,62 @@ def _apply_verdict_rules(output: dict) -> str:
     complexity = str(output.get("execution_complexity") or "").strip().lower()
 
     # ── Gate 1: Hard no-go → DON'T BUILD ─────────────────────────────────────
-    # These are structural failures no amount of work can fix.
+    if demand == "low" and wtp == "weak":
+        return "DON'T BUILD"
     if demand == "low" and diff == "weak":
-        # No market and no edge — nothing to build on.
         return "DON'T BUILD"
-    if demand == "low" and competition == "high":
-        # No proven demand and the market is already crowded.
-        return "DON'T BUILD"
-    if wtp == "weak" and diff == "weak":
-        # Can't charge for it and can't differentiate — no business here.
+    if competition == "high" and diff == "weak" and wtp == "weak":
         return "DON'T BUILD"
 
-    # ── Gate 2: Clear go → BUILD ──────────────────────────────────────────────
-    # All critical signals are positive.
-    if demand == "high" and diff == "strong" and wtp == "strong":
+    # ── Gate 2: Strong positive cases → BUILD ────────────────────────────────
+    if demand == "high" and wtp == "strong" and diff in ("strong", "moderate") and complexity != "high":
         return "BUILD"
-    if demand == "high" and diff == "strong" and wtp == "moderate" and competition != "high":
+    if demand == "high" and diff == "strong" and wtp in ("strong", "moderate"):
         return "BUILD"
 
-    # ── Gate 3: Opportunity with gaps → BUILD WITH CONDITIONS ─────────────────
-    # Real opportunity exists but one or more signals need to be de-risked.
-    if demand == "high" and diff in ("moderate", "weak") and wtp in ("strong", "moderate"):
-        # Strong demand + WTP but differentiation gap needs closing.
+    # ── Gate 3: Medium / structured opportunities → BUILD WITH CONDITIONS ─────
+    if demand == "medium" and diff in ("moderate", "strong") and wtp in ("moderate", "strong"):
         return "BUILD WITH CONDITIONS"
-    if demand == "medium" and diff == "strong" and wtp in ("strong", "moderate"):
-        # Strong product but market signal not yet proven.
+    if demand == "high" and diff == "moderate" and wtp == "moderate":
         return "BUILD WITH CONDITIONS"
-    if demand == "high" and diff == "strong" and wtp == "moderate" and competition == "high":
-        # Strong idea but pricing power limited by intense competition.
+    if demand == "medium" and competition in ("medium", "high") and diff == "moderate":
         return "BUILD WITH CONDITIONS"
-    if demand == "high" and diff == "moderate" and wtp == "strong":
-        # Good demand and WTP — needs sharper differentiation angle.
+    if demand == "medium" and wtp == "strong":
         return "BUILD WITH CONDITIONS"
 
-    # ── Gate 4: Insufficient evidence → NEED VALIDATION ──────────────────────
-    # Plausible idea but too many unknowns to commit — must validate first.
-    if demand == "medium" and diff in ("moderate", "weak"):
+    # ── Gate 4: Weak / incomplete signals → NEED VALIDATION ───────────────────
+    if demand == "medium" and wtp == "weak":
         return "NEED VALIDATION"
-    if demand == "low" and diff in ("strong", "moderate"):
-        # Good product concept, but no proven market yet.
+    if demand == "medium" and diff == "weak":
         return "NEED VALIDATION"
-    if wtp == "weak" and demand in ("high", "medium") and diff in ("strong", "moderate"):
-        # Demand exists, product has merit, but buyers won't pay.
+    if complexity == "high" and demand != "high":
+        return "NEED VALIDATION"
+    if demand == "low" and diff in ("moderate", "strong"):
         return "NEED VALIDATION"
 
     # ── Default ───────────────────────────────────────────────────────────────
-    # Any unclassified combination (e.g. all signals missing or ambiguous).
+    # All 4 structured inputs are present and no weak-signal gate fired.
+    # Bias toward BUILD WITH CONDITIONS rather than NEED VALIDATION.
+    all_structured = all([demand, diff, wtp, complexity])
+    if all_structured:
+        _need_validation_justified = (
+            demand == "low"
+            or wtp == "weak"
+            or diff == "weak"
+            or (complexity == "high" and demand != "high")
+        )
+        if not _need_validation_justified:
+            app.logger.info(
+                "_apply_verdict_rules: structured inputs present, no weak-signal gate → BUILD WITH CONDITIONS "
+                "(demand=%s, diff=%s, wtp=%s, competition=%s, complexity=%s)",
+                demand, diff, wtp, competition, complexity,
+            )
+            return "BUILD WITH CONDITIONS"
+
     app.logger.info(
         "_apply_verdict_rules: unclassified signal combination "
-        "(demand=%s, diff=%s, wtp=%s, competition=%s) → NEED VALIDATION",
-        demand, diff, wtp, competition,
+        "(demand=%s, diff=%s, wtp=%s, competition=%s, complexity=%s) → NEED VALIDATION",
+        demand, diff, wtp, competition, complexity,
     )
     return "NEED VALIDATION"
 
