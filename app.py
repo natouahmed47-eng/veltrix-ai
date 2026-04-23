@@ -775,7 +775,7 @@ _MIN_FIELD_LEN = 10
 # Vague single-token idea patterns that trigger INVALID INPUT immediately
 _VAGUE_IDEA_RE = re.compile(
     r"^\s*(idea|thing|app|product|stuff|something|test|hi|hello|yes|no|maybe"
-    r"|idk|don't know|not sure|nothing|n/?a)\s*$",
+    r"|idk|don[\u2019']t know|not sure|nothing|n/?a)\s*$",
     re.IGNORECASE,
 )
 
@@ -824,7 +824,7 @@ def _validate_structured_input(
     return "valid"
 
 
-def _normalise_categorical(value, allowed: tuple, default: str) -> str:
+def _normalize_categorical(value, allowed: tuple, default: str) -> str:
     """Return value if it is in allowed, else default.
 
     Used for deterministic parsing of AI categorical fields.
@@ -2672,19 +2672,19 @@ long_description HTML structure:
                 "meta_description": data.get("meta_description", ""),
                 "keywords": data.get("keywords", ""),
                 # ── Veltrix v2 decision analysis fields (categorical) ──
-                "demand_signal": _normalise_categorical(
+                "demand_signal": _normalize_categorical(
                     data.get("demand_signal"), ("high", "medium", "low"), "medium"
                 ),
-                "competition_level": _normalise_categorical(
+                "competition_level": _normalize_categorical(
                     data.get("competition_level"), ("low", "medium", "high"), "medium"
                 ),
-                "differentiation": _normalise_categorical(
+                "differentiation": _normalize_categorical(
                     data.get("differentiation"), ("strong", "moderate", "weak"), "moderate"
                 ),
-                "wtp_signal": _normalise_categorical(
+                "wtp_signal": _normalize_categorical(
                     data.get("wtp_signal"), ("strong", "moderate", "weak"), "moderate"
                 ),
-                "execution_complexity": _normalise_categorical(
+                "execution_complexity": _normalize_categorical(
                     data.get("execution_complexity"), ("low", "medium", "high"), "medium"
                 ),
             }
