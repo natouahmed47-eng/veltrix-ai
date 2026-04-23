@@ -607,11 +607,12 @@ document.addEventListener("DOMContentLoaded", function () {
         var verdict = (item.verdict || "DON'T BUILD").toUpperCase();
         var isBuild = verdict === "BUILD";
         var isConditional = verdict.indexOf("CONDITION") !== -1;
-        var isDontBuild = !isBuild && !isConditional;
-        var verdictType = isBuild ? "build" : (isConditional ? "conditional" : "dont");
-        var verdictColor = isBuild ? "#059669" : (isConditional ? "#d97706" : "#dc2626");
-        var verdictIcon = isBuild ? "\u2705" : (isConditional ? "\u26A0\uFE0F" : "\u274C");
-        var verdictLabel = isBuild ? "BUILD" : (isConditional ? "BUILD WITH CONDITIONS" : "DON\u2019T BUILD");
+        var isValidation = verdict === "NEED VALIDATION";
+        var isDontBuild = !isBuild && !isConditional && !isValidation;
+        var verdictType = isBuild ? "build" : (isConditional ? "conditional" : (isValidation ? "validation" : "dont"));
+        var verdictColor = isBuild ? "#059669" : (isConditional ? "#d97706" : (isValidation ? "#475569" : "#dc2626"));
+        var verdictIcon = isBuild ? "\u2705" : (isConditional ? "\u26A0\uFE0F" : (isValidation ? "\uD83D\uDD0D" : "\u274C"));
+        var verdictLabel = isBuild ? "BUILD" : (isConditional ? "BUILD WITH CONDITIONS" : (isValidation ? "NEED VALIDATION" : "DON\u2019T BUILD"));
         var verdictArrow = isBuild ? "\u25B2" : (isConditional ? "\u25C6" : "\u25BC");
 
         /* Opportunity Summary + Biggest Risk */
@@ -670,7 +671,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '</div>';
 
         /* Verdict Reasoning */
-        var verdictReasoning = item.verdict_reasoning || "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.";
+        var verdictReasoning = item.verdict_reasoning || "Signals were evaluated — review the idea inputs and resubmit for a full verdict.";
         var reasoningHtml =
             '<div class="verdict-why">' +
                 '<div class="verdict-why-label">Why This Verdict</div>' +

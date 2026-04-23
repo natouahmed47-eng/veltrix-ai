@@ -2511,21 +2511,21 @@ long_description HTML structure:
             app.logger.info("TOP_REASONS PIPELINE — BRANCH: JSON parse error → static fallback assigned")
             app.logger.debug("Raw AI output: %s", content)
 
-            # fallback structure — defaults to DON'T BUILD when data is insufficient
+            # fallback structure — defaults to NEED VALIDATION when AI output is unparseable
             data = {
                 "title": idea,
                 "short_summary": cleaned[:200],
                 "category": detected_category,
-                "verdict": "DON'T BUILD",
-                "verdict_reasoning": "Insufficient structured data to form a verdict. Without clear market positioning, competitive differentiation, or demand evidence, this does not meet the threshold for a BUILD recommendation.",
+                "verdict": "NEED VALIDATION",
+                "verdict_reasoning": "AI response could not be parsed — validate the core signals before proceeding.",
                 "confidence": 62,
-                "opportunity_summary": "Unable to identify a specific opportunity — insufficient data to analyze market gaps or demand signals.",
-                "biggest_risk": "No structured data available to assess risks — the idea cannot be evaluated without more detail.",
+                "opportunity_summary": "Review the idea inputs and resubmit for a full evaluation.",
+                "biggest_risk": "Unable to complete structured analysis — resubmit with clearer idea details.",
                 "required_conditions": [],
                 "top_reasons": [
-                    "No verifiable demand signals or market data available",
-                    "Competitive landscape unclear — risk of entering a saturated space",
-                    "Unit economics and margin potential cannot be assessed",
+                    "Resubmit with a clearer target customer and problem description",
+                    "Describe the current alternatives users rely on today",
+                    "Clarify what makes this idea different from existing solutions",
                 ],
                 "next_actions": [
                     "Define the exact target customer and validate demand with 30+ survey responses",
@@ -2788,9 +2788,9 @@ long_description HTML structure:
 
             # Ensure opportunity_summary and biggest_risk have content
             if not output.get("opportunity_summary", "").strip():
-                output["opportunity_summary"] = "No specific opportunity identified from available data."
+                output["opportunity_summary"] = "No specific opportunity identified — clarify target customer and problem."
             if not output.get("biggest_risk", "").strip():
-                output["biggest_risk"] = "Risk assessment unavailable — insufficient data for this product."
+                output["biggest_risk"] = "Risk could not be determined — provide more detail on the idea and alternatives."
 
             # ---- Stage A: Log raw incoming fields ----
             app.logger.info("TOP_REASONS DEBUG MARKER: %s", _CODE_VERSION)
@@ -2806,7 +2806,7 @@ long_description HTML structure:
             # Preserve AI-generated reasoning that contains real signal.
             vr = output.get("verdict_reasoning", "")
             if not vr or not vr.strip() or is_reason_generic(vr):
-                output["verdict_reasoning"] = "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found."
+                output["verdict_reasoning"] = "Signals were evaluated but reasoning was not returned — review the idea inputs and resubmit."
 
             # ---- Stage B: Generic classification ----
             str_reasons = [r for r in output.get("top_reasons", []) if isinstance(r, str) and r.strip()]
@@ -2849,9 +2849,9 @@ long_description HTML structure:
                 else:
                     # Only use fallback when derivation truly failed
                     output["top_reasons"] = [
-                        "No verifiable demand signals or market data available",
-                        "Competitive landscape unclear — risk of entering a saturated space",
-                        "Unit economics and margin potential cannot be assessed",
+                        "Resubmit with a clearer target customer and problem description",
+                        "Describe the current alternatives users rely on today",
+                        "Clarify what makes this idea different from existing solutions",
                     ]
                     app.logger.info("TOP_REASONS PIPELINE [Stage D] — BRANCH: derivation empty → static fallback assigned")
                 app.logger.info("TOP_REASONS PIPELINE — after first pass: %s", output["top_reasons"])
@@ -2912,9 +2912,9 @@ long_description HTML structure:
                 app.logger.info("TOP_REASONS PIPELINE [Stage E] — BRANCH: skipping second-pass (reasons from derivation)")
             else:
                 _fallback_reasons = [
-                    "No verifiable demand signals or market data available",
-                    "Competitive landscape unclear — risk of entering a saturated space",
-                    "Unit economics and margin potential cannot be assessed",
+                    "Resubmit with a clearer target customer and problem description",
+                    "Describe the current alternatives users rely on today",
+                    "Clarify what makes this idea different from existing solutions",
                 ]
 
                 # Build the analysis text pool once for derivation
@@ -3177,16 +3177,16 @@ long_description HTML structure:
     fallback = {
         "title": idea,
         "category": detected_category if detected_category in SUPPORTED_CATEGORIES else "general",
-        "verdict": "DON'T BUILD",
-        "verdict_reasoning": "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.",
-        "confidence": 62,
-        "opportunity_summary": "Unable to identify a specific opportunity — insufficient data to analyze market gaps or demand signals.",
-        "biggest_risk": "No structured data available to assess risks — the idea cannot be evaluated without more detail.",
+        "verdict": "NEED VALIDATION",
+        "verdict_reasoning": "Analysis could not be completed after multiple attempts — resubmit with clearer idea details.",
+        "confidence": 60,
+        "opportunity_summary": "Review the idea inputs and resubmit for a full evaluation.",
+        "biggest_risk": "Unable to complete analysis — provide more detail on the target customer, problem, and alternatives.",
         "required_conditions": [],
         "top_reasons": [
-            "No verifiable demand signals or market data available",
-            "Competitive landscape unclear — risk of entering a saturated space",
-            "Unit economics and margin potential cannot be assessed",
+            "Resubmit with a clearer target customer and problem description",
+            "Describe the current alternatives users rely on today",
+            "Clarify what makes this idea different from existing solutions",
         ],
         "next_actions": [
             "Define the exact target customer and validate demand with 30+ survey responses",
@@ -5495,16 +5495,16 @@ def analyze_product():
             response_data = {
                 "title": idea,
                 "category": "fragrance",
-                "verdict": "DON'T BUILD",
+                "verdict": "NEED VALIDATION",
                 "verdict_reasoning": "OpenAI is not configured — unable to perform real analysis.",
                 "confidence": 60,
-                "opportunity_summary": "Unable to assess — AI engine is not configured.",
-                "biggest_risk": "Unable to assess — AI engine is not configured.",
+                "opportunity_summary": "Configure the AI engine to receive a full evaluation.",
+                "biggest_risk": "AI engine is not configured — no signals could be evaluated.",
                 "required_conditions": [],
                 "top_reasons": [
-                    "No verifiable demand signals or market data available",
-                    "Competitive landscape unclear — risk of entering a saturated space",
-                    "Unit economics and margin potential cannot be assessed",
+                    "Resubmit with a clearer target customer and problem description",
+                    "Describe the current alternatives users rely on today",
+                    "Clarify what makes this idea different from existing solutions",
                 ],
                 "next_actions": [
                     "Define the exact target customer and validate demand with 30+ survey responses",

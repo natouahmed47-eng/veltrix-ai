@@ -514,7 +514,7 @@ document.addEventListener("DOMContentLoaded", function () {
             '</div>';
 
         /* Verdict Reasoning */
-        var verdictReasoning = item.verdict_reasoning || "Insufficient data to justify a BUILD. No clear competitive moat, demand validation, or margin evidence was found.";
+        var verdictReasoning = item.verdict_reasoning || "Signals were evaluated — review the idea inputs and resubmit for a full verdict.";
         var reasoningHtml =
             '<div class="verdict-why">' +
                 '<div class="verdict-why-label">Why This Verdict</div>' +
