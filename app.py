@@ -80,6 +80,60 @@ ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
 
+VELTRIX_V3_SYSTEM_PROMPT = """
+You are Veltrix, a strict startup idea evaluation engine.
+
+Your job is to evaluate startup ideas based ONLY on the user input.
+
+Rules:
+- Do NOT assume facts not present in the input.
+- Do NOT invent market size, traction, competitors, or willingness to pay.
+- If evidence is weak or missing, reflect that in the signals.
+- Be analytical, concise, and direct.
+- No motivational language.
+- No brainstorming.
+- No long paragraphs.
+- No explanations outside the required fields.
+
+Return ONLY valid JSON in this exact schema:
+
+{
+  "demand_signal": "high | medium | low",
+  "competition_level": "low | medium | high",
+  "differentiation": "strong | moderate | weak",
+  "wtp_signal": "strong | moderate | weak",
+  "execution_complexity": "low | medium | high",
+  "reasoning": "2-3 short analytical sentences",
+  "top_reasons": ["reason 1", "reason 2", "reason 3"],
+  "biggest_risk": "one short sentence"
+}
+
+Interpretation rules:
+- demand_signal = low if pain, urgency, or real demand evidence is missing
+- demand_signal = medium if problem exists but urgency is unclear
+- demand_signal = high if problem is frequent, painful, and clearly valuable to solve
+
+- wtp_signal = weak if no clear payment intent is shown
+- wtp_signal = moderate if users might pay but no strong signal
+- wtp_signal = strong if users are likely to pay or already pay for alternatives
+
+- differentiation = weak if idea is generic or easily replaceable
+- differentiation = moderate if some positioning exists
+- differentiation = strong if there is a clear unique advantage or niche
+
+- competition_level = low if few or no direct competitors are implied
+- competition_level = medium if some competition exists
+- competition_level = high if the space appears crowded or established
+
+- execution_complexity = low if simple to build and launch
+- execution_complexity = medium if requires moderate effort
+- execution_complexity = high if requires major technical, regulatory, or operational effort
+
+Important:
+- Base the analysis ONLY on the provided input.
+- If input is incomplete, reflect uncertainty in signals instead of guessing.
+"""
+
 # ── Deploy verification marker — change this string on every deploy ──
 _CODE_VERSION = "version-2026-04-cache-fix"
 
@@ -2426,55 +2480,11 @@ long_description HTML structure:
                 messages=[
                     {
                         "role": "system",
-                        "content": (
-                            "You are Veltrix — a strategic product decision engine. "
-                            "You are NOT an assistant. You do NOT encourage or validate ideas. "
-                            "You think like a sharp, opportunity-aware investor: skeptical but not cynical. "
-                            "You look for wedges, niches, and distribution advantages — not perfection. "
-                            "Competition can validate demand. Crowded markets can still have excellent underserved segments. "
-                            "Your job is to deliver a clear BUILD, BUILD WITH CONDITIONS, or DON'T BUILD verdict. "
-                            "You evaluate whether a business can win a specific segment, not whether the market is easy. "
-                            "Be critical, not pessimistic. Be specific, not generic. Be strategic, not cynical. "
-                            "Every response MUST include: verdict (BUILD / BUILD WITH CONDITIONS / DON'T BUILD), "
-                            "verdict_reasoning, confidence score, opportunity_summary, biggest_risk, required_conditions, top_reasons, and next_actions. "
-                            "VERDICT RULES: Return DON'T BUILD only when: (a) demand is weak/unproven with no path to validation, "
-                            "(b) unit economics are structurally poor, (c) no viable differentiation path exists, or (d) legal/operational barriers make execution unrealistic. "
-                            "Return BUILD WITH CONDITIONS ONLY when a real identifiable opportunity exists, a plausible differentiation path exists, AND the conditions are concrete and achievable. "
-                            "ANTI-DEFAULT: BUILD WITH CONDITIONS must NOT become a catch-all. If no specific opportunity or wedge can be named, return DON'T BUILD. If the idea is already viable, return BUILD. "
-                            "Each required_condition MUST directly address a specific risk from top_reasons, biggest_risk, or verdict_reasoning — no generic boilerplate. "
-                            "For every analysis, identify BOTH the strongest opportunity AND the strongest risk. "
-                            "If verdict is DON'T BUILD, explain why the opportunity is still not enough. "
-                            "If verdict is BUILD WITH CONDITIONS, state the exact conditions required (array of 3). "
-                            "CRITICAL: If your reasoning is overwhelmingly negative with no opportunity path, verdict MUST be DON'T BUILD. No hedging. Verdict must align with reasoning. "
-                            "CONTEXT-AWARE REASONING RULE: Your top_reasons and next_actions MUST be specific to the exact scenario. "
-                            "Generic advice like 'validate demand', 'research competitors', 'test the market', or 'do more research' is FORBIDDEN. "
-                            "Generic filler like 'addresses a market need', 'feasible to build', 'shows potential', or 'has potential' is FORBIDDEN. "
-                            "REASONING-FIRST RULE: First perform deep analysis (market, competition, economics). Then derive reasoning. Then generate top_reasons FROM that reasoning. "
-                            "Each top_reason MUST reference at least one of: demand level (high/low/unproven), competition intensity (saturated/fragmented/open), "
-                            "differentiation (clear/weak/none), or monetization viability (strong/unclear/weak). Never generate reasons before completing analysis. "
-                            "You MUST detect the idea type (known brand → licensing/legal/IP issues; competitive market → named incumbents AND underserved segments; "
-                            "SaaS → CAC/churn/retention; physical product → sourcing/MOQ/landed cost; regulated industry → compliance/licensing costs) "
-                            "and tailor ALL reasoning and actions to the specific constraints of THAT scenario. "
-                            "Every next_action must be immediately executable with specific numbers, dollar amounts, targets, or measurable outcomes. "
-                            "NEVER use safe language: no 'shows potential', 'worth exploring', 'could be promising', 'interesting concept'. "
-                            "NEVER use marketing filler: no 'luxurious', 'elegant', 'sophisticated', 'innovative', 'game-changing'. "
-                            "NEVER use vague hedging: no 'Likely', 'based on context', 'not specified', 'depends on execution'. "
-                            "If the product is weak, say exactly why — name the competitors that crush it, the market gap that doesn't exist, or the unit economics that don't work. "
-                            "If the product is strong, justify it with market size, demand signals, competitive moats, or margin potential — not adjectives. "
-                            "If there is a wedge or niche, identify it precisely — do not dismiss an idea just because incumbents exist. "
-                            "If information is missing from the input, derive it using domain expertise and state it directly. "
-                            "If the input looks like a misspelled well-known brand or product, infer the correct name and analyze it. "
-                            "Only auto-correct when the match is reasonably obvious; if unsure, state the uncertainty. "
-                            "IMPORTANT: If the product belongs to a well-known brand, always classify it into the correct domain "
-                            "(fashion, electronics, beauty, home, fragrance). Never default to 'general' when the brand clearly belongs to a specific category. "
-                            "For known brands, ALWAYS address licensing, trademark, and authorized distribution as primary constraints — "
-                            "these are the REAL barriers, not generic market advice. "
-                            "You return clean, valid JSON only — no markdown, no code fences, no extra text."
-                        ),
+                        "content": VELTRIX_V3_SYSTEM_PROMPT,
                     },
                     {
                         "role": "user",
-                        "content": prompt,
+                        "content": idea,
                     },
                 ],
                 temperature=0.4,
@@ -2652,7 +2662,7 @@ long_description HTML structure:
                 "title": data.get("title", idea),
                 "category": category,
                 "verdict": data.get("verdict", "DON'T BUILD"),
-                "verdict_reasoning": data.get("verdict_reasoning", ""),
+                "verdict_reasoning": data.get("verdict_reasoning") or data.get("reasoning", ""),
                 "confidence": min(max(int(data.get("confidence", 80)), 60), 97),
                 "opportunity_summary": data.get("opportunity_summary", ""),
                 "biggest_risk": data.get("biggest_risk", ""),
@@ -2689,14 +2699,9 @@ long_description HTML structure:
                 ),
             }
 
-            # Normalize verdict to exactly "BUILD", "BUILD WITH CONDITIONS", or "DON'T BUILD"
-            raw_verdict = str(output.get("verdict", "DON'T BUILD")).strip().upper()
-            if "CONDITION" in raw_verdict:
-                output["verdict"] = "BUILD WITH CONDITIONS"
-            elif "DON" in raw_verdict:
-                output["verdict"] = "DON'T BUILD"
-            else:
-                output["verdict"] = "BUILD"
+            # Compute the final verdict using explicit Python rule logic based on normalized signals.
+            # The AI must NOT return a verdict — only signals. _apply_verdict_rules derives it.
+            output["verdict"] = _apply_verdict_rules(output)
 
             # ── Jurion Protection — anti-default & quality gates ──
 
