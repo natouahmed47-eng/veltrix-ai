@@ -5877,7 +5877,9 @@ def whatsapp_verify():
     if not WHATSAPP_VERIFY_TOKEN:
         return jsonify({"error": "WHATSAPP_VERIFY_TOKEN not configured"}), 500
     if token == WHATSAPP_VERIFY_TOKEN:
-        return challenge, 200
+        resp = make_response(challenge, 200)
+        resp.content_type = "text/plain"
+        return resp
     return jsonify({"error": "Invalid verification token"}), 403
 
 

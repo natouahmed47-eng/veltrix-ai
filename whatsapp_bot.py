@@ -8,7 +8,7 @@ Business logic is handled by the AI brain.
 
 import json
 import re
-import requests as _requests
+import requests
 
 # ── UltraMsg API ──────────────────────────────────────────────────────────────
 
@@ -112,11 +112,11 @@ def build_ai_prompt(phone, message, catalog_items, conversation):
 
     messages = [{"role": "system", "content": system_content}]
 
-    # Append recent conversation history (last 6 turns to stay within token budget)
+    # Append recent conversation history (last 6 turns = 12 messages to stay within token budget)
     if conversation and conversation.history_json:
         try:
             history = json.loads(conversation.history_json)
-            for turn in history[-6:]:
+            for turn in history[-12:]:
                 if turn.get("role") in ("user", "assistant") and turn.get("content"):
                     messages.append({"role": turn["role"], "content": turn["content"]})
         except (json.JSONDecodeError, TypeError):
@@ -176,7 +176,7 @@ def send_whatsapp_message(instance_id, token, to, body):
     """
     url = f"{_ULTRAMSG_API_BASE}/{instance_id}/messages/chat"
     payload = {"token": token, "to": to, "body": body}
-    resp = _requests.post(url, json=payload, timeout=15)
+    resp = requests.post(url, json=payload, timeout=15)
     resp.raise_for_status()
     return resp.json()
 
