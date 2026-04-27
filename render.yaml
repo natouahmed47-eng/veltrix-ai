@@ -13,3 +13,9 @@ services:
     envVars:
       - key: PAYPAL_WEBHOOK_ID
         sync: false
+      - key: ULTRAMSG_INSTANCE_ID
+        sync: false
+      - key: ULTRAMSG_TOKEN
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false

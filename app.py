@@ -19,6 +19,8 @@ from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI, OpenAIError
 from werkzeug.security import generate_password_hash, check_password_hash
 
+import whatsapp_bot as _wa_bot
+
 app = Flask(__name__)
 
 # ── CORS — restrict to the app's own origin(s) ──
@@ -79,6 +81,11 @@ PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 ADMIN_SECRET = os.environ.get("ADMIN_SECRET", "")
 
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4.1-mini")
+
+# ── WhatsApp / UltraMsg ───────────────────────────────────────────────────────
+ULTRAMSG_INSTANCE_ID = os.environ.get("ULTRAMSG_INSTANCE_ID", "")
+ULTRAMSG_TOKEN = os.environ.get("ULTRAMSG_TOKEN", "")
+WHATSAPP_VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "")
 
 VELTRIX_V3_SYSTEM_PROMPT = """
 You are Veltrix, a startup idea evaluation engine.
@@ -1251,6 +1258,53 @@ class TrackingEvent(db.Model):
     user_id = db.Column(db.Integer, nullable=True)
     metadata_json = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+
+# ── WhatsApp models ───────────────────────────────────────────────────────────
+
+
+class WACatalogItem(db.Model):
+    """A product or service offered by the business via WhatsApp."""
+
+    __tablename__ = "wa_catalog_items"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    price = db.Column(db.String(100), nullable=True)
+    category = db.Column(db.String(100), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class WAConversation(db.Model):
+    """Per-phone conversation state for the WhatsApp bot."""
+
+    __tablename__ = "wa_conversations"
+
+    id = db.Column(db.Integer, primary_key=True)
+    phone = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    # States: idle | awaiting_order_confirm
+    state = db.Column(db.String(50), default="idle", nullable=False)
+    selected_item_name = db.Column(db.String(255), nullable=True)
+    history_json = db.Column(db.Text, default="[]")
+    updated_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
+
+class WAOrder(db.Model):
+    """An order placed by a customer through WhatsApp."""
+
+    __tablename__ = "wa_orders"
+
+    id = db.Column(db.Integer, primary_key=True)
+    phone = db.Column(db.String(50), nullable=False, index=True)
+    item_name = db.Column(db.String(255), nullable=False)
+    status = db.Column(db.String(50), default="pending", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 # Allowed event names for the tracking endpoint
@@ -5810,6 +5864,129 @@ def track_event():
     db.session.commit()
 
     return jsonify({"ok": True}), 201
+
+
+# ── WhatsApp webhook ──────────────────────────────────────────────────────────
+
+
+@app.route("/whatsapp/webhook", methods=["GET"])
+def whatsapp_verify():
+    """UltraMsg / Meta webhook verification handshake."""
+    token = request.args.get("token") or request.args.get("hub.verify_token", "")
+    challenge = request.args.get("challenge") or request.args.get("hub.challenge", "")
+    if not WHATSAPP_VERIFY_TOKEN:
+        return jsonify({"error": "WHATSAPP_VERIFY_TOKEN not configured"}), 500
+    if token == WHATSAPP_VERIFY_TOKEN:
+        return challenge, 200
+    return jsonify({"error": "Invalid verification token"}), 403
+
+
+@app.route("/whatsapp/webhook", methods=["POST"])
+@limiter.limit("120 per minute")
+def whatsapp_handler():
+    """
+    Inbound message handler for WhatsApp via UltraMsg.
+
+    Flow per message
+    ----------------
+    1. Parse inbound payload → phone + message text
+    2. Load (or create) the WAConversation for this phone
+    3. Load active WACatalogItem rows
+    4. Build AI prompt (system + history + user message)
+    5. Generate AI response via OpenAI
+    6. Parse AI response for ORDER_CONFIRM token
+    7a. If ORDER_CONFIRM → create WAOrder, reset conversation, send confirmation
+    7b. Otherwise → update conversation state/history, send reply
+    """
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+    except Exception:
+        data = {}
+
+    # UltraMsg wraps the payload under "data"; support both shapes
+    msg_data = data.get("data", data)
+    phone = str(msg_data.get("from") or data.get("from") or "").strip()
+    body = str(msg_data.get("body") or data.get("body") or "").strip()
+
+    if not phone or not body:
+        return jsonify({"ok": True}), 200  # ignore empty / system messages
+
+    # Ignore messages sent by the bot itself (UltraMsg echoes outbound msgs)
+    msg_type = str(data.get("type") or msg_data.get("type") or "").lower()
+    if msg_type in ("true", "1") or data.get("fromMe") or msg_data.get("fromMe"):
+        return jsonify({"ok": True}), 200
+
+    if not client:
+        app.logger.warning("[WA] OpenAI not configured — cannot process message from %s", phone)
+        return jsonify({"error": "OpenAI not configured"}), 500
+
+    if not ULTRAMSG_INSTANCE_ID or not ULTRAMSG_TOKEN:
+        app.logger.warning("[WA] UltraMsg credentials not configured")
+        return jsonify({"error": "UltraMsg not configured"}), 500
+
+    # ── 2. Load / create conversation ──
+    conversation = WAConversation.query.filter_by(phone=phone).first()
+    if not conversation:
+        conversation = WAConversation(phone=phone)
+        db.session.add(conversation)
+        db.session.flush()  # assign id without committing yet
+
+    # ── 3. Load catalog ──
+    catalog_items = _wa_bot.load_catalog_items(db.session, WACatalogItem)
+
+    # ── 4. Build AI prompt ──
+    messages = _wa_bot.build_ai_prompt(phone, body, catalog_items, conversation)
+
+    # ── 5. Generate AI response ──
+    try:
+        ai_reply = _wa_bot.generate_ai_response(client, OPENAI_MODEL, messages)
+    except OpenAIError as exc:
+        app.logger.error("[WA] OpenAI error for %s: %s", phone, exc)
+        db.session.rollback()
+        return jsonify({"error": "AI generation failed"}), 500
+
+    # ── 6. Check for order confirmation token ──
+    item_name = _wa_bot.extract_order_item(ai_reply)
+
+    if item_name:
+        # ── 7a. Create order ──
+        order = WAOrder(phone=phone, item_name=item_name, status="pending")
+        db.session.add(order)
+
+        # Compose a clean confirmation message (strip the token from the reply)
+        clean_reply = re.sub(r"ORDER_CONFIRM:[^\n]*", "", ai_reply, flags=re.IGNORECASE).strip()
+        if not clean_reply:
+            clean_reply = f"✅ Your order for *{item_name}* has been placed! We'll be in touch shortly."
+
+        # Reset conversation state
+        conversation.state = "idle"
+        conversation.selected_item_name = None
+
+        _wa_bot.append_to_history(conversation, body, clean_reply)
+        db.session.commit()
+
+        app.logger.info("[WA] Order created — phone=%s item=%s", phone, item_name)
+        _wa_bot.send_whatsapp_message(ULTRAMSG_INSTANCE_ID, ULTRAMSG_TOKEN, phone, clean_reply)
+
+    else:
+        # ── 7b. Update conversation state ──
+        # If the AI is asking for order confirmation, track the selected item
+        confirm_keywords = re.search(
+            r"(would you like to (place|confirm)|do you want to order|تأكيد الطلب|هل تريد تأكيد)",
+            ai_reply,
+            re.IGNORECASE,
+        )
+        if confirm_keywords:
+            conversation.state = "awaiting_order_confirm"
+        else:
+            conversation.state = "idle"
+
+        _wa_bot.append_to_history(conversation, body, ai_reply)
+        db.session.commit()
+
+        _wa_bot.send_whatsapp_message(ULTRAMSG_INSTANCE_ID, ULTRAMSG_TOKEN, phone, ai_reply)
+
+    return jsonify({"ok": True}), 200
 
 
 @app.errorhandler(500)
